@@ -37,7 +37,6 @@ export function DomainFilter({ value, onChange, align = 'center', className }: D
     >
       {options.map(domain => {
         const selected = value === domain
-        const analyticsId = domain ? `discovery.domain.${domain.toLowerCase()}` : 'discovery.domain.all'
         return (
           <Button
             key={domain ?? 'all'}
@@ -45,7 +44,16 @@ export function DomainFilter({ value, onChange, align = 'center', className }: D
             size="sm"
             variant={selected ? 'default' : 'outline'}
             aria-pressed={selected}
-            data-analytics-id={analyticsId}
+            // Analytics ids must be literals: the manifest generator rejects template strings.
+            data-analytics-id={
+              domain === 'DESIGN' ? 'discovery.domain.design'
+              : domain === 'DEVELOPMENT' ? 'discovery.domain.development'
+              : domain === 'TESTING' ? 'discovery.domain.testing'
+              : domain === 'ENGINEERING' ? 'discovery.domain.engineering'
+              : domain === 'PROJECT_MANAGEMENT' ? 'discovery.domain.project.management'
+              : domain === 'OTHER' ? 'discovery.domain.other'
+              : 'discovery.domain.all'
+            }
             onClick={() => onChange(domain)}
           >
             {domain ? t(`home.domain.${domain}`) : t('home.domainAll')}

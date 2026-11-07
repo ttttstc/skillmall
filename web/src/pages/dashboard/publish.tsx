@@ -361,7 +361,21 @@ export function PublishPage() {
             </SelectTrigger>
             <SelectContent>
               {SKILL_DOMAINS.map(option => (
-                <SelectItem key={option} data-analytics-id={`skill.publish.domain.${option.toLowerCase()}`} value={option}>
+                // Analytics ids must be literals: the manifest generator rejects template strings,
+                // so the six categories are spelled out as a conditional chain (same shape as the
+                // budget picker in github-deep-discovery-config.tsx).
+                <SelectItem
+                  key={option}
+                  data-analytics-id={
+                    option === 'DESIGN' ? 'skill.publish.domain.design'
+                    : option === 'DEVELOPMENT' ? 'skill.publish.domain.development'
+                    : option === 'TESTING' ? 'skill.publish.domain.testing'
+                    : option === 'ENGINEERING' ? 'skill.publish.domain.engineering'
+                    : option === 'PROJECT_MANAGEMENT' ? 'skill.publish.domain.project.management'
+                    : 'skill.publish.domain.other'
+                  }
+                  value={option}
+                >
                   {t(`home.domain.${option}`)}
                 </SelectItem>
               ))}
