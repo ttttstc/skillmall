@@ -89,9 +89,43 @@ public class SkillGovernanceService {
         skill.setHidden(true);
         skill.setHiddenAt(currentInstant());
         skill.setHiddenBy(actorUserId);
+        skill.setHiddenReason(normalizeReason(reason));
         skill.setUpdatedBy(actorUserId);
         Skill saved = skillRepository.save(skill);
         auditLogService.record(actorUserId, "HIDE_SKILL", "SKILL", skillId, null, clientIp, userAgent, jsonReason(reason));
+        return saved;
+    }
+
+    /**
+     * Grants the administrator-granted official mark.
+     *
+     * <p>This is an attestation only a platform administrator can make. Callers must have enforced
+     * the platform administrator role before invoking it; no import or sync path may call it.
+     */
+    @Transactional
+    public Skill markOfficial(Long skillId, String actorUserId, String clientIp, String userAgent, String reason) {
+        Skill skill = skillRepository.findById(skillId)
+                .orElseThrow(() -> new DomainNotFoundException("error.skill.notFound", skillId));
+        skill.setOfficial(true);
+        skill.setOfficialAt(currentInstant());
+        skill.setOfficialBy(actorUserId);
+        skill.setUpdatedBy(actorUserId);
+        Skill saved = skillRepository.save(skill);
+        auditLogService.record(actorUserId, "MARK_SKILL_OFFICIAL", "SKILL", skillId, null, clientIp, userAgent, jsonReason(reason));
+        return saved;
+    }
+
+    /** Revokes the official mark. The previous grant stays visible in the audit log. */
+    @Transactional
+    public Skill unmarkOfficial(Long skillId, String actorUserId, String clientIp, String userAgent, String reason) {
+        Skill skill = skillRepository.findById(skillId)
+                .orElseThrow(() -> new DomainNotFoundException("error.skill.notFound", skillId));
+        skill.setOfficial(false);
+        skill.setOfficialAt(null);
+        skill.setOfficialBy(null);
+        skill.setUpdatedBy(actorUserId);
+        Skill saved = skillRepository.save(skill);
+        auditLogService.record(actorUserId, "UNMARK_SKILL_OFFICIAL", "SKILL", skillId, null, clientIp, userAgent, jsonReason(reason));
         return saved;
     }
 
@@ -150,6 +184,7 @@ public class SkillGovernanceService {
         skill.setHidden(false);
         skill.setHiddenAt(null);
         skill.setHiddenBy(null);
+        skill.setHiddenReason(null);
         skill.setUpdatedBy(actorUserId);
         Skill saved = skillRepository.save(skill);
         auditLogService.record(actorUserId, "UNHIDE_SKILL", "SKILL", skillId, null, clientIp, userAgent, null);
@@ -412,6 +447,14 @@ public class SkillGovernanceService {
             return null;
         }
         return AuditDetail.of("reason", reason);
+    }
+
+    /** Stores a trimmed reason or null, so a whitespace-only value never claims to explain anything. */
+    private String normalizeReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        return reason.trim();
     }
 
     private Instant currentInstant() {

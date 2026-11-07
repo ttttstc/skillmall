@@ -144,6 +144,8 @@ public class SkillController extends BaseApiController {
                 detail.ratingAvg(),
                 detail.ratingCount(),
                 detail.hidden(),
+                detail.hiddenReason(),
+                detail.official(),
                 namespace,
                 skillLabelAppService.listSkillLabelsBySkillId(detail.id()),
                 detail.canManageLifecycle(),

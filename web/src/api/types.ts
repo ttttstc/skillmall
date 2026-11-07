@@ -380,6 +380,8 @@ export type SkillDetail = Omit<
     | 'resolutionMode'
     | 'entryForSuites'
     | 'memberOfSuites'
+    | 'hiddenReason'
+    | 'official'
   >,
   'avatarUrl' | 'labels' | 'headlineVersion' | 'publishedVersion' | 'ownerPreviewVersion' | 'entryForSuites' | 'memberOfSuites' | 'githubSource'
 > & {

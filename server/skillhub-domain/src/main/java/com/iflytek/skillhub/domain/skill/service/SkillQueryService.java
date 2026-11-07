@@ -114,6 +114,8 @@ public class SkillQueryService {
             java.math.BigDecimal ratingAvg,
             Integer ratingCount,
             boolean hidden,
+            String hiddenReason,
+            boolean official,
             Long namespaceId,
             java.time.Instant createdAt,
             java.time.Instant updatedAt,
@@ -159,7 +161,7 @@ public class SkillQueryService {
             String resolutionMode,
             Long activeAvatarId,
             SkillVisibility activeAvatarAudience) {
-            this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, namespaceId, createdAt, updatedAt, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, activeAvatarId, activeAvatarAudience, false);
+            this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, null, false, namespaceId, createdAt, updatedAt, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, activeAvatarId, activeAvatarAudience, false);
         }
     }
 
@@ -287,6 +289,8 @@ public class SkillQueryService {
                 skill.getRatingAvg(),
                 skill.getRatingCount(),
                 skill.isHidden(),
+                skill.getHiddenReason(),
+                skill.isOfficial(),
                 skill.getNamespaceId(),
                 skill.getCreatedAt(),
                 skill.getUpdatedAt(),
