@@ -50,6 +50,7 @@ class SkillSearchControllerTest {
                 eq(0),
                 eq(20),
                 eq(null),
+                eq(null),
                 any(),
                 any()))
                 .thenReturn(new SkillSearchAppService.SearchResponse(List.of(), 0, 0, 20));
@@ -74,6 +75,7 @@ class SkillSearchControllerTest {
                 eq(0),
                 eq(12),
                 eq(null),
+                eq(null),
                 any(),
                 any()))
                 .thenReturn(new SkillSearchAppService.SearchResponse(List.of(), 0, 0, 12));
@@ -96,6 +98,7 @@ class SkillSearchControllerTest {
                 eq(0),
                 eq(20),
                 eq(List.of("code-generation", "official")),
+                eq(null),
                 any(),
                 any()))
                 .thenReturn(new SkillSearchAppService.SearchResponse(List.of(), 0, 0, 20));
@@ -108,6 +111,36 @@ class SkillSearchControllerTest {
                 .andExpect(jsonPath("$.data.items").isArray());
     }
 
+    /**
+     * The category filter is a query parameter on the public list endpoint, so the controller has to
+     * turn the wire value into the enum and hand it to the use case. Without this the frontend could
+     * send {@code domain} and silently get the unfiltered catalogue.
+     */
+    @Test
+    void searchShouldForwardTheDomainFilter() throws Exception {
+        when(skillSearchAppService.search(
+                eq(null),
+                eq(null),
+                eq("newest"),
+                eq(0),
+                eq(20),
+                eq(null),
+                eq(com.iflytek.skillhub.domain.skill.SkillDomain.DESIGN),
+                any(),
+                any()))
+                .thenReturn(new SkillSearchAppService.SearchResponse(List.of(), 0, 0, 20));
+
+        mockMvc.perform(get("/api/web/skills").param("domain", "DESIGN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items").isArray());
+    }
+
+    @Test
+    void searchShouldRejectAnUnknownDomain() throws Exception {
+        mockMvc.perform(get("/api/web/skills").param("domain", "NOT_A_DOMAIN"))
+                .andExpect(status().isBadRequest());
+    }
+
     @Test
     void searchShouldFallbackToDefaultsForBlankQueryParams() throws Exception {
         when(skillSearchAppService.search(
@@ -116,6 +149,7 @@ class SkillSearchControllerTest {
                 eq("newest"),
                 eq(0),
                 eq(20),
+                eq(null),
                 eq(null),
                 any(),
                 any()))
@@ -139,6 +173,7 @@ class SkillSearchControllerTest {
                 eq(0),
                 eq(20),
                 eq(null),
+                eq(null),
                 any(),
                 any()))
                 .thenReturn(new SkillSearchAppService.SearchResponse(List.of(), 0, 0, 20));
@@ -154,7 +189,7 @@ class SkillSearchControllerTest {
     @Test
     void searchShouldOmitLabelsUnlessRequested() throws Exception {
         when(skillSearchAppService.search(
-                eq(null), eq(null), eq("newest"), eq(0), eq(20), eq(null), any(), any()))
+                eq(null), eq(null), eq("newest"), eq(0), eq(20), eq(null), eq(null), any(), any()))
                 .thenReturn(new SkillSearchAppService.SearchResponse(List.of(summary(7L)), 1, 0, 20));
 
         mockMvc.perform(get("/api/web/skills"))
@@ -168,7 +203,7 @@ class SkillSearchControllerTest {
     @Test
     void searchShouldReturnLabelsWhenRequested() throws Exception {
         when(skillSearchAppService.search(
-                eq(null), eq(null), eq("newest"), eq(0), eq(20), eq(null), any(), any()))
+                eq(null), eq(null), eq("newest"), eq(0), eq(20), eq(null), eq(null), any(), any()))
                 .thenReturn(new SkillSearchAppService.SearchResponse(List.of(summary(7L)), 1, 0, 20));
         when(skillLabelProjectionService.labelsBySkillIds(List.of(7L)))
                 .thenReturn(Map.of(7L, List.of(new SkillLabelDto("automation", "TOPIC", "Automation"))));
@@ -183,7 +218,7 @@ class SkillSearchControllerTest {
     @Test
     void searchShouldReturnEmptyLabelArrayForSkillsWithoutLabels() throws Exception {
         when(skillSearchAppService.search(
-                eq(null), eq(null), eq("newest"), eq(0), eq(20), eq(null), any(), any()))
+                eq(null), eq(null), eq("newest"), eq(0), eq(20), eq(null), eq(null), any(), any()))
                 .thenReturn(new SkillSearchAppService.SearchResponse(List.of(summary(7L)), 1, 0, 20));
         when(skillLabelProjectionService.labelsBySkillIds(List.of(7L))).thenReturn(Map.of());
 

@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import { LandingQuickStartSection } from '@/shared/components/landing-quick-start'
 import { SkillCard } from '@/features/skill/skill-card'
+import { DomainFilter } from '@/features/skill/domain-filter'
+import type { SkillDomain } from '@/shared/lib/skill-domains'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
 import { LoadError } from '@/shared/components/load-error'
 import { RankingList, type RankingRowView } from '@/features/home/ranking-list'
@@ -144,17 +146,26 @@ export function LandingPage() {
   // is a fresh random sample rather than a cached replay.
   const [rotation, setRotation] = useState(0)
   const [shownIds, setShownIds] = useState<number[]>([])
+  // One category control drives the recommendation row and all three rankings, so the page never
+  // shows two different answers to "what is in this domain".
+  const [domain, setDomain] = useState<SkillDomain | undefined>(undefined)
+
+  const handleDomainChange = (next: SkillDomain | undefined) => {
+    setDomain(next)
+    setShownIds([])
+    setRotation(current => current + 1)
+  }
 
   const {
     data: recommended,
     isLoading: isLoadingRecommended,
     isError: isErrorRecommended,
     refetch: refetchRecommended,
-  } = useHomeRecommendations(RECOMMENDATION_SIZE, shownIds, rotation)
+  } = useHomeRecommendations(RECOMMENDATION_SIZE, shownIds, rotation, domain)
 
-  const recentPopular = useHomeRanking('recent-popular', RANKING_SIZE)
-  const mostDownloaded = useHomeRanking('most-downloaded', RANKING_SIZE)
-  const newest = useHomeRanking('newest', RANKING_SIZE)
+  const recentPopular = useHomeRanking('recent-popular', RANKING_SIZE, domain)
+  const mostDownloaded = useHomeRanking('most-downloaded', RANKING_SIZE, domain)
+  const newest = useHomeRanking('newest', RANKING_SIZE, domain)
 
   const handleSkillClick = (namespace: string, slug: string) => {
     navigate({ to: `/space/${namespace}/${encodeURIComponent(slug)}` })
@@ -192,7 +203,7 @@ export function LandingPage() {
     const normalized = normalizeSearchQuery(query)
     navigate({
       to: '/search',
-      search: { q: normalized, sort: 'relevance', page: 0, starredOnly: false },
+      search: { q: normalized, sort: 'relevance', page: 0, starredOnly: false, domain },
     })
   }
 
@@ -259,6 +270,7 @@ export function LandingPage() {
               <h2 className="mb-2 text-3xl font-semibold tracking-tight text-foreground">{t('home.recommend.title')}</h2>
               <p className="text-sm text-muted-foreground">{t('home.recommend.description')}</p>
             </div>
+            <DomainFilter value={domain} onChange={handleDomainChange} />
             <div>
               <Button data-analytics-id="discovery.recommend.shuffle"
                 variant="ghost"
@@ -275,7 +287,7 @@ export function LandingPage() {
             <LoadError compact onRetry={() => { void refetchRecommended() }} />
           ) : (recommended?.length ?? 0) === 0 ? (
             <div data-analytics-id="discovery.recommend.empty" className="rounded-xl border border-border/60 bg-card px-6 py-12 text-center text-sm text-muted-foreground">
-              {t('home.recommend.empty')}
+              {domain ? t('home.domainEmpty') : t('home.recommend.empty')}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -300,7 +312,7 @@ export function LandingPage() {
               isLoading={recentPopular.isLoading}
               isError={recentPopular.isError}
               errorLabel={t('home.ranking.error')}
-              emptyLabel={t('home.ranking.recent.empty')}
+              emptyLabel={domain ? t('home.domainEmpty') : t('home.ranking.recent.empty')}
               onSelect={skill => handleSkillClick(skill.namespace, skill.slug)}
             />
             <RankingList
@@ -311,7 +323,7 @@ export function LandingPage() {
               isLoading={mostDownloaded.isLoading}
               isError={mostDownloaded.isError}
               errorLabel={t('home.ranking.error')}
-              emptyLabel={t('home.ranking.cumulative.empty')}
+              emptyLabel={domain ? t('home.domainEmpty') : t('home.ranking.cumulative.empty')}
               onSelect={skill => handleSkillClick(skill.namespace, skill.slug)}
             />
             <RankingList
@@ -322,7 +334,7 @@ export function LandingPage() {
               isLoading={newest.isLoading}
               isError={newest.isError}
               errorLabel={t('home.ranking.error')}
-              emptyLabel={t('home.ranking.newest.empty')}
+              emptyLabel={domain ? t('home.domainEmpty') : t('home.ranking.newest.empty')}
               onSelect={skill => handleSkillClick(skill.namespace, skill.slug)}
             />
           </div>
@@ -333,9 +345,7 @@ export function LandingPage() {
       <section className="relative z-10 w-full px-6 pb-16 pt-8 text-center md:pb-20 md:pt-12">
         <div className="mx-auto max-w-[1704px] space-y-6">
           <h2 className="text-3xl font-semibold tracking-tight text-foreground">{t('home.domainTitle')}</h2>
-          <div className="rounded-xl border border-border/60 bg-card px-6 py-12 text-sm text-muted-foreground">
-            {t('home.domainUnavailable')}
-          </div>
+          <DomainFilter value={domain} onChange={handleDomainChange} />
         </div>
       </section>
 

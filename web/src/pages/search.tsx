@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/use-auth'
 import { SearchBar } from '@/features/search/search-bar'
 import { SkillCard } from '@/features/skill/skill-card'
 import { SkillListRow } from '@/features/skill/skill-list-row'
+import { DomainFilter } from '@/features/skill/domain-filter'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
 import { EmptyState } from '@/shared/components/empty-state'
 import { LoadError } from '@/shared/components/load-error'
@@ -15,6 +16,7 @@ import { useVisibleLabels } from '@/shared/hooks/use-label-queries'
 import { useMyStars } from '@/shared/hooks/use-user-queries'
 import { toRouterPath } from '@/shared/lib/base-path'
 import { formatNamespaceSearchInput, normalizeSearchQuery, parseNamespaceSearchInput } from '@/shared/lib/search-query'
+import type { SkillDomain } from '@/shared/lib/skill-domains'
 import { Button } from '@/shared/ui/button'
 import { APP_SHELL_PAGE_CLASS_NAME } from '@/app/page-shell-style'
 
@@ -95,6 +97,9 @@ export function SearchPage() {
   const q = normalizeSearchQuery(searchParams.q || '')
   const namespace = (searchParams.namespace || '').replace(/^@/, '')
   const selectedLabel = searchParams.label || ''
+  // The category lives in the URL like every other filter here, so a filtered list can be shared
+  // and revisited. Absent means "all categories", not "no category".
+  const domain = searchParams.domain as SkillDomain | undefined
   const sort = searchParams.sort || 'newest'
   const page = searchParams.page ?? 0
   const starredOnly = searchParams.starredOnly ?? false
@@ -103,7 +108,7 @@ export function SearchPage() {
   const previousPageRef = useRef(page)
   const loadingMoreRef = useRef(false)
   const [loadedPages, setLoadedPages] = useState<{ key: string; page: number; items: SkillSummary[] } | null>(null)
-  const resultsKey = JSON.stringify([q, namespace, selectedLabel, sort, starredOnly])
+  const resultsKey = JSON.stringify([q, namespace, selectedLabel, domain, sort, starredOnly])
 
   useEffect(() => {
     setQueryInput(formatNamespaceSearchInput(namespace, q))
@@ -128,6 +133,7 @@ export function SearchPage() {
     q,
     namespace: namespace || undefined,
     label: selectedLabel || undefined,
+    domain,
     sort,
     page,
     size: PAGE_SIZE,
@@ -146,12 +152,12 @@ export function SearchPage() {
     const parsedInput = parseNamespaceSearchInput(query)
     setQueryInput(query)
     startTransition(() => {
-      navigate({ to: '/search', search: { q: parsedInput.query, namespace: parsedInput.namespace, label: selectedLabel, sort, page: 0, starredOnly, view: viewSearch }, replace: true })
+      navigate({ to: '/search', search: { q: parsedInput.query, namespace: parsedInput.namespace, label: selectedLabel, domain, sort, page: 0, starredOnly, view: viewSearch }, replace: true })
     })
   }
 
   const handleSortChange = (newSort: string) => {
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, sort: newSort, page: 0, starredOnly, view: viewSearch } })
+    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort: newSort, page: 0, starredOnly, view: viewSearch } })
   }
 
   const handleViewChange = (nextView: 'grid' | 'list') => {
@@ -159,16 +165,16 @@ export function SearchPage() {
       return
     }
     blurActiveElement()
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, sort, page, starredOnly, view: nextView === 'list' ? 'list' as const : undefined } })
+    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort, page, starredOnly, view: nextView === 'list' ? 'list' as const : undefined } })
   }
 
   const handleLabelToggle = (label: string) => {
     const nextLabel = selectedLabel === label ? '' : label
-    navigate({ to: '/search', search: { q, namespace, label: nextLabel, sort, page: 0, starredOnly, view: viewSearch } })
+    navigate({ to: '/search', search: { q, namespace, label: nextLabel, domain, sort, page: 0, starredOnly, view: viewSearch } })
   }
 
   const handleNamespaceClear = () => {
-    navigate({ to: '/search', search: { q, namespace: '', label: selectedLabel, sort, page: 0, starredOnly, view: viewSearch } })
+    navigate({ to: '/search', search: { q, namespace: '', label: selectedLabel, domain, sort, page: 0, starredOnly, view: viewSearch } })
   }
 
   const handleStarredToggle = () => {
@@ -182,7 +188,12 @@ export function SearchPage() {
       return
     }
 
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, sort, page: 0, starredOnly: !starredOnly, view: viewSearch } })
+    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort, page: 0, starredOnly: !starredOnly, view: viewSearch } })
+  }
+
+  const handleDomainChange = (next: SkillDomain | undefined) => {
+    // Changing the category resets paging: page 3 of the old category has no meaning here.
+    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain: next, sort, page: 0, starredOnly, view: viewSearch } })
   }
 
   const handleSkillClick = (namespace: string, slug: string) => {
@@ -216,7 +227,7 @@ export function SearchPage() {
     if (isFetching || page + 1 >= totalPages) return
     setLoadedPages({ key: resultsKey, page, items: displayItems })
     loadingMoreRef.current = true
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, sort, page: page + 1, starredOnly, view: viewSearch } })
+    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort, page: page + 1, starredOnly, view: viewSearch } })
   }
   const isPageLoading = starredOnly ? isLoadingStarred : isLoading
   const isUpdatingResults = starredOnly
@@ -281,7 +292,7 @@ export function SearchPage() {
           ) : null}
           <div className="w-full border-t border-border/60 px-3 pt-4 lg:mt-3">
             <p className="text-sm font-medium text-foreground">{t('home.domainTitle')}</p>
-            <p className="mt-2 text-xs text-muted-foreground">{t('home.domainUnavailable')}</p>
+            <DomainFilter value={domain} onChange={handleDomainChange} align="start" className="mt-2" />
           </div>
         </aside>
 
@@ -411,7 +422,7 @@ export function SearchPage() {
           description={
             starredOnly
               ? (q ? t('search.noStarredResultsFor', { q }) : t('search.noStarredSkills'))
-              : (q ? t('search.noResultsFor', { q }) : undefined)
+              : domain ? t('home.domainEmpty') : (q ? t('search.noResultsFor', { q }) : undefined)
           }
         />
       )}

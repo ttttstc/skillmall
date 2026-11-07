@@ -1,5 +1,6 @@
 package com.iflytek.skillhub.repository;
 
+import com.iflytek.skillhub.domain.skill.SkillDomain;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -13,6 +14,9 @@ import java.util.Set;
  * {@code download_ready} and not yanked. Anonymous callers pass an empty member set, which drops
  * {@code NAMESPACE_ONLY} skills; hidden, private, archived and non-distributable skills therefore
  * never reach an anonymous result.
+ *
+ * <p>The optional {@link SkillDomain} narrows that same eligible pool; it is one additional
+ * predicate inside the existing filter, never a separate query with its own visibility rules.
  *
  * <p>Rows carry the numbers the page displays, so the client never has to infer a windowed figure
  * from a cumulative one.
@@ -38,13 +42,29 @@ public interface SkillRankingQueryRepository {
     List<RankedSkill> findRecentlyPopular(Set<Long> memberNamespaceIds,
                                           LocalDate windowStart,
                                           LocalDate windowEndExclusive,
+                                          SkillDomain domain,
                                           int limit);
 
+    default List<RankedSkill> findRecentlyPopular(Set<Long> memberNamespaceIds,
+                                                  LocalDate windowStart,
+                                                  LocalDate windowEndExclusive,
+                                                  int limit) {
+        return findRecentlyPopular(memberNamespaceIds, windowStart, windowEndExclusive, null, limit);
+    }
+
     /** Ranks by the cumulative download counter. */
-    List<RankedSkill> findMostDownloaded(Set<Long> memberNamespaceIds, int limit);
+    List<RankedSkill> findMostDownloaded(Set<Long> memberNamespaceIds, SkillDomain domain, int limit);
+
+    default List<RankedSkill> findMostDownloaded(Set<Long> memberNamespaceIds, int limit) {
+        return findMostDownloaded(memberNamespaceIds, null, limit);
+    }
 
     /** Ranks by {@code skill.first_published_at}, newest first. */
-    List<RankedSkill> findNewestPublished(Set<Long> memberNamespaceIds, int limit);
+    List<RankedSkill> findNewestPublished(Set<Long> memberNamespaceIds, SkillDomain domain, int limit);
+
+    default List<RankedSkill> findNewestPublished(Set<Long> memberNamespaceIds, int limit) {
+        return findNewestPublished(memberNamespaceIds, null, limit);
+    }
 
     /**
      * Draws a random sample of distributable skills, skipping {@code excludedSkillIds} when given.
@@ -54,5 +74,12 @@ public interface SkillRankingQueryRepository {
      */
     List<RankedSkill> findRandomRecommendations(Set<Long> memberNamespaceIds,
                                                 List<Long> excludedSkillIds,
+                                                SkillDomain domain,
                                                 int limit);
+
+    default List<RankedSkill> findRandomRecommendations(Set<Long> memberNamespaceIds,
+                                                        List<Long> excludedSkillIds,
+                                                        int limit) {
+        return findRandomRecommendations(memberNamespaceIds, excludedSkillIds, null, limit);
+    }
 }

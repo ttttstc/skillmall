@@ -1,6 +1,7 @@
 package com.iflytek.skillhub.controller.portal;
 
 import com.iflytek.skillhub.controller.BaseApiController;
+import com.iflytek.skillhub.controller.support.DomainQueryParameters;
 import com.iflytek.skillhub.controller.support.IncludeOptions;
 import com.iflytek.skillhub.domain.namespace.NamespaceRole;
 import com.iflytek.skillhub.dto.ApiResponse;
@@ -47,6 +48,9 @@ public class SkillSearchController extends BaseApiController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String namespace,
             @RequestParam(name = "label", required = false) java.util.List<String> labels,
+            @Parameter(description = "Optional first-level category: DESIGN, DEVELOPMENT, TESTING, "
+                    + "ENGINEERING, PROJECT_MANAGEMENT, OTHER")
+            @RequestParam(name = "domain", required = false) String domain,
             @Parameter(description = "Optional response expansions. Supported value: labels")
             @RequestParam(name = "include", required = false) List<String> include,
             @Parameter(schema = @Schema(defaultValue = DEFAULT_SORT))
@@ -66,6 +70,7 @@ public class SkillSearchController extends BaseApiController {
                 parseNonNegativeInt(page, DEFAULT_PAGE),
                 parsePositiveInt(size, DEFAULT_SIZE),
                 labels,
+                DomainQueryParameters.parse(domain),
                 userId,
                 userNsRoles
         );

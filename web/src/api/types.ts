@@ -510,6 +510,8 @@ export interface SearchParams {
   q?: string
   namespace?: string
   label?: string
+  /** First-level category filter; omitted means every category. */
+  domain?: string
   sort?: string
   page?: number
   size?: number

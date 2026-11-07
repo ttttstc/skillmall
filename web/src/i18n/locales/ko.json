@@ -319,7 +319,17 @@
   },
   "home": {
     "domainTitle": "분야별 Skills",
-    "domainUnavailable": "분야 분류는 아직 제공되지 않습니다",
+    "domainAll": "전체 분야",
+    "domainFilterLabel": "분야별 필터",
+    "domainEmpty": "이 분야에는 아직 공개 스킬이 없습니다",
+    "domain": {
+      "DESIGN": "디자인",
+      "DEVELOPMENT": "개발",
+      "TESTING": "테스트",
+      "ENGINEERING": "엔지니어링",
+      "PROJECT_MANAGEMENT": "프로젝트 관리",
+      "OTHER": "기타"
+    },
     "subtitle": "스킬 레지스트리",
     "description": "개발자를 위한 효율적인 스킬 관리, 배포, 협업 플랫폼",
     "browseSkills": "스킬 둘러보기",
@@ -2558,6 +2568,12 @@
     "copyright": "© 2026 SkillHub. Apache-2.0."
   },
   "publish": {
+    "domain": "분야",
+    "domainPlaceholder": "분야 선택",
+    "domainHelp": "이 스킬이 속한 1차 분야를 선택하세요. 기본값은 기타입니다.",
+    "domainHelpUpdate": "분야를 바꾼 뒤 저장하세요. 분야만 수정할 때는 패키지를 다시 올릴 필요가 없습니다.",
+    "domainSaved": "분야가 저장되었습니다",
+    "saveDomain": "분야 저장",
     "retryPackagePreview": "다시 시도",
     "packageName": "패키지 이름",
     "displayName": "표시 이름",
@@ -3636,3 +3652,6 @@
     }
   }
 }
+
+
+

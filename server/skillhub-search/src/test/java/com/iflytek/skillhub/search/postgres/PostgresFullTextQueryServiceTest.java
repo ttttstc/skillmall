@@ -296,6 +296,72 @@ class PostgresFullTextQueryServiceTest {
     }
 
     @Test
+    void domainFilterShouldBeAppliedToSearchAndCountQueries() {
+        EntityManager entityManager = mock(EntityManager.class);
+        Query nativeQuery = mock(Query.class);
+        Query countQuery = mock(Query.class);
+        when(entityManager.createNativeQuery(anyString()))
+                .thenReturn(nativeQuery)
+                .thenReturn(countQuery);
+        when(nativeQuery.setParameter(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(nativeQuery);
+        when(countQuery.setParameter(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(countQuery);
+        when(nativeQuery.getResultList()).thenReturn(List.of());
+        when(countQuery.getSingleResult()).thenReturn(0L);
+
+        PostgresFullTextQueryService service = new PostgresFullTextQueryService(entityManager);
+
+        service.search(new SearchQuery(
+                "review",
+                null,
+                new SearchVisibilityScope(null, Set.of(), Set.of()),
+                "relevance",
+                0,
+                20,
+                List.of(),
+                false,
+                com.iflytek.skillhub.domain.skill.SkillDomain.DEVELOPMENT
+        ));
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(entityManager, org.mockito.Mockito.times(2)).createNativeQuery(sqlCaptor.capture());
+        assertThat(sqlCaptor.getAllValues().getFirst()).contains("AND s.domain = :domain");
+        // The count query must narrow the same way, otherwise the page count contradicts the page.
+        assertThat(sqlCaptor.getAllValues().get(1)).contains("AND s.domain = :domain");
+        verify(nativeQuery).setParameter("domain", "DEVELOPMENT");
+        verify(countQuery).setParameter("domain", "DEVELOPMENT");
+    }
+
+    @Test
+    void absentDomainKeepsTheQueryUnfiltered() {
+        EntityManager entityManager = mock(EntityManager.class);
+        Query nativeQuery = mock(Query.class);
+        Query countQuery = mock(Query.class);
+        when(entityManager.createNativeQuery(anyString()))
+                .thenReturn(nativeQuery)
+                .thenReturn(countQuery);
+        when(nativeQuery.setParameter(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(nativeQuery);
+        when(countQuery.setParameter(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(countQuery);
+        when(nativeQuery.getResultList()).thenReturn(List.of());
+        when(countQuery.getSingleResult()).thenReturn(0L);
+
+        PostgresFullTextQueryService service = new PostgresFullTextQueryService(entityManager);
+
+        service.search(new SearchQuery(
+                "review",
+                null,
+                new SearchVisibilityScope(null, Set.of(), Set.of()),
+                "newest",
+                0,
+                20
+        ));
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(entityManager, org.mockito.Mockito.times(2)).createNativeQuery(sqlCaptor.capture());
+        assertThat(sqlCaptor.getAllValues().getFirst()).doesNotContain("s.domain");
+        verify(nativeQuery, never()).setParameter(org.mockito.ArgumentMatchers.eq("domain"), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void downloadsSortShouldNotBindRelevanceOnlyParameters() {
         EntityManager entityManager = mock(EntityManager.class);
         Query nativeQuery = mock(Query.class);
