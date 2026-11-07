@@ -4,6 +4,7 @@ import { SkillListRow } from '@/features/skill/skill-list-row'
 import { Pagination } from '@/shared/components/pagination'
 import { useMyStarsPage } from '@/shared/hooks/use-user-queries'
 import { EmptyState } from '@/shared/components/empty-state'
+import { LoadError } from '@/shared/components/load-error'
 import { Button } from '@/shared/ui/button'
 import { DashboardPageHeader } from '@/shared/components/dashboard-page-header'
 import { buildReturnTo } from '@/shared/lib/auth-route'
@@ -16,7 +17,7 @@ export function MyStarsPage() {
   const location = useLocation()
   const search = useSearch({ from: '/dashboard/stars' })
   const page = search.page ?? 0
-  const { data, isLoading } = useMyStarsPage({ page, size: PAGE_SIZE })
+  const { data, isLoading, isError, refetch } = useMyStarsPage({ page, size: PAGE_SIZE })
   const skills = data?.items ?? []
   const totalPages = data ? Math.max(Math.ceil(data.total / data.size), 1) : 1
 
@@ -34,7 +35,10 @@ export function MyStarsPage() {
     <div className="space-y-8 animate-fade-up">
       <DashboardPageHeader title={t('stars.title')} subtitle={t('stars.subtitle')} />
 
-      {!skills || skills.length === 0 ? (
+      {isError ? (
+        // A failed request is not an empty collection: say so and offer a retry.
+        <LoadError onRetry={() => { void refetch() }} />
+      ) : !skills || skills.length === 0 ? (
         <EmptyState
           title={t('stars.empty')}
           action={<Button data-analytics-id="navigation.skills.open" onClick={() => navigate({ to: '/search', search: { q: '', sort: 'relevance', page: 0, starredOnly: false } })}>{t('landing.hero.exploreSkills')}</Button>}
