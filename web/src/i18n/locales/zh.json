@@ -3383,6 +3383,36 @@
       "title": "订阅技能版本撤回",
       "description": "{{skillName}}{{versionSuffix}} 版本已撤回。"
     }
+  },
+  "gitcodeImport": {
+    "title": "从 GitCode 导入",
+    "subtitle": "把 GitCode 公开仓固定到某个 commit，预览其中的 Skill 再发布。仓库后续提交不会改变已发布内容。",
+    "open": "打开 GitCode 导入",
+    "close": "收起 GitCode 导入",
+    "repoUrl": "仓库地址",
+    "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
+    "repoUrlHelp": "只接受 GitCode 公开仓，例如 https://gitcode.com/openharmony/docs。",
+    "resolve": "读取仓库",
+    "resolving": "正在读取仓库…",
+    "pinnedCommit": "固定的 commit",
+    "defaultBranch": "默认分支",
+    "candidatesTitle": "仓库中的 Skill",
+    "candidatesEmpty": "该仓库中没有 SKILL.md。",
+    "choosePath": "选择要预览的 Skill",
+    "selectedTitle": "预览",
+    "filesTitle": "文件",
+    "fileCount": "{{files}} 个文件",
+    "totalSize": "总大小",
+    "contentDigest": "内容摘要",
+    "branchLabel": "分支",
+    "publish": "发布该固定快照",
+    "publishing": "正在发布…",
+    "pathRequired": "请先选择 Skill 目录",
+    "resolved": "已固定在 {{branch}} 的 {{commit}}。",
+    "published": "已从 {{commit}} 发布 {{skill}}。",
+    "resolveFailed": "无法读取该仓库",
+    "publishFailed": "无法发布该快照",
+    "snapshotChanged": "该 commit 的内容与预览不一致，请重新读取仓库。"
   }
 }
 

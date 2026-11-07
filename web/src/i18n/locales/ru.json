@@ -3383,6 +3383,36 @@
       "title": "Версия подписанного навыка отозвана",
       "description": "Версия {{skillName}}{{versionSuffix}} отозвана."
     }
+  },
+  "gitcodeImport": {
+    "title": "Импорт из GitCode",
+    "subtitle": "Закрепите публичный репозиторий GitCode на одном коммите, просмотрите навык и опубликуйте его. Последующие коммиты не меняют опубликованное содержимое.",
+    "open": "Открыть импорт из GitCode",
+    "close": "Скрыть импорт из GitCode",
+    "repoUrl": "URL репозитория",
+    "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
+    "repoUrlHelp": "Только публичные репозитории GitCode, например https://gitcode.com/openharmony/docs.",
+    "resolve": "Прочитать репозиторий",
+    "resolving": "Чтение репозитория…",
+    "pinnedCommit": "Закреплённый коммит",
+    "defaultBranch": "Основная ветка",
+    "candidatesTitle": "Навыки в репозитории",
+    "candidatesEmpty": "В этом репозитории нет SKILL.md.",
+    "choosePath": "Выберите навык для просмотра",
+    "selectedTitle": "Предпросмотр",
+    "filesTitle": "Файлы",
+    "fileCount": "Файлов: {{files}}",
+    "totalSize": "Общий размер",
+    "contentDigest": "Хеш содержимого",
+    "branchLabel": "Ветка",
+    "publish": "Опубликовать закреплённый снимок",
+    "publishing": "Публикация…",
+    "pathRequired": "Сначала выберите каталог навыка",
+    "resolved": "Закреплён {{commit}} в ветке {{branch}}.",
+    "published": "Опубликован {{skill}} из {{commit}}.",
+    "resolveFailed": "Не удалось прочитать этот репозиторий",
+    "publishFailed": "Не удалось опубликовать этот снимок",
+    "snapshotChanged": "Содержимое этого коммита отличается от предпросмотра. Прочитайте репозиторий заново."
   }
 }
 

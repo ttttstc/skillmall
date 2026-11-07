@@ -477,6 +477,27 @@ class RouteSecurityPolicyRegistryTest {
     }
 
     @Test
+    void gitcodeImportRoutesAreAuthenticatedWritesAndPublishScopedForTokens() {
+        for (String path : List.of(
+                "/api/web/skills/import/gitcode/resolve",
+                "/api/web/skills/import/gitcode/publish")) {
+            assertEquals(RouteSecurityPolicyRegistry.AccessLevel.AUTHENTICATED,
+                    registry.accessLevel("POST", path), path);
+            assertFalse(registry.authorizeApiToken("POST", path, Set.of()).allowed(), path);
+            assertFalse(registry.authorizeApiToken("POST", path, Set.of("skill:read")).allowed(), path);
+            assertEquals("skill:publish",
+                    registry.authorizeApiToken("POST", path, Set.of("skill:read")).requiredScope(), path);
+            assertTrue(registry.authorizeApiToken("POST", path, Set.of("skill:publish")).allowed(), path);
+        }
+
+        String provenance = "/api/web/skills/global/demo/versions/1.0.0/import-source";
+        assertEquals(RouteSecurityPolicyRegistry.AccessLevel.AUTHENTICATED,
+                registry.accessLevel("GET", provenance));
+        assertTrue(registry.authorizeApiToken("GET", provenance, Set.of("skill:read")).allowed());
+        assertFalse(registry.authorizeApiToken("GET", provenance, Set.of("skill:publish")).allowed());
+    }
+
+    @Test
     void sessionOnlyRoutes_areRejectedForApiTokens() {
         for (String route : registry.sessionOnlyRoutes()) {
             String[] parts = route.split(" ", 2);

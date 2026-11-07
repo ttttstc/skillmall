@@ -514,6 +514,51 @@ export const githubSyncAdminApi = {
   },
 }
 
+/**
+ * GitCode import: preview a pinned snapshot, then publish exactly that snapshot.
+ *
+ * <p>The publish call always carries the commit and the content digest returned by the preview, so
+ * the published version can never drift onto a newer branch head.
+ */
+export type GitCodeImportResolveResult = components['schemas']['GitCodeImportResolveResponse']
+export type GitCodeImportPublishResult = components['schemas']['GitCodeImportPublishResponse']
+export type GitCodeImportResolveInput = {
+  repoUrl: string
+  commit?: string | null
+  path?: string | null
+}
+export type GitCodeImportPublishInput = {
+  repoUrl: string
+  commit: string
+  branch?: string | null
+  path: string
+  namespace: string
+  visibility: string
+  displayName?: string | null
+  changelog?: string | null
+  contentDigest: string
+}
+
+export const gitcodeImportApi = {
+  async resolve(body: GitCodeImportResolveInput): Promise<GitCodeImportResolveResult> {
+    return fetchJson<GitCodeImportResolveResult>('/api/web/skills/import/gitcode/resolve', {
+      method: 'POST',
+      headers: await ensureCsrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+      // Walking a repository directory by directory is bounded but slow; keep the preview alive.
+      timeoutMs: 180000,
+    })
+  },
+  async publish(body: GitCodeImportPublishInput): Promise<GitCodeImportPublishResult> {
+    return fetchJson<GitCodeImportPublishResult>('/api/web/skills/import/gitcode/publish', {
+      method: 'POST',
+      headers: await ensureCsrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+      timeoutMs: 180000,
+    })
+  },
+}
+
 export const githubTeamSourcesApi = {
   async rescan(namespaceSlug: string, sourceId: number): Promise<GithubSourceRescan> {
     const result = await client.POST('/api/v1/namespaces/{namespaceSlug}/github-sources/resolved/{sourceId}/rescan', {
