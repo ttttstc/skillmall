@@ -15,12 +15,13 @@ interface SkillCardProps {
   skill: SkillSummary
   onClick?: () => void
   highlightStarred?: boolean
+  market?: boolean
 }
 
 /**
  * Reusable card for displaying one skill in lists such as landing, namespace, search, and stars.
  */
-export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId }: SkillCardProps) {
+export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId, market = false }: SkillCardProps) {
   const { t, i18n } = useTranslation()
   const { isAuthenticated } = useAuth()
   // Batch highlight via shared ['skills','stars'] — never N× useStar per grid row.
@@ -32,6 +33,8 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
   const downloadLabel = t('skillCard.downloads', { value: formatCompactCount(skill.downloadCount) })
   const starLabel = t('skillCard.stars', { count: skill.starCount })
   const ratingLabel = t('skillCard.rating', { rating: skill.ratingAvg?.toFixed(1) ?? '0.0' })
+  const avatarTones = ['[&>span]:bg-purple-200', '[&>span]:bg-blue-200', '[&>span]:bg-green-200', '[&>span]:bg-amber-200', '[&>span]:bg-pink-200']
+  const avatarTone = avatarTones[Array.from(skill.slug).reduce((sum, char) => sum + char.codePointAt(0)!, 0) % avatarTones.length]
 
   return (
     <Card
@@ -54,7 +57,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
     >
       <div className="flex h-full flex-col">
         <div className="mb-3 flex min-w-0 items-start gap-3">
-          <SkillAvatar name={skill.displayName} url={skill.avatarUrl} />
+          <div className={market ? `${avatarTone} [&>span]:text-neutral-900` : undefined}><SkillAvatar name={skill.displayName} url={skill.avatarUrl} /></div>
           <div className="min-w-0 flex-1">
             <h3
               className="line-clamp-2 text-base font-semibold [overflow-wrap:anywhere] group-hover:text-primary transition-colors duration-150"
@@ -63,7 +66,8 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
             >
               {skill.displayName}
             </h3>
-            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+            {market && skill.ownerDisplayName && <p className="truncate text-xs text-muted-foreground" title={skill.ownerDisplayName}>{skill.ownerDisplayName}</p>}
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
               <NamespaceBadge
                 className="block max-w-full truncate"
                 type="TEAM"
@@ -85,7 +89,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
 
         {skill.summary && (
           <p
-            className="skill-card-summary mb-3 text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]"
+            className={`${market ? 'line-clamp-1' : 'skill-card-summary'} mb-3 text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]`}
             title={skill.summary}
           >
             {skill.summary}
@@ -141,7 +145,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
             </span>
           )}
         </div>
-        {(skill.ownerDisplayName || skill.updatedAt) && (
+        {(!market && (skill.ownerDisplayName || skill.updatedAt)) && (
           <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
             {skill.ownerDisplayName && (
               <span className="flex min-w-0 flex-1 items-center gap-1" title={skill.ownerDisplayName}>
@@ -157,6 +161,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
             )}
           </div>
         )}
+        {market && skill.updatedAt && <span className="mt-2 text-xs text-muted-foreground">{formatRelativeTime(skill.updatedAt, i18n.language)}</span>}
       </div>
     </Card>
   )

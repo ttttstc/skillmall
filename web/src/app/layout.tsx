@@ -106,17 +106,7 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative" style={{ background: 'var(--bg-page, hsl(var(--background)))' }}>
-      {/* Clip only the decorative layer so in-tree Select/Dropdown are not cropped. */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-x-clip" aria-hidden>
-        <div
-          className="absolute top-0 right-0 w-[600px] h-[500px] rounded-full opacity-90"
-          style={{
-            background: 'radial-gradient(ellipse at 70% 20%, hsl(var(--glow-accent) / 0.12) 0%, hsl(var(--glow-primary) / 0.07) 40%, transparent 70%)',
-            filter: 'blur(60px)',
-          }}
-        />
-      </div>
+    <div className="relative flex min-h-screen flex-col bg-[#fafafa] dark:bg-background">
 
       {/* Header */}
       <header
@@ -142,8 +132,8 @@ export function Layout() {
                   to={item.to}
                   className={
                     active
-                      ? 'px-4 py-1.5 rounded-full text-sm font-medium bg-foreground text-background shadow-[0_1px_2px_0_rgb(0_0_0/0.12)]'
-                      : 'px-4 py-1.5 rounded-full text-sm font-medium hover:opacity-90 transition-opacity duration-150'
+                      ? 'border-b-2 border-foreground px-4 py-4 text-sm font-medium text-foreground'
+                      : 'border-b-2 border-transparent px-4 py-4 text-sm font-medium hover:opacity-90 transition-opacity duration-150'
                   }
                   style={active ? undefined : { color: 'hsl(var(--foreground) / 0.65)' }}
                 >

@@ -18,6 +18,7 @@ import {
 import { LandingQuickStartSection } from '@/shared/components/landing-quick-start'
 import { SkillCard } from '@/features/skill/skill-card'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
+import { LoadError } from '@/shared/components/load-error'
 import { useSearchSkills } from '@/shared/hooks/use-skill-queries'
 import { useInView } from '@/shared/hooks/use-in-view'
 import { Button } from '@/shared/ui/button'
@@ -129,12 +130,12 @@ export function LandingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
-  const { data: popularSkills, isLoading: isLoadingPopular } = useSearchSkills({
+  const { data: popularSkills, isLoading: isLoadingPopular, isError: isErrorPopular, refetch: refetchPopular } = useSearchSkills({
     sort: 'downloads',
-    size: 6,
+    size: 16,
   })
 
-  const { data: latestSkills, isLoading: isLoadingLatest } = useSearchSkills({
+  const { data: latestSkills, isLoading: isLoadingLatest, isError: isErrorLatest, refetch: refetchLatest } = useSearchSkills({
     sort: 'newest',
     size: 6,
   })
@@ -199,7 +200,7 @@ export function LandingPage() {
 
   return (
     <>
-      <main ref={heroView.ref} className={`relative z-10 w-full overflow-hidden px-6 pb-12 pt-20 text-center scroll-fade-up${heroView.inView ? ' in-view' : ''} md:pb-16 md:pt-28`}>
+      <main ref={heroView.ref} className={`relative z-10 w-full overflow-hidden px-6 pb-10 pt-20 text-center scroll-fade-up${heroView.inView ? ' in-view' : ''} md:pb-12 md:pt-28`}>
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_75%_55%,rgba(194,218,255,0.28),transparent_45%),radial-gradient(ellipse_at_25%_80%,rgba(255,225,225,0.22),transparent_45%)]" />
         <h1 className="text-5xl font-bold tracking-tight text-foreground md:text-7xl">SkillHub</h1>
         <p className="mt-3 text-base text-muted-foreground md:text-lg">{t('landing.hero.mallSubtitle')}</p>
@@ -220,7 +221,7 @@ export function LandingPage() {
         </div>
       </main>
 
-      <section ref={popularView.ref} className={`relative z-10 w-full bg-background px-6 py-16 scroll-fade-up${popularView.inView ? ' in-view' : ''} md:py-20`}>
+      <section ref={popularView.ref} className={`relative z-10 w-full px-6 pb-16 pt-8 scroll-fade-up${popularView.inView ? ' in-view' : ''} md:pb-20 md:pt-12`}>
         <div className="mx-auto max-w-[1704px] space-y-6">
           <div className="text-center">
             <h2 className="mb-2 text-3xl font-semibold tracking-tight text-foreground">{popularTitle}</h2>
@@ -228,11 +229,13 @@ export function LandingPage() {
           </div>
           {isLoadingPopular ? (
             <SkeletonList count={6} />
+          ) : isErrorPopular ? (
+            <LoadError compact onRetry={() => { void refetchPopular() }} />
           ) : (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {popularSkills?.items.map((skill, idx) => (
                 <div key={skill.id} className={`animate-fade-up delay-${Math.min(idx + 1, 6)}`}>
-                  <SkillCard analyticsId="skill.card.open" skill={skill} onClick={() => handleSkillClick(skill.namespace, skill.slug)} />
+                  <SkillCard analyticsId="skill.card.open" skill={skill} market onClick={() => handleSkillClick(skill.namespace, skill.slug)} />
                 </div>
               ))}
             </div>
@@ -244,6 +247,15 @@ export function LandingPage() {
             >
               {viewAllText}
             </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative z-10 w-full px-6 pb-16 pt-8 text-center md:pb-20 md:pt-12">
+        <div className="mx-auto max-w-[1704px] space-y-6">
+          <h2 className="text-3xl font-semibold tracking-tight text-foreground">{t('home.domainTitle')}</h2>
+          <div className="rounded-xl border border-border/60 bg-card px-6 py-12 text-sm text-muted-foreground">
+            {t('home.domainUnavailable')}
           </div>
         </div>
       </section>
@@ -295,6 +307,8 @@ export function LandingPage() {
           </div>
           {isLoadingLatest ? (
             <SkeletonList count={6} />
+          ) : isErrorLatest ? (
+            <LoadError compact onRetry={() => { void refetchLatest() }} />
           ) : (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               {latestSkills?.items.map((skill, idx) => (

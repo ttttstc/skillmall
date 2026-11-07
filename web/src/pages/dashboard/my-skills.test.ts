@@ -24,6 +24,7 @@ vi.mock('react-i18next', async () => {
     ...actual,
     useTranslation: () => ({
       t: (key: string, options?: Record<string, unknown>) => renderI18n ? String(renderI18n.t(key, options)) : key,
+      i18n: { language: renderI18n?.language ?? 'en' },
     }),
   }
 })

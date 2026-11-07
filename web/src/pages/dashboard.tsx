@@ -167,11 +167,16 @@ export function DashboardSidebar({
   pathname: string
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const isPersonalMarketPage = pathname === '/dashboard/skills' || pathname === '/dashboard/stars'
   const activeItem = groups.flatMap(group => group.items)
     .find(item => pathname === item.to || pathname.startsWith(item.to))
+  const personalItems = groups.flatMap(group => group.items).filter(item => item.key === 'skills' || item.key === 'stars')
+  const desktopGroups = isPersonalMarketPage
+    ? [{ items: personalItems }, ...groups.map(group => ({ ...group, items: group.items.filter(item => item.key !== 'skills' && item.key !== 'stars') })).filter(group => group.items.length > 0)]
+    : groups
 
   return (
-    <aside className="w-full lg:w-56 flex-shrink-0">
+    <aside className={`w-full flex-shrink-0 ${isPersonalMarketPage ? 'lg:w-64 xl:w-80' : 'lg:w-56'}`}>
       <div className="rounded-lg border bg-background lg:hidden">
         <button data-analytics-id="navigation.dashboard.toggle"
           type="button"
@@ -208,11 +213,11 @@ export function DashboardSidebar({
 
       <div className="hidden lg:sticky lg:top-[68px] lg:block">
       {/* User summary */}
-      <div className="flex items-center gap-3 px-3 py-2 mb-4">
+      <div className={`mb-4 flex items-center gap-3 px-3 py-2 ${isPersonalMarketPage ? 'lg:gap-5' : ''}`}>
         {user?.avatarUrl ? (
-          <img src={user.avatarUrl} alt={user.displayName} className="h-8 w-8 rounded-full border border-border/60" />
+          <img src={user.avatarUrl} alt={user.displayName} className={`${isPersonalMarketPage ? 'h-24 w-24' : 'h-8 w-8'} shrink-0 rounded-full border border-border/60 object-cover`} />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+          <div className={`${isPersonalMarketPage ? 'h-24 w-24 text-3xl' : 'h-8 w-8 text-xs'} flex shrink-0 items-center justify-center rounded-full bg-secondary font-semibold`} style={{ color: 'hsl(var(--foreground))' }}>
             {user?.displayName?.charAt(0) ?? '?'}
           </div>
         )}
@@ -229,8 +234,14 @@ export function DashboardSidebar({
         </div>
       </div>
 
+      {isPersonalMarketPage && (
+        <Link data-analytics-id="skill.publish.open" to="/dashboard/publish" className="mb-6 flex h-10 items-center justify-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
+          {t('nav.publish')}
+        </Link>
+      )}
+
       {/* Nav groups */}
-      {groups.map((group) => (
+      {desktopGroups.map((group) => (
         <div key={group.label ?? 'top'} className="mb-4">
           {group.label && (
             <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -246,7 +257,7 @@ export function DashboardSidebar({
                   key={item.key}
                   to={item.to}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                    isActive ? 'bg-accent' : 'hover:bg-accent'
+                    isActive ? (isPersonalMarketPage ? 'bg-muted' : 'bg-accent') : 'hover:bg-accent'
                   }`}
                   style={{ color: isActive ? 'hsl(var(--foreground))' : 'hsl(var(--text-secondary))' }}
                 >

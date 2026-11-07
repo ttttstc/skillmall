@@ -8,7 +8,10 @@
   "common": {
     "loading": "Loading...",
     "expand": "Expand details",
-    "collapse": "Collapse details"
+    "collapse": "Collapse details",
+    "loadFailedTitle": "Load failed",
+    "loadFailedDescription": "This content could not be loaded. Try again in a moment.",
+    "retry": "Retry"
   },
   "nav": {
     "landing": "Home",
@@ -278,6 +281,8 @@
     }
   },
   "home": {
+    "domainTitle": "Skills by domain",
+    "domainUnavailable": "Domain categories are not available yet",
     "subtitle": "Skill Registry",
     "description": "Efficient skill management, distribution, and collaboration platform for developers",
     "browseSkills": "Browse Skills",
@@ -900,6 +905,7 @@
     "securityDesc": "Change password and account security options"
   },
   "mySkills": {
+    "table": {"name": "Name", "version": "Version", "status": "Status", "updated": "Updated", "actions": "Actions"},
     "ownerReadOnly": "You are no longer a member of this space. You can view and download your skills, but cannot modify them.",
     "updateGlobalVersion": "Update global version",
     "viewGlobalCopy": "View global copy",

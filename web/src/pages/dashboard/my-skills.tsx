@@ -16,6 +16,7 @@ import { useMySkills, useSubmitPromotion } from '@/shared/hooks/use-user-queries
 import { useRestoreHiddenSkill } from '@/features/admin/use-admin-skills'
 import { getHeadlineVersion, getPublishedVersion, getOwnerPreviewVersion, hasPendingOwnerPreview } from '@/shared/lib/skill-lifecycle'
 import { formatCompactCount } from '@/shared/lib/number-format'
+import { formatLocalDateTime } from '@/shared/lib/date-time'
 import { toast } from '@/shared/lib/toast'
 import { buildReturnTo } from '@/shared/lib/auth-route'
 import { SkillVisibilityDialog } from '@/features/skill/skill-visibility-dialog'
@@ -47,7 +48,7 @@ export function MySkillsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const search = useSearch({ from: '/dashboard/skills' })
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { hasRole } = useAuth()
 
   // The URL is the source of truth for page / filter / namespace / keyword so the
@@ -369,6 +370,15 @@ export function MySkillsPage() {
       {skillPage && skillPage.total > 0 ? (
         <>
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
+            <div className="hidden items-center gap-4 bg-muted/60 px-4 py-3 text-xs font-medium text-muted-foreground xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(250px,auto)]">
+              <span>{t('mySkills.table.name')}</span>
+              <div className="grid grid-cols-3 gap-3">
+                <span>{t('mySkills.table.version')}</span>
+                <span>{t('mySkills.table.status')}</span>
+                <span>{t('mySkills.table.updated')}</span>
+              </div>
+              <span>{t('mySkills.table.actions')}</span>
+            </div>
             {skills.map((skill, idx) => (
               (() => {
                 const ownerReadOnly = skill.managementState?.ownerReadOnly === true
@@ -389,14 +399,14 @@ export function MySkillsPage() {
                 return (
                   <Card data-analytics-id={filter === "HIDDEN" ? undefined : "skill.owned.open"}
                     key={skill.id}
-                    className={`group rounded-none border-0 border-b border-border/60 p-5 shadow-none last:border-b-0 animate-fade-up delay-${Math.min(idx + 1, 6)} ${filter === 'HIDDEN' ? '' : 'cursor-pointer'}`}
+                    className={`group rounded-none border-0 border-b border-border/60 p-4 shadow-none last:border-b-0 xl:px-4 xl:py-2 animate-fade-up delay-${Math.min(idx + 1, 6)} ${filter === 'HIDDEN' ? '' : 'cursor-pointer'}`}
                     onClick={filter === 'HIDDEN' ? undefined : () => handleSkillClick(skill.namespace, skill.slug, preview?.version)}
                   >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-3 flex items-center gap-3">
-                          <SkillAvatar name={displayName} url={skill.avatarUrl} />
-                          <h3 className="min-w-0 break-words font-heading text-lg font-semibold group-hover:text-primary transition-colors">
+                    <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(250px,auto)] xl:items-center">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex items-center gap-3 xl:mb-1">
+                          <span className="xl:hidden"><SkillAvatar name={displayName} url={skill.avatarUrl} size="h-8 w-8" /></span>
+                          <h3 className="min-w-0 break-words font-heading text-sm font-semibold group-hover:text-primary transition-colors xl:text-blue-600 dark:xl:text-blue-400">
                             {displayName}
                           </h3>
                         </div>
@@ -417,28 +427,16 @@ export function MySkillsPage() {
                         )}
                         {skill.status === 'ACTIVE' && filter !== 'HIDDEN' && <SkillAvatarManager namespace={skill.namespace} slug={skill.slug} previewOnly />}
                         {summary && (
-                          <p className="mb-3 line-clamp-1 text-sm leading-relaxed text-muted-foreground">{summary}</p>
+                          <p className="mb-2 line-clamp-1 text-xs leading-relaxed text-muted-foreground xl:sr-only" title={summary}>{summary}</p>
                         )}
                         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                           <span className="handle-tag max-w-full break-all">@{skill.namespace}</span>
-                          <span className="text-xs">{t('skillVisibility.current', { visibility: t(`skillVisibility.${skill.visibility ?? 'PUBLIC'}`) })}</span>
-                          {preview && publishedVersion ? (
-                            <span className="text-xs">{t('mySkills.versionDifference', { version: preview.version, published: publishedVersion.version })}</span>
-                          ) : headlineVersion ? (
-                            <span className="font-mono text-xs">v{headlineVersion.version}</span>
-                          ) : null}
                           <span className="flex items-center gap-1">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
                             </svg>
                             {formatCompactCount(skill.downloadCount)}
                           </span>
-                          {mainStatus && (
-                            <span className={resolveStatusClassName(mainStatus)}>
-                              {hasPendingPreview && publishedVersion && mainStatus === 'PENDING_REVIEW'
-                                ? t('mySkills.statusUpdatePendingReview') : resolveStatusLabel(mainStatus)}
-                            </span>
-                          )}
                         </div>
                         {skill.managementState?.requestedVisibility && (
                           <p role="status" className="mt-3 text-sm text-muted-foreground">
@@ -446,7 +444,22 @@ export function MySkillsPage() {
                           </p>
                         )}
                       </div>
-                      <div className="flex shrink-0 flex-wrap items-center gap-2 sm:max-w-[45%] sm:justify-end">
+                      <div className="grid min-w-0 grid-cols-3 items-center gap-3 text-xs text-muted-foreground">
+                        <div>
+                          {preview && publishedVersion ? (
+                            <span>{t('mySkills.versionDifference', { version: preview.version, published: publishedVersion.version })}</span>
+                          ) : headlineVersion ? <span className="font-mono">v{headlineVersion.version}</span> : '—'}
+                        </div>
+                        <div className="space-y-1">
+                          {mainStatus && <span className={resolveStatusClassName(mainStatus)}>
+                            {hasPendingPreview && publishedVersion && mainStatus === 'PENDING_REVIEW'
+                              ? t('mySkills.statusUpdatePendingReview') : resolveStatusLabel(mainStatus)}
+                          </span>}
+                          <p>{t('skillVisibility.current', { visibility: t(`skillVisibility.${skill.visibility ?? 'PUBLIC'}`) })}</p>
+                        </div>
+                        <span>{formatLocalDateTime(skill.updatedAt, i18n.language)}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                         {canRestoreHidden ? (
                           <Button data-analytics-id="skill.restore.request"
                             size="sm"

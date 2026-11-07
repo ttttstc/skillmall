@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { SkillListRow } from '@/features/skill/skill-list-row'
 import { Pagination } from '@/shared/components/pagination'
 import { useMyStarsPage } from '@/shared/hooks/use-user-queries'
-import { Card } from '@/shared/ui/card'
+import { EmptyState } from '@/shared/components/empty-state'
+import { Button } from '@/shared/ui/button'
 import { DashboardPageHeader } from '@/shared/components/dashboard-page-header'
 import { buildReturnTo } from '@/shared/lib/auth-route'
 
@@ -34,7 +35,10 @@ export function MyStarsPage() {
       <DashboardPageHeader title={t('stars.title')} subtitle={t('stars.subtitle')} />
 
       {!skills || skills.length === 0 ? (
-        <Card className="p-12 text-center text-muted-foreground">{t('stars.empty')}</Card>
+        <EmptyState
+          title={t('stars.empty')}
+          action={<Button data-analytics-id="navigation.skills.open" onClick={() => navigate({ to: '/search', search: { q: '', sort: 'relevance', page: 0, starredOnly: false } })}>{t('landing.hero.exploreSkills')}</Button>}
+        />
       ) : (
         <>
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card divide-y divide-border/60">

@@ -9,7 +9,7 @@ import { SkillCard } from '@/features/skill/skill-card'
 import { SkillListRow } from '@/features/skill/skill-list-row'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
 import { EmptyState } from '@/shared/components/empty-state'
-import { Pagination } from '@/shared/components/pagination'
+import { LoadError } from '@/shared/components/load-error'
 import { useSearchSkills } from '@/shared/hooks/use-skill-queries'
 import { useVisibleLabels } from '@/shared/hooks/use-label-queries'
 import { useMyStars } from '@/shared/hooks/use-user-queries'
@@ -124,7 +124,7 @@ export function SearchPage() {
     previousPageRef.current = page
   }, [page])
 
-  const { data, isLoading, isFetching, isPlaceholderData } = useSearchSkills({
+  const { data, isLoading, isFetching, isPlaceholderData, isError, refetch } = useSearchSkills({
     q,
     namespace: namespace || undefined,
     label: selectedLabel || undefined,
@@ -138,6 +138,8 @@ export function SearchPage() {
     data: starredSkills,
     isLoading: isLoadingStarred,
     isFetching: isFetchingStarred,
+    isError: isErrorStarred,
+    refetch: refetchStarred,
   } = useMyStars(starredOnly && isAuthenticated)
   const viewSearch = view === 'list' ? ('list' as const) : undefined
   const handleSearch = (query: string) => {
@@ -158,12 +160,6 @@ export function SearchPage() {
     }
     blurActiveElement()
     navigate({ to: '/search', search: { q, namespace, label: selectedLabel, sort, page, starredOnly, view: nextView === 'list' ? 'list' as const : undefined } })
-  }
-
-  const handlePageChange = (newPage: number) => {
-    setLoadedPages(null)
-    blurActiveElement()
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, sort, page: newPage, starredOnly, view: viewSearch } })
   }
 
   const handleLabelToggle = (label: string) => {
@@ -226,6 +222,15 @@ export function SearchPage() {
   const isUpdatingResults = starredOnly
     ? isFetchingStarred && !isLoadingStarred
     : isFetching && !isLoading
+  // A failed request must be reported as a failure, never folded into an empty result set.
+  const resultsError = starredOnly ? isErrorStarred : isError
+  const retryResults = () => {
+    if (starredOnly) {
+      void refetchStarred()
+      return
+    }
+    void refetch()
+  }
   const resultCount = starredOnly
     ? filteredStarredSkills.length
     : (data?.total ?? 0)
@@ -242,16 +247,45 @@ export function SearchPage() {
         </p>
       </div>
 
-      {/* Search Bar */}
-      <div className="ml-auto max-w-md">
-        <SearchBar analyticsId="search.query.submit"
-          value={queryInput}
-          isSearching={isUpdatingResults}
-          onChange={setQueryInput}
-          onSearch={handleSearch}
-        />
-      </div>
+      <div className="grid items-start gap-5 lg:grid-cols-[236px_minmax(0,1fr)]">
+        <aside className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-start lg:gap-1" aria-label={t('search.filters.label')}>
+          <span className="w-full px-3 py-2 text-sm font-medium text-muted-foreground">{t('search.filters.label')}</span>
+          <Button data-analytics-id="search.starred.filter"
+            className="justify-start lg:w-full"
+            variant={starredOnly ? 'default' : 'outline'}
+            size="sm"
+            onClick={handleStarredToggle}
+          >
+            {t('search.filterStarred')}
+          </Button>
+          {!starredOnly && labels?.map((label) => (
+            <Button data-analytics-id="search.label.filter"
+              className="justify-start lg:w-full"
+              key={label.slug}
+              variant={selectedLabel === label.slug ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleLabelToggle(label.slug)}
+            >
+              {label.displayName}
+            </Button>
+          ))}
+          {namespace ? (
+            <Button data-analytics-id="search.namespace.clear"
+              className="justify-start lg:w-full"
+              variant="default"
+              size="sm"
+              onClick={handleNamespaceClear}
+            >
+              {t('search.namespaceFilter', { namespace })}
+            </Button>
+          ) : null}
+          <div className="w-full border-t border-border/60 px-3 pt-4 lg:mt-3">
+            <p className="text-sm font-medium text-foreground">{t('home.domainTitle')}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{t('home.domainUnavailable')}</p>
+          </div>
+        </aside>
 
+      <div className="min-w-0 space-y-4">
       {/* Sort And Filters */}
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -282,6 +316,15 @@ export function SearchPage() {
             </div>
           </div>
 
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="w-64 max-w-full">
+            <SearchBar analyticsId="search.query.submit"
+              value={queryInput}
+              isSearching={isUpdatingResults}
+              onChange={setQueryInput}
+              onSearch={handleSearch}
+            />
+          </div>
           <div
             className="flex items-center gap-1 rounded-lg border border-border p-0.5"
             role="group"
@@ -308,6 +351,7 @@ export function SearchPage() {
               <List className="h-4 w-4" />
             </Button>
           </div>
+          </div>
         </div>
 
         {isUpdatingResults ? (
@@ -317,39 +361,12 @@ export function SearchPage() {
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="shrink-0 text-sm font-medium text-muted-foreground">{t('search.filters.label')}</span>
-          <Button data-analytics-id="search.starred.filter"
-            variant={starredOnly ? 'default' : 'outline'}
-            size="sm"
-            onClick={handleStarredToggle}
-          >
-            {t('search.filterStarred')}
-          </Button>
-          {!starredOnly && labels?.map((label) => (
-            <Button data-analytics-id="search.label.filter"
-              key={label.slug}
-              variant={selectedLabel === label.slug ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleLabelToggle(label.slug)}
-            >
-              {label.displayName}
-            </Button>
-          ))}
-          {namespace ? (
-            <Button data-analytics-id="search.namespace.clear"
-              variant="default"
-              size="sm"
-              onClick={handleNamespaceClear}
-            >
-              {t('search.namespaceFilter', { namespace })}
-            </Button>
-          ) : null}
-        </div>
       </div>
 
       {/* Results */}
-      {isPageLoading ? (
+      {resultsError ? (
+        <LoadError onRetry={retryResults} />
+      ) : isPageLoading ? (
         <SkeletonList count={PAGE_SIZE} />
       ) : displayItems.length > 0 ? (
         <>
@@ -371,6 +388,7 @@ export function SearchPage() {
                 <div key={skill.id} className={`h-full animate-fade-up delay-${Math.min(idx % 6 + 1, 6)}`}>
                   <SkillCard analyticsId="skill.card.open"
                     skill={skill}
+                    market
                     highlightStarred
                     onClick={() => handleSkillClick(skill.namespace, skill.slug)}
                   />
@@ -378,21 +396,12 @@ export function SearchPage() {
               ))}
             </div>
           )}
-          {totalPages > 1 && (
-            <div className="space-y-4">
-              {page + 1 < totalPages && (
-                <div className="flex justify-center">
-                  <Button variant="ghost" onClick={handleLoadMore} disabled={isFetching || isFetchingStarred}>
-                    {isUpdatingResults && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {t('search.loadMore')}
-                  </Button>
-                </div>
-              )}
-              <Pagination analyticsId="search.results.paginate"
-                page={page}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
+          {page + 1 < totalPages && (
+            <div className="flex justify-center">
+              <Button variant="ghost" onClick={handleLoadMore} disabled={isFetching || isFetchingStarred}>
+                {isUpdatingResults && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t('search.loadMore')}
+              </Button>
             </div>
           )}
         </>
@@ -406,6 +415,8 @@ export function SearchPage() {
           }
         />
       )}
+      </div>
+      </div>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { startTransition, useCallback, useEffect, useRef, useState, type MouseEv
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowUpCircle, Boxes, ChevronDown, ChevronUp, Clock, Folder, Globe, Lock, RefreshCw, ShieldCheck, Terminal, User, Users } from 'lucide-react'
+import { ArrowLeft, ArrowUpCircle, Boxes, ChevronDown, ChevronUp, Clock, Download, Folder, Globe, Lock, RefreshCw, Shield, ShieldCheck, Star, Terminal, User, Users } from 'lucide-react'
 import { MarkdownRenderer } from '@/features/skill/markdown-renderer'
 import { SkillVisibilityDialog } from '@/features/skill/skill-visibility-dialog'
 import { SkillAvatar } from '@/features/skill/skill-avatar'
@@ -40,6 +40,7 @@ import { adminApi, ApiError, buildApiUrl, WEB_API_PREFIX } from '@/api/client'
 import { useSubmitSkillReport } from '@/features/report/use-skill-reports'
 import { SecurityAuditSummary } from '@/features/security-audit/security-audit-summary'
 import { SecurityEvaluationNotice } from '@/features/security-audit/security-evaluation-notice'
+import { LoadError } from '@/shared/components/load-error'
 import { formatLocalDateTime } from '@/shared/lib/date-time'
 import { incrementSkillDownloadCount } from '@/shared/lib/skill-download-cache'
 import { getSkillLabelSearch, getSkillSquareSearch, normalizeSkillDetailReturnTo } from '@/shared/lib/skill-navigation'
@@ -131,6 +132,13 @@ function getPromotionConflictKey(error: ApiError): 'promotion.duplicate_pending'
   return null
 }
 
+/**
+ * Reporting is deferred for the SkillMall first release (proposal Out of Scope). The implementation
+ * below is kept so the capability can be re-enabled once reporting ships; until then the entry point
+ * must not be exposed to any user.
+ */
+const REPORTING_ENTRY_AVAILABLE = false
+
 export function SkillDetailPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -179,7 +187,7 @@ export function SkillDetailPage() {
   const detailQueriesEnabled = isSkillDetailQueriesEnabled(skillDeleted)
   const qns = detailQueriesEnabled ? namespace : ''
   const qslug = detailQueriesEnabled ? slug : ''
-  const { data: skill, isLoading: isLoadingSkill, isFetching: isFetchingSkill, error: skillError } = useSkillDetail(qns, qslug, detailQueriesEnabled)
+  const { data: skill, isLoading: isLoadingSkill, isFetching: isFetchingSkill, error: skillError, refetch: refetchSkill } = useSkillDetail(qns, qslug, detailQueriesEnabled)
   const skillReady = detailQueriesEnabled && Boolean(skill) && !isLoadingSkill && !isFetchingSkill && !skillError
   const { data: versions } = useSkillVersions(qns, qslug, skillReady)
   const { data: promotionState, isLoading: isLoadingPromotionState, error: promotionStateError } = usePromotionSourceState(
@@ -822,14 +830,25 @@ export function SkillDetailPage() {
   }
 
   if (skillError) {
-    const isForbidden = skillError instanceof Error && skillError.message.includes('403')
+    const isForbidden = skillError instanceof ApiError
+      ? skillError.status === 403
+      : skillError instanceof Error && skillError.message.includes('403')
 
-    if (isForbidden && !user) {
+    if (isForbidden) {
+      if (!user) {
+        return (
+          <div className="text-center py-20 animate-fade-up">
+            <h2 className="text-2xl font-bold font-heading mb-2">{t('skillDetail.loginRequired')}</h2>
+            <p className="text-muted-foreground mb-6">{t('skillDetail.loginRequiredDesc')}</p>
+            <Button data-analytics-id="auth.login.open" onClick={requireLogin}>{t('common.login')}</Button>
+          </div>
+        )
+      }
+
       return (
         <div className="text-center py-20 animate-fade-up">
-          <h2 className="text-2xl font-bold font-heading mb-2">{t('skillDetail.loginRequired')}</h2>
-          <p className="text-muted-foreground mb-6">{t('skillDetail.loginRequiredDesc')}</p>
-          <Button data-analytics-id="auth.login.open" onClick={requireLogin}>{t('common.login')}</Button>
+          <h2 className="text-2xl font-bold font-heading mb-2">{t('skillDetail.accessDenied')}</h2>
+          <p className="text-muted-foreground">{t('skillDetail.accessDeniedDesc')}</p>
         </div>
       )
     }
@@ -843,12 +862,9 @@ export function SkillDetailPage() {
       )
     }
 
-    return (
-      <div className="text-center py-20 animate-fade-up">
-        <h2 className="text-2xl font-bold font-heading mb-2">{t('skillDetail.accessDenied')}</h2>
-        <p className="text-muted-foreground">{t('skillDetail.accessDeniedDesc')}</p>
-      </div>
-    )
+    // Server or network failure: report it as a load failure. Rendering it as an access denial
+    // would claim a permission decision the server never made.
+    return <LoadError onRetry={() => { void refetchSkill() }} />
   }
 
   if (!skill) {
@@ -867,7 +883,7 @@ export function SkillDetailPage() {
   return (
     <div data-analytics-id="skill.detail.render" className="max-w-[1704px] mx-auto flex flex-col lg:flex-row gap-8 animate-fade-up">
       {/* Main Content */}
-      <div className="flex-1 min-w-0 space-y-8">
+      <div className="flex-1 min-w-0 space-y-5">
         {skill.ownerReadOnly && <p role="status" className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">{t('mySkills.ownerReadOnly')}</p>}
         <div className="space-y-3">
           <Button data-analytics-id="skill.detail.back"
@@ -879,7 +895,31 @@ export function SkillDetailPage() {
             <ArrowLeft className="h-4 w-4" />
             {t('skillDetail.back')}
           </Button>
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <SkillAvatar name={selectedDisplayName ?? skill.displayName} url={skill.avatarUrl} size="h-[60px] w-[60px] text-xl" />
+              <div className="min-w-0 space-y-1">
+                <h1 className="text-balance break-words text-xl font-bold font-heading text-foreground [overflow-wrap:anywhere]">{selectedDisplayName}</h1>
+                {skill.ownerDisplayName && (
+                  <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                    <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 truncate">{t('skillDetail.authorLabel', { name: skill.ownerDisplayName })}</span>
+                  </div>
+                )}
+                <div className="flex min-w-0 items-center gap-1">
+                  <code className="min-w-0 break-all text-xs text-muted-foreground">@{skill.namespace}/{skill.slug}</code>
+                  <CopyButton analyticsId="skill.coordinate.copy" text={`@${skill.namespace}/${skill.slug}`} ariaLabel={t('skillDetail.copyCoordinate')} className="shrink-0" />
+                </div>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 [&_button]:rounded-full">
+              {canInteract && !isFetchingSkill && <StarButton skillId={skill.id} starCount={skill.starCount} onRequireLogin={requireLogin} />}
+              <div className="[&>button]:px-3 [&>button]:py-1">
+                <ShareButton namespace={namespace} slug={slug} description={skill.summary} />
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <NamespaceBadge type="GLOBAL" name={namespace} />
             {skill.status && (
               <span className={cn(
@@ -918,27 +958,12 @@ export function SkillDetailPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4"><SkillAvatar name={selectedDisplayName ?? skill.displayName} url={skill.avatarUrl} size="h-16 w-16 text-2xl" /><h1 className="text-balance break-words text-4xl font-bold font-heading text-foreground [overflow-wrap:anywhere]">{selectedDisplayName}</h1></div>
-          <div className="flex min-w-0 items-center gap-2">
-            <code className="min-w-0 break-all text-sm text-muted-foreground">@{skill.namespace}/{skill.slug}</code>
-            <CopyButton analyticsId="skill.coordinate.copy" text={`@${skill.namespace}/${skill.slug}`} ariaLabel={t('skillDetail.copyCoordinate')} className="shrink-0" />
-          </div>
           {skill.avatarUrl && user?.userId !== skill.ownerId && (namespace === 'global'
             ? isPromotionAdmin
             : myNamespaces?.some((item) => item.slug === namespace && (item.currentUserRole === 'OWNER' || item.currentUserRole === 'ADMIN')))
             && <SkillAvatarTakedown namespace={namespace} slug={slug} />}
-          {skill.ownerDisplayName && (
-            <div className="flex min-w-0">
-              <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/60 bg-background/85 px-3 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-sm">
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary">
-                  <User className="h-3.5 w-3.5" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 truncate">{t('skillDetail.authorLabel', { name: skill.ownerDisplayName })}</span>
-              </div>
-            </div>
-          )}
           {selectedSummary && (
-            <p className="text-lg text-muted-foreground leading-relaxed">{selectedSummary}</p>
+            <p className="text-sm text-foreground leading-relaxed">{selectedSummary}</p>
           )}
           {(skill.labels?.length ?? 0) > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -981,6 +1006,22 @@ export function SkillDetailPage() {
           )}
         </div>
 
+        <div className={cn('grid grid-cols-2 overflow-hidden rounded-lg border border-border/60 bg-card', !(canManageSecurityScan && securityAuditVersion) && 'sm:grid-cols-3')}>
+          <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 border-r border-border/60 px-3 py-3 text-center">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Download className="h-4 w-4" aria-hidden="true" />{t('skillDetail.downloads')}</span>
+            <span className="text-base font-semibold text-blue-600 dark:text-blue-400">{formatCompactCount(skill.downloadCount)}</span>
+          </div>
+          <div className={cn('flex min-h-[88px] flex-col items-center justify-center gap-2 px-3 py-3 text-center', !(canManageSecurityScan && securityAuditVersion) && 'sm:border-r sm:border-border/60')}>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Star className="h-4 w-4" aria-hidden="true" />{t('starButton.star')}</span>
+            <span className="text-base font-semibold text-amber-600 dark:text-amber-400">{formatCompactCount(skill.starCount)}</span>
+          </div>
+          {!(canManageSecurityScan && securityAuditVersion) && (
+            <div className="col-span-2 flex min-h-[72px] items-center justify-center gap-2 border-t border-border/60 px-3 py-3 text-sm text-muted-foreground sm:col-span-1 sm:border-t-0" title={t('securityAudit.notEvaluatedDescription')}>
+              <Shield className="h-5 w-5" aria-hidden="true" />{t('securityAudit.notEvaluatedTitle')}
+            </div>
+          )}
+        </div>
+
         <Tabs defaultValue="readme">
           <TabsList className="flex w-full">
             <TabsTrigger data-analytics-id="skill.overview.tab" value="readme">{t('skillDetail.tabReadme')}</TabsTrigger>
@@ -991,7 +1032,7 @@ export function SkillDetailPage() {
 
           <TabsContent value="readme" className="mt-6">
             {readme ? (
-              <Card className="p-8 space-y-4">
+              <Card className="space-y-4 border-0 bg-transparent p-0 shadow-none hover:border-transparent hover:shadow-none">
                 {documentationPath ? (
                   <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     {t('skillDetail.documentationSource', { path: documentationPath })}
@@ -1179,7 +1220,27 @@ export function SkillDetailPage() {
       </div>
 
       {/* Sidebar */}
-      <aside className="w-full lg:w-80 flex-shrink-0 space-y-5">
+      <aside className="w-full lg:w-[290px] flex-shrink-0 space-y-3">
+        <InstallForAgentButton analyticsId="skill.prompt.copy"
+          namespace={namespace}
+          slug={slug}
+          version={selectedVersionEntry?.version ?? publishedVersion?.version ?? ''}
+          disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionInstallable}
+        />
+
+        <Button data-analytics-id="skill.download.request"
+          className="w-full"
+          variant="outline"
+          size="lg"
+          onClick={handleDownload}
+          disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionDownloadable}
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+          </svg>
+          {t('skillDetail.download')}
+        </Button>
+
         {/* File Tree Sidebar — collapsible, mirrors SecurityAuditSummary card pattern */}
         {files && files.length > 0 && (
           <Card className="p-5 space-y-3">
@@ -1251,13 +1312,11 @@ export function SkillDetailPage() {
               <>
                 {!isFetchingSkill ? (
                   <>
-                    <StarButton skillId={skill.id} starCount={skill.starCount} onRequireLogin={requireLogin} />
-                    <div className="h-px bg-border/40" />
                     <SubscribeButton skillId={skill.id} subscriptionCount={(skill as { subscriptionCount?: number }).subscriptionCount ?? 0} onRequireLogin={requireLogin} />
                     <RatingInput skillId={skill.id} onRequireLogin={requireLogin} />
                   </>
                 ) : null}
-                {canReport ? (
+                {REPORTING_ENTRY_AVAILABLE && canReport ? (
                   <Button data-analytics-id="report.create.open" variant="outline" className="w-full" onClick={handleOpenReport} disabled={hasReported || reportMutation.isPending}>
                     {hasReported ? t('skillDetail.reportedSkill') : reportMutation.isPending ? t('skillDetail.processing') : t('skillDetail.reportSkill')}
                   </Button>
@@ -1430,32 +1489,6 @@ export function SkillDetailPage() {
             </Button>
           </Card>
         )}
-
-        <Button data-analytics-id="skill.download.request"
-          className="w-full"
-          variant="outline"
-          size="lg"
-          onClick={handleDownload}
-          disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionDownloadable}
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-          </svg>
-          {t('skillDetail.download')}
-        </Button>
-
-        <ShareButton
-          namespace={namespace}
-          slug={slug}
-          description={skill.summary}
-        />
-
-        <InstallForAgentButton analyticsId="skill.prompt.copy"
-          namespace={namespace}
-          slug={slug}
-          version={selectedVersionEntry?.version ?? publishedVersion?.version ?? ''}
-          disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionInstallable}
-        />
 
         {canManageSecurityScan && securityAuditVersion && (
           <SecurityAuditSummary

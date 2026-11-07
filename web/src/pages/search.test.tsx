@@ -123,6 +123,15 @@ function findButton(label: string) {
   return record
 }
 
+// Buttons whose children mix a conditional spinner with text record a concatenated label.
+function findButtonMatching(fragment: string) {
+  const record = buttonRecords.find((item) => item.label.includes(fragment))
+  if (!record) {
+    throw new Error(`Missing button containing: ${fragment}`)
+  }
+  return record
+}
+
 describe('SearchPage', () => {
   beforeEach(() => {
     navigateMock.mockReset()
@@ -207,10 +216,22 @@ describe('SearchPage', () => {
     })
   })
 
-  it('preserves the active label when paging and when toggling starred-only', () => {
+  it('preserves the active label when loading more and when toggling starred-only', () => {
+    // Three pages so the single load-more control is available (numeric pagination was removed to
+    // stop two competing paging mechanisms from sharing the same page state).
+    useSearchSkillsMock.mockReturnValue({
+      data: {
+        items: [{ id: 1, displayName: 'Demo Skill', summary: 'summary', namespace: 'global', slug: 'demo', downloadCount: 1, starCount: 1, ratingCount: 0, updatedAt: '2026-03-20T00:00:00Z', canSubmitPromotion: false }],
+        total: 36,
+        page: 1,
+        size: 12,
+      },
+      isLoading: false,
+      isFetching: false,
+    })
     renderToStaticMarkup(<SearchPage />)
 
-    paginationProps[0]?.onPageChange(2)
+    findButtonMatching('search.loadMore').onClick?.()
     findButton('search.filterStarred').onClick?.()
 
     expect(navigateMock).toHaveBeenNthCalledWith(1, {
@@ -319,6 +340,33 @@ describe('SearchPage', () => {
     expect(html).toContain('empty-state')
     expect(html).toContain('search.noResults')
     expect(html).not.toContain('search.enterKeyword')
+  })
+
+  it('reports a failed request as a load failure instead of an empty result', () => {
+    const refetchMock = vi.fn()
+    useSearchMock.mockReturnValue({
+      q: '',
+      label: '',
+      sort: 'newest',
+      page: 0,
+      starredOnly: false,
+    })
+    useSearchSkillsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      isError: true,
+      refetch: refetchMock,
+    })
+
+    const html = renderToStaticMarkup(<SearchPage />)
+
+    expect(html).toContain('common.loadFailedTitle')
+    expect(html).not.toContain('empty-state')
+    expect(html).not.toContain('search.noResults')
+
+    findButton('common.retry').onClick?.()
+    expect(refetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('keeps search skill-only when an obsolete Suite type query parameter is present', () => {

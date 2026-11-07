@@ -226,7 +226,7 @@ export function PublishPage() {
       <DashboardPageHeader title={t(isUpdate ? 'publish.updateTitle' : 'publish.title')} subtitle={t(isUpdate ? 'publish.updateSubtitle' : 'publish.subtitle')} />
 
       {ownerReadOnly && <p role="status" className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">{t('mySkills.ownerReadOnly')}</p>}
-      <Card className="space-y-8 p-6 md:p-8">
+      <Card className="space-y-8 border-0 bg-transparent p-0 shadow-none">
         {prefill.resubmitSkill && prefill.resubmitVersion ? (
           <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
             <h2 className="text-sm font-semibold text-foreground">
@@ -253,6 +253,7 @@ export function PublishPage() {
           <Label className="text-sm font-semibold font-heading">{t('publish.file')}</Label>
           {isUpdate && <p className="text-sm text-muted-foreground">{t('publish.optionalPackage')}</p>}
           <UploadZone analyticsId="skill.package.select" folderAnalyticsId="skill.package.folder.select" pickerAnalyticsId="skill.package.folder.open"
+            className="rounded-sm md:min-h-[500px]"
             onFileSelect={handleFileSelect}
             onFolderSelect={handleFolderSelect}
             disabled={ownerReadOnly || isBusy || isPackaging}

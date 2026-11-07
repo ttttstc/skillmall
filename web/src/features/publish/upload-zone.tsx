@@ -11,6 +11,7 @@ interface UploadZoneProps {
   /** Optional: called with the raw files of a picked folder (webkitdirectory). */
   onFolderSelect?: (files: File[]) => void
   disabled?: boolean
+  className?: string
 }
 
 export function supportsDirectorySelection(input: HTMLInputElement | null): boolean {
@@ -22,7 +23,7 @@ export function supportsDirectorySelection(input: HTMLInputElement | null): bool
  * The component is intentionally stateless so packaging validation can remain in
  * the publish flow that knows the surrounding form and backend constraints.
  */
-export function UploadZone({ onFileSelect, onFolderSelect, disabled, analyticsId, folderAnalyticsId, pickerAnalyticsId }: UploadZoneProps) {
+export function UploadZone({ onFileSelect, onFolderSelect, disabled, analyticsId, folderAnalyticsId, pickerAnalyticsId, className }: UploadZoneProps) {
   const { t } = useTranslation()
   const folderInputRef = useRef<HTMLInputElement>(null)
   const [folderSelectionSupported, setFolderSelectionSupported] = useState(false)
@@ -74,11 +75,12 @@ export function UploadZone({ onFileSelect, onFolderSelect, disabled, analyticsId
         data-analytics-event={!disabled && analyticsId ? 'click+keydown+drop' : undefined}
         className={cn(
           'upload-zone flex min-h-[240px] flex-col justify-center rounded-xl p-10 text-center cursor-pointer transition-all duration-300 md:min-h-[360px]',
+          className,
           isDragActive && 'border-primary bg-primary/5 scale-[1.01]',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
-        <input {...getInputProps()} data-analytics-id={disabled ? undefined : analyticsId} />
+        <input {...getInputProps()} aria-label={t('upload.dragHint')} data-analytics-id={disabled ? undefined : analyticsId} />
         <div className="flex flex-col items-center gap-3">
           <div className="w-14 h-14 rounded-2xl bg-secondary/60 flex items-center justify-center">
             <svg

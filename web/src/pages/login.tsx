@@ -159,7 +159,7 @@ export function LoginPage() {
               {loginMutation.error ? (
                 <p className="text-sm text-red-600">{loginMutation.error.message}</p>
               ) : null}
-              <Button className="h-11 w-full bg-[#315b86] text-white hover:bg-[#25496d] dark:bg-sky-300 dark:text-sky-950 dark:hover:bg-sky-200 xl:h-10" disabled={loginMutation.isPending} type="submit">
+              <Button className="h-11 w-full xl:h-10" disabled={loginMutation.isPending} type="submit">
                 {loginMutation.isPending ? t('login.submitting') : t('login.submit')}
                 <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
               </Button>

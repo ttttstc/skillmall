@@ -8,7 +8,10 @@
   "common": {
     "loading": "加载中...",
     "expand": "展开详情",
-    "collapse": "收起详情"
+    "collapse": "收起详情",
+    "loadFailedTitle": "加载失败",
+    "loadFailedDescription": "内容暂时无法加载，请稍后重试。",
+    "retry": "重试"
   },
   "nav": {
     "landing": "首页",
@@ -278,6 +281,8 @@
     }
   },
   "home": {
+    "domainTitle": "领域 Skills",
+    "domainUnavailable": "领域分类暂未开放",
     "subtitle": "技能注册中心",
     "description": "为开发者提供高效的技能管理、分发和协作平台",
     "browseSkills": "浏览技能",
@@ -900,6 +905,7 @@
     "securityDesc": "修改密码和账户安全选项"
   },
   "mySkills": {
+    "table": {"name": "名称", "version": "版本", "status": "状态", "updated": "更新时间", "actions": "操作"},
     "ownerReadOnly": "你已不在该空间，只能查看和下载自己的技能，不能修改。",
     "updateGlobalVersion": "更新全局版本",
     "viewGlobalCopy": "查看全局副本",
