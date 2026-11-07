@@ -336,8 +336,24 @@ public class SkillPublishService {
             String namespaceSlug, List<PackageEntry> entries, String publisherId,
             SkillVisibility visibility, Set<String> platformRoles, boolean confirmWarnings,
             String displayName) {
+        return publishFromEntries(namespaceSlug, entries, publisherId, visibility, platformRoles,
+                confirmWarnings, displayName, null);
+    }
+
+    /**
+     * Publishes a package together with the author's change note for the new version.
+     *
+     * <p>The note is stored on the immutable version row, so earlier versions keep the note
+     * they were published with. A blank note stays {@code null} rather than an empty string
+     * so readers can tell "no note" apart from a note that was intentionally cleared.
+     */
+    @Transactional
+    public PublishResult publishFromEntries(
+            String namespaceSlug, List<PackageEntry> entries, String publisherId,
+            SkillVisibility visibility, Set<String> platformRoles, boolean confirmWarnings,
+            String displayName, String changelog) {
         return publishFromEntriesInternal(namespaceSlug, entries, publisherId, visibility, platformRoles,
-                confirmWarnings, false, false, null, null, displayName);
+                confirmWarnings, false, false, null, null, displayName, changelog);
     }
 
     /** Publishes a validated GitHub package into the dedicated sync review queue. */
@@ -353,7 +369,7 @@ public class SkillPublishService {
         }
         PublishResult result = publishFromEntriesInternal(namespaceSlug, entries, "github-sync-publisher", visibility,
                 Set.of(), true, false, true, null,
-                new GithubSyncPublicationTarget(expectedSkillId, ingestionId, contentSha256), null);
+                new GithubSyncPublicationTarget(expectedSkillId, ingestionId, contentSha256), null, null);
         // The publication repository assigns the revision with JDBC in the same transaction.
         // Flush pending JPA updates (including SCANNING) first so they cannot overwrite it.
         skillVersionRepository.flush();
@@ -389,7 +405,7 @@ public class SkillPublishService {
         return publishFromEntriesInternal(
                 namespaceSlug, entries, publisherId, visibility,
                 platformRoles == null ? Set.of() : platformRoles,
-                confirmWarnings, false, false, target);
+                confirmWarnings, false, false, target, null, null, null);
     }
 
     /**
@@ -450,7 +466,8 @@ public class SkillPublishService {
                 true,
                 null,
                 null,
-                displayNameOverrideForRerelease(publishedVersion)
+                displayNameOverrideForRerelease(publishedVersion),
+                null
         );
     }
 
@@ -464,6 +481,27 @@ public class SkillPublishService {
         } catch (java.io.IOException ignored) {
             return null;
         }
+    }
+
+    /** Maximum length of the per-version change note accepted from publishers. */
+    private static final int MAX_CHANGELOG_LENGTH = 4_000;
+
+    /**
+     * Trims the author-supplied change note and enforces the storage bound.
+     *
+     * <p>Blank input becomes {@code null}: the detail page renders the note only when it is
+     * present, so an empty string and "no note" must not be distinguishable there.
+     */
+    private String normalizeChangelog(String changelog) {
+        if (changelog == null || changelog.isBlank()) {
+            return null;
+        }
+        String trimmed = changelog.strip();
+        if (trimmed.length() > MAX_CHANGELOG_LENGTH) {
+            throw new DomainBadRequestException(
+                    "error.skill.publish.changelog.tooLong", MAX_CHANGELOG_LENGTH);
+        }
+        return trimmed;
     }
 
     private PublishResult publishFromEntriesInternal(
@@ -491,14 +529,19 @@ public class SkillPublishService {
             boolean bypassMembershipCheck,
             BundlePublicationTarget bundleTarget) {
         return publishFromEntriesInternal(namespaceSlug, entries, publisherId, visibility, platformRoles,
-                confirmWarnings, forceAutoPublish, bypassMembershipCheck, bundleTarget, null, null);
+                confirmWarnings, forceAutoPublish, bypassMembershipCheck, bundleTarget, null, null, null);
     }
 
     private PublishResult publishFromEntriesInternal(
             String namespaceSlug, List<PackageEntry> entries, String publisherId,
             SkillVisibility visibility, Set<String> platformRoles, boolean confirmWarnings,
             boolean forceAutoPublish, boolean bypassMembershipCheck,
-            BundlePublicationTarget bundleTarget, GithubSyncPublicationTarget syncTarget, String displayName) {
+            BundlePublicationTarget bundleTarget, GithubSyncPublicationTarget syncTarget, String displayName,
+            String changelog) {
+
+        // 0. Validate the author-supplied change note before any row is touched, so a rejected
+        // note cannot leave a partially written skill or version behind.
+        String normalizedChangelog = normalizeChangelog(changelog);
 
         // 1. Find namespace by slug
         Namespace namespace = namespaceRepository.findBySlug(namespaceSlug)
@@ -708,6 +751,7 @@ public class SkillPublishService {
         // 8. Create SkillVersion
         SkillVersion version = new SkillVersion(skill.getId(), metadata.version(), publisherId);
         version.setRequestedVisibility(visibility);
+        version.setChangelog(normalizedChangelog);
         if (syncTarget != null) {
             version.setGithubSyncIngestionId(syncTarget.ingestionId());
         }

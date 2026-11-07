@@ -1947,6 +1947,111 @@ class SkillPublishServiceTest {
     }
 
     @Test
+    void publishStoresTrimmedChangelogOnTheNewVersion() throws Exception {
+        PublishFixture fixture = stubValidPublishInputs("test-ns", "user-100", "test-skill", "test-skill", "2.0.0", true);
+
+        SkillPublishService.PublishResult result = service.publishFromEntries(
+                "test-ns", fixture.entries(), "user-100", SkillVisibility.PUBLIC, Set.of(),
+                false, null, "  修复了安装脚本  ");
+
+        assertEquals("修复了安装脚本", result.version().getChangelog());
+        ArgumentCaptor<SkillVersion> savedVersions = ArgumentCaptor.forClass(SkillVersion.class);
+        verify(skillVersionRepository, atLeastOnce()).save(savedVersions.capture());
+        assertTrue(savedVersions.getAllValues().stream()
+                .anyMatch(saved -> "修复了安装脚本".equals(saved.getChangelog())));
+    }
+
+    @Test
+    void publishWithoutChangelogLeavesTheVersionNoteEmpty() throws Exception {
+        PublishFixture fixture = stubValidPublishInputs("test-ns", "user-100", "test-skill", "test-skill", "1.0.0", true);
+
+        SkillPublishService.PublishResult result = service.publishFromEntries(
+                "test-ns", fixture.entries(), "user-100", SkillVisibility.PUBLIC, Set.of(),
+                false, null, "   ");
+
+        assertNull(result.version().getChangelog());
+    }
+
+    @Test
+    void publishRejectsChangelogLongerThanLimitWithoutPersisting() {
+        // The note is validated before the first repository call, so no stubbing is needed here.
+        DomainBadRequestException exception = assertThrows(DomainBadRequestException.class, () ->
+                service.publishFromEntries("test-ns", skillEntries("test-skill", "1.0.0"), "user-100",
+                        SkillVisibility.PUBLIC, Set.of(), false, null, "x".repeat(4_001)));
+
+        assertEquals("error.skill.publish.changelog.tooLong", exception.messageCode());
+        verifyNoInteractions(namespaceRepository);
+        verify(skillVersionRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectedReplacementKeepsThePublishedVersionAndLatestPointer() throws Exception {
+        PublishFixture fixture = stubValidPublishInputs("test-ns", "user-100", "test-skill", "test-skill", "1.0.0", true);
+        Skill skill = skillRepository.findByNamespaceIdAndSlugAndOwnerId(1L, "test-skill", "user-100").orElseThrow();
+        SkillVersion published = new SkillVersion(skill.getId(), "1.0.0", "user-100");
+        published.setStatus(SkillVersionStatus.PUBLISHED);
+        published.setChangelog("首个公开版本");
+        setId(published, 7L);
+        skill.setLatestVersionId(7L);
+        when(skillVersionRepository.findBySkillIdAndVersion(skill.getId(), "1.0.0")).thenReturn(Optional.of(published));
+
+        DomainBadRequestException exception = assertThrows(DomainBadRequestException.class, () ->
+                service.publishFromEntries("test-ns", fixture.entries(), "user-100",
+                        SkillVisibility.PUBLIC, Set.of(), false, null, "覆盖尝试"));
+
+        // A failed update must not replace what the public already downloads.
+        assertEquals("error.skill.version.exists", exception.messageCode());
+        verify(skillVersionRepository, never()).save(any());
+        assertEquals(SkillVersionStatus.PUBLISHED, published.getStatus());
+        assertEquals("首个公开版本", published.getChangelog());
+        assertEquals(7L, skill.getLatestVersionId());
+    }
+
+    @Test
+    void sameSlugInDifferentNamespacesIsMaintainedIndependently() throws Exception {
+        Namespace aliceNamespace = new Namespace("alice", "Alice", "system");
+        setId(aliceNamespace, 1L);
+        Namespace bobNamespace = new Namespace("bob", "Bob", "system");
+        setId(bobNamespace, 2L);
+        Skill aliceSkill = new Skill(aliceNamespace.getId(), "notes", "alice", SkillVisibility.PUBLIC);
+        setId(aliceSkill, 1L);
+        Skill bobSkill = new Skill(bobNamespace.getId(), "notes", "bob", SkillVisibility.PUBLIC);
+        setId(bobSkill, 11L);
+
+        when(namespaceRepository.findBySlug("alice")).thenReturn(Optional.of(aliceNamespace));
+        when(namespaceRepository.findBySlug("bob")).thenReturn(Optional.of(bobNamespace));
+        when(namespaceMemberRepository.findByNamespaceIdAndUserId(any(), any()))
+                .thenReturn(Optional.of(mock(NamespaceMember.class)));
+        when(skillPackageValidator.validate(any())).thenReturn(ValidationResult.pass());
+        when(prePublishValidator.validate(any())).thenReturn(ValidationResult.pass());
+        when(skillMetadataParser.parse(anyString()))
+                .thenReturn(new SkillMetadata("notes", "Notes", "1.0.0", "Body", Map.of()));
+        when(skillRepository.findByNamespaceIdAndSlug(any(), eq("notes")))
+                .thenAnswer(invocation -> ((Long) invocation.getArgument(0)) == 1L
+                        ? List.of(aliceSkill) : List.of(bobSkill));
+        when(skillRepository.findByNamespaceIdAndSlugAndOwnerId(any(), eq("notes"), any()))
+                .thenAnswer(invocation -> ((Long) invocation.getArgument(0)) == 1L
+                        ? Optional.of(aliceSkill) : Optional.of(bobSkill));
+        lenient().when(skillVersionRepository.findBySkillIdAndVersion(any(), any())).thenReturn(Optional.empty());
+        lenient().when(skillVersionRepository.save(any(SkillVersion.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(skillRepository.save(any(Skill.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SkillPublishService.PublishResult aliceResult = service.publishFromEntries(
+                "alice", skillEntries("notes", "1.0.0"), "alice",
+                SkillVisibility.PUBLIC, Set.of(), false, null, "alice 的版本");
+        SkillPublishService.PublishResult bobResult = service.publishFromEntries(
+                "bob", skillEntries("notes", "1.0.0"), "bob",
+                SkillVisibility.PUBLIC, Set.of(), false, null, "bob 的版本");
+
+        // Same slug, different authors, two separate records and two separate notes.
+        assertEquals(1L, aliceResult.skillId());
+        assertEquals(11L, bobResult.skillId());
+        assertEquals("alice 的版本", aliceResult.version().getChangelog());
+        assertEquals("bob 的版本", bobResult.version().getChangelog());
+    }
+
+    @Test
     void portalOverrideLivesInVersionAndNeverRewritesStoredSkillMd() throws Exception {
         PublishFixture fixture = stubValidPublishInputs("test-ns", "user-100", "test-skill", "test-skill", "1.0.0", false);
         when(skillMetadataParser.parse(anyString())).thenReturn(new SkillMetadata(

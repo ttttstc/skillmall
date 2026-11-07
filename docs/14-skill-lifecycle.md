@@ -150,6 +150,20 @@ Status: contract reference
 
 可见范围属于 Skill 容器，不需要新建 SkillVersion。缩小立即生效；扩大创建 `SKILL_METADATA` 范围申请，与内容待审互斥。原范围、目标范围和发布版本快照保存在 ReviewTask，审核通过才更新范围；旧审批不能覆盖新版本。未扫描的已发布包复用存量 bundle 扫描结果并保持 PUBLISHED；扫描器启用时申请绑定新扫描 taskId，未通过不得批准；部署方未启用扫描器时申请照常进入人工审核，不把“没有扫描器”变成无法申请的硬阻塞（首期产品变更，扫描不再是门禁）。头像按目标受众复用同一审核申请。范围事件仅刷新搜索，不发送“新内容版本发布”通知。操作和接口详见[使用指南](./skill-visibility.md)。
 
+### 4.10 版本变更说明
+
+- 交互式发布可选携带变更说明（`changelog`）；非空值去除首尾空白后保存在**本次新建的版本**上，空值保存为 `null`，读取方据此区分“没有说明”和“说明为空”
+- 变更说明属于版本记录本身：旧版本保留各自发布时的说明，发布新版本不会回写到历史版本
+- 该字段不参与发布路径判定，也不改变 §2.2 的版本状态机；它只随版本出现在版本历史与版本详情中
+- 超过 4000 字符的说明在写入任何记录之前被拒绝（`error.skill.publish.changelog.tooLong`），不会留下部分写入的技能或版本
+
+### 4.11 作者移除
+
+- 作者移除与管理员下架是两种不同动作：移除是把整个 Skill 及其版本、文件、标签、收藏、评分、报告、版本统计和待审记录一并**硬删除**，下架只是 `hidden` 治理覆盖层（§4.7）。本文件不为作者移除设计恢复流程
+- 授权：门户入口只允许当前所有者本人或平台 `SUPER_ADMIN`；非所有者的请求由服务端拒绝（403），原技能与版本保持不变。技能提升相关的移除仍须先走 §5.4 的撤销流程
+- 移除时先删除搜索文档（`SearchIndexService.remove`），再删除数据库记录，对象存储在事务提交后清理并在失败时走补偿；因此公开列表、搜索、详情、版本、resolve 与下载都不再返回该技能
+- 审计保留：动作 `DELETE_SKILL_HARD`，目标类型 `SKILL`，记录操作人、客户端信息与被移除技能的坐标；审计记录不随业务记录删除
+
 ## 5. 对外协议约束
 
 ### 5.1 Public / Search / Compat
@@ -196,6 +210,7 @@ Status: contract reference
 - `withdraw-review`：仅提交人本人
 - 删除版本：owner 或 namespace ADMIN/OWNER，仅限 `DRAFT` / `REJECTED` / `SCAN_FAILED` / `UPLOADED`，禁止删除最后一个版本。数据库删除提交后清理对象存储，失败调用补偿入口；不是跨存储原子删除，补偿持久化的验证限制见[对象存储写入策略](./05-business-flows.md#对象存储写入策略)
 - 归档 / 取消归档：owner 或 namespace ADMIN/OWNER
+- 作者移除整个技能（硬删除）：门户入口只允许当前所有者本人或平台 `SUPER_ADMIN`，语义与审计见 §4.11；与管理员下架（`hidden`）分别授权和记录
 - 隐藏 / 恢复技能：平台技能治理权限
 - yank：owner 或 namespace ADMIN/OWNER 可走普通治理入口；平台治理入口另校验平台权限
 - 提交审核：owner 或 namespace ADMIN/OWNER；PRIVATE 确认发布还支持传入平台角色的 SUPER_ADMIN 路径
@@ -218,5 +233,7 @@ Status: contract reference
 - 提审 / PRIVATE 确认：[SkillReviewSubmitService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillReviewSubmitService.java)、[提审与确认测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/skill/service/SkillReviewSubmitServiceTest.java)。
 - 撤回 / 删除 / yank：[SkillGovernanceService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillGovernanceService.java)、[治理测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/skill/service/SkillGovernanceServiceTest.java)。
 - 读模型与分发：[SkillLifecycleProjectionService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillLifecycleProjectionService.java)、[VisibilityChecker](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/VisibilityChecker.java)、[下载测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/skill/service/SkillDownloadServiceTest.java)、[可见性测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/skill/VisibilityCheckerTest.java)。
+
+- 作者移除与版本变更说明：[SkillDeleteAppService](../server/skillhub-app/src/main/java/com/iflytek/skillhub/service/SkillDeleteAppService.java)、[SkillHardDeleteService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillHardDeleteService.java)、[移除入口集成测试](../server/skillhub-app/src/test/java/com/iflytek/skillhub/controller/portal/SkillDeleteFlowIntegrationTest.java)；变更说明的写入与长度校验在 [SkillPublishService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)，测试锚点 `SkillPublishServiceTest`。
 
 以上锚点用于核对具体行为，不代表覆盖了所有状态组合，也不等于真实部署或对象存储验收。
