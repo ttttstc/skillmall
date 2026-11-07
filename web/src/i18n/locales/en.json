@@ -1559,6 +1559,7 @@
     "installMethodClawhub": "ClawHub CLI",
     "installMethodSkillhub": "SkillHub CLI",
     "installCommandUnsafeVersion": "This version cannot be represented safely in a cross-platform command. Ask the publisher to correct it.",
+    "installClawhubUnavailable": "ClawHub CLI reaches this market through the compatibility layer, which requires an authenticated session: an anonymous install answers 401. No copyable anonymous command is offered here; use the SkillHub CLI command above, or install manually from the downloaded archive.",
     "download": "Download",
     "labelsSectionTitle": "Labels",
     "labelsSectionDescription": "Attach or remove recommended labels that help users filter and discover this skill.",

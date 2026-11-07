@@ -84,15 +84,16 @@ describe('passive, caller-scoped analytics attributes', () => {
     fireEvent.click(copy)
     await waitFor(() => expect(mocks.copy).toHaveBeenCalledTimes(1))
     fireEvent.click(screen.getByRole('tab', { name: 'skillDetail.installMethodClawhub' }))
-    expect(attr(screen.getByRole('button', { name: 'copyButton.copy' }))).toBe('skill.command.copy')
-    fireEvent.click(screen.getByRole('button', { name: 'copyButton.copy' }))
-    await waitFor(() => expect(mocks.copy).toHaveBeenCalledTimes(2))
+    // The ClawHub pane deliberately offers no copyable command: its compatibility layer requires an
+    // authenticated session, so the market must not present it as a one-click anonymous install.
+    expect(screen.queryByRole('button', { name: 'copyButton.copy' })).toBeNull()
+    expect(screen.getByText('skillDetail.installClawhubUnavailable')).toBeTruthy()
     cleanup()
     render(<InstallForAgentButton namespace="fixture" slug="private-fixture" version="1.0" analyticsId="skill.prompt.copy" />)
     const prompt = screen.getByTestId('install-for-agent-button')
     expect(attr(prompt)).toBe('skill.prompt.copy')
     fireEvent.click(prompt)
-    await waitFor(() => expect(mocks.copy).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(mocks.copy).toHaveBeenCalledTimes(2))
     for (const node of document.querySelectorAll('[data-analytics-id]')) {
       expect(attr(node)).not.toMatch(/fixture|1\.0|https|npx/)
     }
