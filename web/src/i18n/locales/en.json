@@ -29,7 +29,7 @@
     "login": "Login"
   },
   "githubCatalog": {
-    "title": "Open-source Skills", "sourceLabel": "PUBLIC GITHUB REPOSITORIES", "description": "Explore skills from public GitHub repositories, reviewed and published by SkillHub. Each skill page shows its source, path, pinned commit, and license details.",
+    "title": "Open-source Skills", "sourceLabel": "PUBLIC GITHUB REPOSITORIES", "description": "Explore skills from public GitHub repositories, reviewed and published by SkillMall. Each skill page shows its source, path, pinned commit, and license details.",
     "explore": "Browse open-source skills", "allSkills": "View all skills", "publishedCount": "Published GitHub skills",
     "countNote": "Counts only published, publicly visible skills in @github.", "resultsTitle": "Explore skills",
     "resultsDescription": "Search skills in the @github catalog by name or description.", "resultCount": "{{count}} results",
@@ -79,7 +79,7 @@
       "teams": "Teams"
     },
     "whySkillHub": {
-      "title": "Why SkillHub",
+      "title": "Why SkillMall",
       "subtitle": "A private Agent skill platform designed for enterprise teams"
     },
     "badge": "Enterprise Skill Registry",
@@ -121,7 +121,7 @@
     "ctaTitle": "Ready to Get Started?",
     "ctaDescription": "Start your local development environment with a single command and experience the complete skill management workflow",
     "ctaButton": "Try Now",
-    "footerLicense": "© 2026 SkillHub. Apache License 2.0.",
+    "footerLicense": "© 2026 SkillMall. Apache License 2.0.",
     "footerDocs": "Docs",
     "footerGithub": "GitHub",
     "footerCommunity": "Community",
@@ -152,7 +152,7 @@
       "steps": {
         "configureEnv": {
           "title": "1. Configure Environment Variables",
-          "description": "Configure ClawHub CLI to connect to SkillHub"
+          "description": "Configure ClawHub CLI to connect to SkillMall"
         },
         "installSkills": {
           "title": "2. Install Skills",
@@ -333,12 +333,12 @@
     "quickStart": {
       "title": "Quick Start",
       "subtitle": "快速开始",
-      "description": "Get started with SkillHub in just a few simple steps",
+      "description": "Get started with SkillMall in just a few simple steps",
       "tip": "💡 Tip: Visit the skill detail page for one-click install commands with environment variables",
       "steps": {
         "configureEnv": {
           "title": "1. Configure Environment Variables",
-          "description": "Configure ClawHub CLI to connect to SkillHub"
+          "description": "Configure ClawHub CLI to connect to SkillMall"
         },
         "installSkills": {
           "title": "2. Install Skills",
@@ -390,7 +390,7 @@
     "clear": "Clear search"
   },
   "login": {
-    "title": "Login to SkillHub",
+    "title": "Login to SkillMall",
     "subtitle": "One account for better skill collaboration",
     "eyebrow": "Welcome back",
     "tabEnterprise": "Organization login",
@@ -401,7 +401,7 @@
     "enterpriseConfigHint": "Work login entries are enabled by administrators.",
     "noEnterpriseMethods": "No work account login is available yet. Use a personal account for now, or contact your administrator.",
     "personalTitle": "Password login",
-    "personalHint": "Use your SkillHub username and password.",
+    "personalHint": "Use your SkillMall username and password.",
     "otherMethods": "Or continue with",
     "orgLoginHint": "For organizations with single sign-on configured",
     "externalIdentityMethods": "External identity sources",
@@ -423,7 +423,7 @@
     "register": "Sign up now",
     "oauthHint": "After OAuth authentication, you will be automatically redirected back to this site.",
     "enterpriseSsoTitle": "Enterprise SSO",
-    "enterpriseSsoHint": "This deployment has the compatibility layer enabled. If your browser already has a {{name}} session, you can try establishing a SkillHub session directly.",
+    "enterpriseSsoHint": "This deployment has the compatibility layer enabled. If your browser already has a {{name}} session, you can try establishing a SkillMall session directly.",
     "enterpriseSsoAutoHint": "This deployment has automatic {{name}} probing enabled. If it does not succeed, you can continue with the standard login methods.",
     "enterpriseSsoAction": "Try {{name}}",
     "enterpriseSsoSubmitting": "Trying {{name}}...",
@@ -2098,13 +2098,13 @@
     "loginWith": "Login with {{name}}"
   },
   "authShell": {
-    "eyebrow": "SkillHub",
+    "eyebrow": "SkillMall",
     "backHome": "Back to home",
     "heroTitle": "Discover, preserve, and reuse\nyour team's skills",
     "heroSubtitle": "Start with a SKILL.md.\nTurn experience into a capability your team can share.",
     "heroFooter": "Bring team knowledge together and unlock skill value",
     "shortTagline": "Skills\nBuild\nTogether",
-    "capabilities": "What you can do with SkillHub",
+    "capabilities": "What you can do with SkillMall",
     "discoverTitle": "Discover skills",
     "discoverDescription": "Find reusable skills and practices across your team.",
     "shareTitle": "Share knowledge",
@@ -2312,7 +2312,7 @@
     "community": "Community",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
-    "copyright": "© 2026 SkillHub. Apache-2.0."
+    "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "publish": {
     "domain": "Category",
@@ -2335,7 +2335,7 @@
     "examplesInvalid": "Examples format not recognized. The file is kept as an ordinary file and publishing remains available.",
     "packagePreviewFailed": "Unable to read the package. Check SKILL.md and select the package again, or retry.",
     "title": "Publish Skill",
-    "subtitle": "Upload skill package to SkillHub",
+    "subtitle": "Upload skill package to SkillMall",
     "directPublishNotice": {
       "title": "Direct publication",
       "description": "Packages published as Public or Namespace Only go live immediately: they can be searched, viewed and downloaded right away. Security scanning and admin review are no longer required before publication."
@@ -2934,7 +2934,7 @@
       "cancelFailed": "Failed to cancel the Bundle operation",
       "openingTask": "Opening the publishing task…",
       "taskListTitle": "Suite publishing tasks",
-      "taskListDescription": "Handle tasks that need your input first; SkillHub advances the rest automatically.",
+      "taskListDescription": "Handle tasks that need your input first; SkillMall advances the rest automatically.",
       "taskDetailTitle": "Suite publishing task",
       "taskDetailDescription": "Track member publishing and Suite draft creation outside the authoring page.",
       "backToTasks": "Back to publishing tasks",
@@ -3033,7 +3033,7 @@
       },
       "noMembers": "No member progress yet.",
       "cancelConfirmTitle": "Stop creating this Suite?",
-      "cancelConfirmDescription": "SkillHub will stop waiting for members and will not create the Suite draft. Skill versions and review tasks already created remain available and are not withdrawn.",
+      "cancelConfirmDescription": "SkillMall will stop waiting for members and will not create the Suite draft. Skill versions and review tasks already created remain available and are not withdrawn.",
       "cancelConfirmAction": "Stop creating Suite",
       "cancelledTitle": "Suite creation stopped",
       "cancelledDescription": "This task remains in history. Existing Skill versions and review tasks are not withdrawn or deleted.",

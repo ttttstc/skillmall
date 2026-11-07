@@ -29,7 +29,7 @@
     "login": "登录"
   },
   "githubCatalog": {
-    "title": "开源技能", "sourceLabel": "GITHUB 公开仓库", "description": "浏览来自公开 GitHub 仓库、经过 SkillHub 审核发布的技能。每项技能均可查看来源仓库、路径、固定提交和许可证信息。",
+    "title": "开源技能", "sourceLabel": "GITHUB 公开仓库", "description": "浏览来自公开 GitHub 仓库、经过 SkillMall 审核发布的技能。每项技能均可查看来源仓库、路径、固定提交和许可证信息。",
     "explore": "浏览开源技能", "allSkills": "查看全部技能", "publishedCount": "已发布的 GitHub 技能",
     "countNote": "仅统计当前已发布且公开可见的 @github 技能。", "resultsTitle": "探索技能",
     "resultsDescription": "按名称或描述检索 @github 目录中的技能。", "resultCount": "共 {{count}} 项",
@@ -79,7 +79,7 @@
       "teams": "团队"
     },
     "whySkillHub": {
-      "title": "为什么选择 SkillHub",
+      "title": "为什么选择 SkillMall",
       "subtitle": "专为企业打造的私有化 Agent 技能管理平台"
     },
     "badge": "企业级技能注册中心",
@@ -121,7 +121,7 @@
     "ctaTitle": "准备好开始了吗？",
     "ctaDescription": "一条命令即可启动本地开发环境，体验完整的技能管理流程",
     "ctaButton": "立即体验",
-    "footerLicense": "© 2026 SkillHub。Apache License 2.0。",
+    "footerLicense": "© 2026 SkillMall。Apache License 2.0。",
     "footerDocs": "文档",
     "footerGithub": "GitHub",
     "footerCommunity": "社区",
@@ -152,7 +152,7 @@
       "steps": {
         "configureEnv": {
           "title": "1. 配置环境变量",
-          "description": "设置 ClawHub CLI 连接到 SkillHub"
+          "description": "设置 ClawHub CLI 连接到 SkillMall"
         },
         "installSkills": {
           "title": "2. 安装技能",
@@ -333,12 +333,12 @@
     "quickStart": {
       "title": "快速开始",
       "subtitle": "Quick Start",
-      "description": "只需几个简单步骤，即可开始使用 SkillHub",
+      "description": "只需几个简单步骤，即可开始使用 SkillMall",
       "tip": "💡 提示：访问技能详情页可获取带环境变量的一键复制安装命令",
       "steps": {
         "configureEnv": {
           "title": "1. 配置环境变量",
-          "description": "设置 ClawHub CLI 连接到 SkillHub"
+          "description": "设置 ClawHub CLI 连接到 SkillMall"
         },
         "installSkills": {
           "title": "2. 安装技能",
@@ -390,7 +390,7 @@
     "clear": "清空搜索"
   },
   "login": {
-    "title": "登录 SkillHub",
+    "title": "登录 SkillMall",
     "subtitle": "一个账号，开启更高效的技能协作",
     "eyebrow": "欢迎回来",
     "tabEnterprise": "组织登录",
@@ -401,7 +401,7 @@
     "enterpriseConfigHint": "企业登录入口由管理员开通。",
     "noEnterpriseMethods": "当前还没有可用的企业登录入口。你可以先使用个人账号登录，或联系管理员开通。",
     "personalTitle": "账号密码登录",
-    "personalHint": "使用 SkillHub 用户名和密码登录。",
+    "personalHint": "使用 SkillMall 用户名和密码登录。",
     "otherMethods": "或使用以下方式登录",
     "orgLoginHint": "适用于已配置企业单点登录的组织",
     "externalIdentityMethods": "外部身份源",
@@ -423,7 +423,7 @@
     "register": "立即注册",
     "oauthHint": "使用 OAuth 登录时，认证完成后会自动返回当前站点。",
     "enterpriseSsoTitle": "企业单点登录",
-    "enterpriseSsoHint": "当前部署已启用兼容接入层。若浏览器中已存在 {{name}} 会话，可直接尝试建立 SkillHub 登录态。",
+    "enterpriseSsoHint": "当前部署已启用兼容接入层。若浏览器中已存在 {{name}} 会话，可直接尝试建立 SkillMall 登录态。",
     "enterpriseSsoAutoHint": "当前部署已启用自动 {{name}} 探测。若未成功，你仍可继续使用现有登录方式。",
     "enterpriseSsoAction": "尝试 {{name}} 登录",
     "enterpriseSsoSubmitting": "正在尝试 {{name}} 登录...",
@@ -2098,13 +2098,13 @@
     "loginWith": "使用 {{name}} 登录"
   },
   "authShell": {
-    "eyebrow": "SkillHub",
+    "eyebrow": "SkillMall",
     "backHome": "返回首页",
     "heroTitle": "让团队的技能\n被发现、被沉淀、被复用",
     "heroSubtitle": "从一份 SKILL.md 开始，\n把经验转化为可共享的团队能力。",
     "heroFooter": "汇聚团队智慧，释放技能价值",
     "shortTagline": "让技能\n连接团队",
-    "capabilities": "SkillHub 的能力",
+    "capabilities": "SkillMall 的能力",
     "discoverTitle": "发现技能",
     "discoverDescription": "找到团队可复用的技能包与实践。",
     "shareTitle": "沉淀共享",
@@ -2312,7 +2312,7 @@
     "community": "社区",
     "privacy": "隐私政策",
     "terms": "服务条款",
-    "copyright": "© 2026 SkillHub. Apache-2.0."
+    "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "publish": {
     "domain": "技能分类",
@@ -2335,7 +2335,7 @@
     "examplesInvalid": "未识别案例格式，文件将保留为普通文件，不影响发布。",
     "packagePreviewFailed": "无法读取技能包，请检查 SKILL.md 后重新选择，或重试。",
     "title": "发布技能",
-    "subtitle": "上传技能包到 SkillHub",
+    "subtitle": "上传技能包到 SkillMall",
     "directPublishNotice": {
       "title": "直接发布说明",
       "description": "选择「公开」或「仅命名空间」时，技能包通过校验后立即发布，马上可以被搜索、查看和下载；安全扫描与管理员审核不再是发布前置。"
@@ -3033,7 +3033,7 @@
       },
       "noMembers": "暂无成员进度。",
       "cancelConfirmTitle": "停止创建这个套件？",
-      "cancelConfirmDescription": "停止后，SkillHub 不再等待成员或创建套件草稿。已经创建的技能版本和已经提交的审核任务不会撤回，仍可在技能审核中继续处理。",
+      "cancelConfirmDescription": "停止后，SkillMall 不再等待成员或创建套件草稿。已经创建的技能版本和已经提交的审核任务不会撤回，仍可在技能审核中继续处理。",
       "cancelConfirmAction": "停止创建套件",
       "cancelledTitle": "套件创建已停止",
       "cancelledDescription": "任务记录会保留。已创建的技能版本和审核任务仍然存在，不会自动撤回或删除。",
