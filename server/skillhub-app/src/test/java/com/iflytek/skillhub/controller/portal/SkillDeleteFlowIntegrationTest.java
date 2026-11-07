@@ -189,6 +189,72 @@ class SkillDeleteFlowIntegrationTest {
         verify(searchIndexService, never()).remove(graph.skill().getId());
     }
 
+    /**
+     * The CLI deletes by coordinate, so the API token's {@code skill:delete} scope decides
+     * whether the entry point may be called at all — it must not decide whose skill may be
+     * deleted. A token holder who does not own the skill gets 403 and the rows stay untouched.
+     */
+    @Test
+    void cliDelete_rejectsNonOwnerAndKeepsPersistedSkillGraph() throws Exception {
+        // Positive control: the very same CLI coordinate is deletable by its owner.
+        PersistedSkillGraph ownedByCaller = createSkillGraph("owner-1");
+        mockMvc.perform(delete("/api/cli/v1/skills/" + ownedByCaller.namespace().getSlug()
+                                + "/" + ownedByCaller.skill().getSlug())
+                        .with(authentication(apiAuth("owner-1", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ok").value(true));
+        assertThat(skillRepository.findById(ownedByCaller.skill().getId())).isEmpty();
+        // Forget the successful delete's storage call so the negative assertion below is about
+        // the rejected request only.
+        org.mockito.Mockito.clearInvocations(objectStorageService);
+
+        PersistedSkillGraph graph = createSkillGraph("owner-1");
+
+        mockMvc.perform(delete("/api/cli/v1/skills/" + graph.namespace().getSlug() + "/" + graph.skill().getSlug())
+                        .with(authentication(apiAuth("user-2", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        // The rejected delete must leave the persisted graph, the search document and the
+        // audit trail exactly as they were.
+        assertThat(skillRepository.findById(graph.skill().getId())).isPresent();
+        assertThat(skillVersionRepository.findBySkillId(graph.skill().getId())).hasSize(1);
+        assertThat(skillFileRepository.findByVersionId(graph.version().getId())).hasSize(1);
+        verify(searchIndexService, never()).remove(graph.skill().getId());
+        verify(objectStorageService, never()).deleteObjects(org.mockito.ArgumentMatchers.anyList());
+        assertThat(auditLogRepository.search("user-2", "DELETE_SKILL_HARD", PageRequest.of(0, 10)))
+                .isEmpty();
+        assertThat(auditLogRepository.search("owner-1", "DELETE_SKILL_HARD", PageRequest.of(0, 10)))
+                .extracting(log -> log.getTargetId())
+                .doesNotContain(graph.skill().getId());
+    }
+
+    @Test
+    void cliDelete_removesPersistedSkillGraphForOwnerAndKeepsAuditTrail() throws Exception {
+        PersistedSkillGraph graph = createSkillGraph("owner-1");
+
+        mockMvc.perform(delete("/api/cli/v1/skills/" + graph.namespace().getSlug() + "/" + graph.skill().getSlug())
+                        .with(authentication(apiAuth("owner-1", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.ok").value(true))
+                .andExpect(jsonPath("$.data.namespace").value(graph.namespace().getSlug()))
+                .andExpect(jsonPath("$.data.slug").value(graph.skill().getSlug()));
+
+        assertThat(skillRepository.findById(graph.skill().getId())).isEmpty();
+        assertThat(skillVersionRepository.findBySkillId(graph.skill().getId())).isEmpty();
+        verify(searchIndexService).remove(graph.skill().getId());
+        assertThat(auditLogRepository.search("owner-1", "DELETE_SKILL_HARD", PageRequest.of(0, 10)))
+                .anySatisfy(log -> {
+                    assertThat(log.getAction()).isEqualTo("DELETE_SKILL_HARD");
+                    assertThat(log.getTargetType()).isEqualTo("SKILL");
+                    assertThat(log.getTargetId()).isEqualTo(graph.skill().getId());
+                });
+    }
+
     private PersistedSkillGraph createSkillGraph(String ownerId) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Namespace namespace = namespaceRepository.save(new Namespace("global-delete-" + suffix, "Global Delete " + suffix, "system"));

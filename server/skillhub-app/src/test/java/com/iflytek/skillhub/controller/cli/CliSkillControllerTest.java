@@ -242,7 +242,7 @@ class CliSkillControllerTest {
         given(cliSkillAppService.deleteRemote(
                 org.mockito.ArgumentMatchers.eq("global"),
                 org.mockito.ArgumentMatchers.eq("demo"),
-                org.mockito.ArgumentMatchers.eq("user-1"),
+                org.mockito.ArgumentMatchers.any(PlatformPrincipal.class),
                 org.mockito.ArgumentMatchers.any()
         )).willReturn(new com.iflytek.skillhub.dto.cli.CliDeleteResponse(
                 true, "remote", "delete", "global", "demo"

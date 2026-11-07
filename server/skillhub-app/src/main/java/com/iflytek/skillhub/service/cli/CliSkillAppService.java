@@ -1,5 +1,6 @@
 package com.iflytek.skillhub.service.cli;
 
+import com.iflytek.skillhub.auth.rbac.PlatformPrincipal;
 import com.iflytek.skillhub.domain.audit.AuditDetail;
 import com.iflytek.skillhub.domain.audit.AuditLogService;
 import com.iflytek.skillhub.domain.namespace.NamespaceRole;
@@ -155,9 +156,15 @@ public class CliSkillAppService {
         return buildDownloadResponse(result);
     }
 
-    public CliDeleteResponse deleteRemote(String namespace, String slug, String actorUserId, AuditRequestContext auditContext) {
-        SkillDeleteAppService.DeleteResult result = skillDeleteAppService.deleteSkill(
-                namespace, slug, null, actorUserId, auditContext
+    /**
+     * Deletes a skill from the CLI.
+     *
+     * <p>The principal is passed through on purpose: the delete service has to check ownership.
+     * The API token's {@code skill:delete} scope only authorises reaching this entry point.
+     */
+    public CliDeleteResponse deleteRemote(String namespace, String slug, PlatformPrincipal principal, AuditRequestContext auditContext) {
+        SkillDeleteAppService.DeleteResult result = skillDeleteAppService.deleteSkillFromCli(
+                namespace, slug, principal, auditContext
         );
 
         return new CliDeleteResponse(

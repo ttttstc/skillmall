@@ -491,17 +491,49 @@ public class SkillPublishService {
      *
      * <p>Blank input becomes {@code null}: the detail page renders the note only when it is
      * present, so an empty string and "no note" must not be distinguishable there.
+     *
+     * <p>The trim intentionally matches JavaScript's {@code String.prototype.trim()} instead of
+     * {@link String#strip()}. {@code strip()} relies on {@link Character#isWhitespace(char)},
+     * which excludes no-break spaces such as U+00A0, while the browser trims them. Using
+     * {@code strip()} here meant a note made only of no-break spaces was dropped when sent by the
+     * web form but stored as an invisible note when sent straight to the API.
      */
     private String normalizeChangelog(String changelog) {
-        if (changelog == null || changelog.isBlank()) {
+        if (changelog == null) {
             return null;
         }
-        String trimmed = changelog.strip();
+        String trimmed = stripJavaScriptWhitespace(changelog);
+        if (trimmed.isEmpty()) {
+            return null;
+        }
         if (trimmed.length() > MAX_CHANGELOG_LENGTH) {
             throw new DomainBadRequestException(
                     "error.skill.publish.changelog.tooLong", MAX_CHANGELOG_LENGTH);
         }
         return trimmed;
+    }
+
+    /** Removes leading and trailing characters that JavaScript's {@code trim()} removes. */
+    private static String stripJavaScriptWhitespace(String value) {
+        int start = 0;
+        int end = value.length();
+        while (start < end && isJavaScriptWhitespace(value.charAt(start))) {
+            start++;
+        }
+        while (end > start && isJavaScriptWhitespace(value.charAt(end - 1))) {
+            end--;
+        }
+        return value.substring(start, end);
+    }
+
+    /**
+     * {@link Character#isWhitespace(char)} covers Java's definition but not the non-breaking
+     * spaces; {@link Character#isSpaceChar(char)} covers the Unicode space separators, and U+FEFF
+     * is the byte-order mark the browser also trims. Together they match the ECMAScript
+     * {@code WhiteSpace} set.
+     */
+    private static boolean isJavaScriptWhitespace(char value) {
+        return Character.isWhitespace(value) || Character.isSpaceChar(value) || value == '\uFEFF';
     }
 
     private PublishResult publishFromEntriesInternal(

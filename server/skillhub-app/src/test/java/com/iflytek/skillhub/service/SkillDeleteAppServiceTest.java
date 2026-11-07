@@ -157,6 +157,60 @@ class SkillDeleteAppServiceTest {
     }
 
     @Test
+    void deleteSkillFromCli_allowsOwner() {
+        Skill skill = new Skill(1L, "demo-skill", "owner-1", SkillVisibility.PUBLIC);
+        setField(skill, "id", 11L);
+        given(skillRepository.findByNamespaceSlugAndSlug("global", "demo-skill")).willReturn(List.of(skill));
+
+        SkillDeleteAppService.DeleteResult result = service.deleteSkillFromCli(
+                "global",
+                "demo-skill",
+                new PlatformPrincipal("owner-1", "Owner", "owner@example.com", "", "api_token", java.util.Set.of("USER")),
+                new AuditRequestContext("127.0.0.1", "JUnit")
+        );
+
+        assertThat(result.deleted()).isTrue();
+        verify(skillHardDeleteService).hardDeleteSkill(skill, "global", "owner-1", "127.0.0.1", "JUnit");
+    }
+
+    @Test
+    void deleteSkillFromCli_rejectsNonOwnerEvenWithDeleteScope() {
+        Skill skill = new Skill(1L, "demo-skill", "owner-1", SkillVisibility.PUBLIC);
+        setField(skill, "id", 11L);
+        given(skillRepository.findByNamespaceSlugAndSlug("global", "demo-skill")).willReturn(List.of(skill));
+
+        assertThatThrownBy(() -> service.deleteSkillFromCli(
+                "global",
+                "demo-skill",
+                new PlatformPrincipal("user-2", "User", "user@example.com", "", "api_token", java.util.Set.of("USER")),
+                new AuditRequestContext("127.0.0.1", "JUnit")
+        )).isInstanceOf(DomainForbiddenException.class);
+
+        verify(skillHardDeleteService, never()).hardDeleteSkill(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+        verify(searchIndexService, never()).remove(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void deleteSkillFromCli_allowsSuperAdmin() {
+        Skill skill = new Skill(1L, "demo-skill", "owner-1", SkillVisibility.PUBLIC);
+        setField(skill, "id", 11L);
+        given(skillRepository.findByNamespaceSlugAndSlug("global", "demo-skill")).willReturn(List.of(skill));
+
+        SkillDeleteAppService.DeleteResult result = service.deleteSkillFromCli(
+                "global",
+                "demo-skill",
+                new PlatformPrincipal("super-1", "Super", "super@example.com", "", "api_token", java.util.Set.of("SUPER_ADMIN")),
+                new AuditRequestContext("127.0.0.1", "JUnit")
+        );
+
+        assertThat(result.deleted()).isTrue();
+        verify(skillHardDeleteService).hardDeleteSkill(skill, "global", "super-1", "127.0.0.1", "JUnit");
+    }
+
+    @Test
     void deleteSkillFromPortal_isIdempotentWhenSkillDoesNotExist() {
         given(skillRepository.findByNamespaceSlugAndSlug("global", "missing-skill")).willReturn(List.of());
 
