@@ -3,6 +3,7 @@ package com.iflytek.skillhub.controller.portal;
 import com.iflytek.skillhub.TestRedisConfig;
 import com.iflytek.skillhub.auth.device.DeviceAuthService;
 import com.iflytek.skillhub.auth.rbac.PlatformPrincipal;
+import com.iflytek.skillhub.domain.audit.AuditLogRepository;
 import com.iflytek.skillhub.domain.namespace.Namespace;
 import com.iflytek.skillhub.domain.namespace.NamespaceMember;
 import com.iflytek.skillhub.domain.namespace.NamespaceMemberRepository;
@@ -28,6 +29,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,6 +40,7 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,6 +73,9 @@ class SkillDeleteFlowIntegrationTest {
 
     @Autowired
     private NamespaceMemberRepository namespaceMemberRepository;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
 
     @MockBean
     private DeviceAuthService deviceAuthService;
@@ -132,6 +138,121 @@ class SkillDeleteFlowIntegrationTest {
         assertThat(skillVersionRepository.findBySkillId(graph.skill().getId())).isEmpty();
         assertThat(skillFileRepository.findByVersionId(graph.version().getId())).isEmpty();
         verify(searchIndexService).remove(graph.skill().getId());
+    }
+
+    /**
+     * The author removal must also stop the public surface, not just delete the rows:
+     * detail, versions, resolve and download must all refuse a visitor afterwards, and the
+     * deletion has to stay auditable.
+     *
+     * <p>A missing Skill currently surfaces as {@code error.skill.notFound} through
+     * {@code DomainBadRequestException} (HTTP 400) on these read paths rather than 404, so the
+     * assertion is on the 4xx refusal instead of one specific status. That convention predates
+     * this change and is intentionally left untouched.
+     */
+    @Test
+    void authorDeleteStopsPublicDetailResolveVersionsAndDownload() throws Exception {
+        PersistedSkillGraph graph = createSkillGraph("owner-1");
+        String publicBase = "/api/v1/skills/" + graph.namespace().getSlug() + "/" + graph.skill().getSlug();
+
+        mockMvc.perform(delete("/api/web/skills/" + graph.namespace().getSlug() + "/" + graph.skill().getSlug())
+                        .with(authentication(portalAuth("owner-1", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deleted").value(true));
+
+        mockMvc.perform(get(publicBase)).andExpect(status().is4xxClientError());
+        mockMvc.perform(get(publicBase + "/resolve").param("tag", "latest")).andExpect(status().is4xxClientError());
+        mockMvc.perform(get(publicBase + "/versions")).andExpect(status().is4xxClientError());
+        mockMvc.perform(get(publicBase + "/download")).andExpect(status().is4xxClientError());
+        mockMvc.perform(get(publicBase + "/versions/1.0.0/download")).andExpect(status().is4xxClientError());
+
+        assertThat(auditLogRepository.search("owner-1", "DELETE_SKILL_HARD", PageRequest.of(0, 10)))
+                .anySatisfy(log -> {
+                    assertThat(log.getAction()).isEqualTo("DELETE_SKILL_HARD");
+                    assertThat(log.getTargetType()).isEqualTo("SKILL");
+                    assertThat(log.getTargetId()).isEqualTo(graph.skill().getId());
+                });
+    }
+
+    @Test
+    void portalDeleteByCoordinate_rejectsAnotherUsersSkillAndKeepsIt() throws Exception {
+        PersistedSkillGraph graph = createSkillGraph("owner-1");
+
+        mockMvc.perform(delete("/api/web/skills/" + graph.namespace().getSlug() + "/" + graph.skill().getSlug())
+                        .with(authentication(portalAuth("user-2", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        assertThat(skillRepository.findById(graph.skill().getId())).isPresent();
+        assertThat(skillVersionRepository.findBySkillId(graph.skill().getId())).hasSize(1);
+        verify(searchIndexService, never()).remove(graph.skill().getId());
+    }
+
+    /**
+     * The CLI deletes by coordinate, so the API token's {@code skill:delete} scope decides
+     * whether the entry point may be called at all — it must not decide whose skill may be
+     * deleted. A token holder who does not own the skill gets 403 and the rows stay untouched.
+     */
+    @Test
+    void cliDelete_rejectsNonOwnerAndKeepsPersistedSkillGraph() throws Exception {
+        // Positive control: the very same CLI coordinate is deletable by its owner.
+        PersistedSkillGraph ownedByCaller = createSkillGraph("owner-1");
+        mockMvc.perform(delete("/api/cli/v1/skills/" + ownedByCaller.namespace().getSlug()
+                                + "/" + ownedByCaller.skill().getSlug())
+                        .with(authentication(apiAuth("owner-1", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ok").value(true));
+        assertThat(skillRepository.findById(ownedByCaller.skill().getId())).isEmpty();
+        // Forget the successful delete's storage call so the negative assertion below is about
+        // the rejected request only.
+        org.mockito.Mockito.clearInvocations(objectStorageService);
+
+        PersistedSkillGraph graph = createSkillGraph("owner-1");
+
+        mockMvc.perform(delete("/api/cli/v1/skills/" + graph.namespace().getSlug() + "/" + graph.skill().getSlug())
+                        .with(authentication(apiAuth("user-2", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        // The rejected delete must leave the persisted graph, the search document and the
+        // audit trail exactly as they were.
+        assertThat(skillRepository.findById(graph.skill().getId())).isPresent();
+        assertThat(skillVersionRepository.findBySkillId(graph.skill().getId())).hasSize(1);
+        assertThat(skillFileRepository.findByVersionId(graph.version().getId())).hasSize(1);
+        verify(searchIndexService, never()).remove(graph.skill().getId());
+        verify(objectStorageService, never()).deleteObjects(org.mockito.ArgumentMatchers.anyList());
+        assertThat(auditLogRepository.search("user-2", "DELETE_SKILL_HARD", PageRequest.of(0, 10)))
+                .isEmpty();
+        assertThat(auditLogRepository.search("owner-1", "DELETE_SKILL_HARD", PageRequest.of(0, 10)))
+                .extracting(log -> log.getTargetId())
+                .doesNotContain(graph.skill().getId());
+    }
+
+    @Test
+    void cliDelete_removesPersistedSkillGraphForOwnerAndKeepsAuditTrail() throws Exception {
+        PersistedSkillGraph graph = createSkillGraph("owner-1");
+
+        mockMvc.perform(delete("/api/cli/v1/skills/" + graph.namespace().getSlug() + "/" + graph.skill().getSlug())
+                        .with(authentication(apiAuth("owner-1", "USER")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.ok").value(true))
+                .andExpect(jsonPath("$.data.namespace").value(graph.namespace().getSlug()))
+                .andExpect(jsonPath("$.data.slug").value(graph.skill().getSlug()));
+
+        assertThat(skillRepository.findById(graph.skill().getId())).isEmpty();
+        assertThat(skillVersionRepository.findBySkillId(graph.skill().getId())).isEmpty();
+        verify(searchIndexService).remove(graph.skill().getId());
+        assertThat(auditLogRepository.search("owner-1", "DELETE_SKILL_HARD", PageRequest.of(0, 10)))
+                .anySatisfy(log -> {
+                    assertThat(log.getAction()).isEqualTo("DELETE_SKILL_HARD");
+                    assertThat(log.getTargetType()).isEqualTo("SKILL");
+                    assertThat(log.getTargetId()).isEqualTo(graph.skill().getId());
+                });
     }
 
     private PersistedSkillGraph createSkillGraph(String ownerId) {

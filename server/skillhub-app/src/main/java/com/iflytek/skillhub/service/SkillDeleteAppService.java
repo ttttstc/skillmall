@@ -87,11 +87,41 @@ public class SkillDeleteAppService {
                                               String targetOwnerId,
                                               PlatformPrincipal principal,
                                               AuditRequestContext auditRequestContext) {
+        return deleteSkillAsOwner(namespace, slug, targetOwnerId, principal, auditRequestContext);
+    }
+
+    /**
+     * Hard-deletes a skill on behalf of the CLI entry point.
+     *
+     * <p>The CLI reuses the portal ownership rule rather than the API token's {@code skill:delete}
+     * scope: holding that scope only means the caller may reach this entry point, not that the
+     * caller may delete anyone's skill. Without this check a token scoped for deletes could remove
+     * another user's skill, because {@link SkillOwnerAccessPolicy} only covers the "team owner lost
+     * membership" case and stays silent for a non-owner.
+     */
+    @Transactional
+    public DeleteResult deleteSkillFromCli(String namespace,
+                                           String slug,
+                                           PlatformPrincipal principal,
+                                           AuditRequestContext auditRequestContext) {
+        return deleteSkillAsOwner(namespace, slug, null, principal, auditRequestContext);
+    }
+
+    /**
+     * Shared portal/CLI delete flow: resolve the target, then require the current owner or a
+     * platform {@code SUPER_ADMIN} before any row or search document is touched.
+     */
+    private DeleteResult deleteSkillAsOwner(String namespace,
+                                            String slug,
+                                            String targetOwnerId,
+                                            PlatformPrincipal principal,
+                                            AuditRequestContext auditRequestContext) {
         String normalizedNamespace = normalizeNamespace(namespace);
+        String actorUserId = principal != null ? principal.userId() : null;
         List<Skill> candidates = skillRepository.findByNamespaceSlugAndSlug(normalizedNamespace, slug);
-        Optional<Skill> target = resolveSkill(candidates, targetOwnerId, principal != null ? principal.userId() : null);
+        Optional<Skill> target = resolveSkill(candidates, targetOwnerId, actorUserId);
         return target
-                .map(skill -> deleteExistingSkill(skill, normalizedNamespace, slug, principal.userId(), auditRequestContext, true, principal))
+                .map(skill -> deleteExistingSkill(skill, normalizedNamespace, slug, actorUserId, auditRequestContext, true, principal))
                 .orElseGet(() -> new DeleteResult(null, normalizedNamespace, slug, false));
     }
 

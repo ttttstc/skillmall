@@ -8890,6 +8890,7 @@ export interface components {
             slug?: string;
             version?: string;
             visibility?: string;
+            status?: string;
         };
         ApiResponseCliDryRunResponse: {
             /** Format: int32 */
@@ -15503,6 +15504,7 @@ export interface operations {
                 avatarUploadId?: string;
                 expectedSlug?: string;
                 displayName?: string;
+                changelog?: string;
             };
             header?: never;
             path: {
@@ -15539,6 +15541,7 @@ export interface operations {
                 avatarUploadId?: string;
                 expectedSlug?: string;
                 displayName?: string;
+                changelog?: string;
             };
             header?: never;
             path: {

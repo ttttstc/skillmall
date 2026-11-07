@@ -24,6 +24,7 @@ import {
 } from '@/shared/ui/select'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { Textarea } from '@/shared/ui/textarea'
 import { Card } from '@/shared/ui/card'
 import { SkillAvatarEditor, KEEP_AVATAR, type AvatarEdit } from '@/features/skill/skill-avatar-editor'
 import { SkillAvatarManager } from '@/features/skill/skill-avatar-manager'
@@ -53,6 +54,7 @@ export function PublishPage() {
   const previewId = useId()
   const [fileRevision, setFileRevision] = useState(0)
   const [displayName, setDisplayName] = useState('')
+  const [changelog, setChangelog] = useState('')
   const displayNameEdited = useRef(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [namespaceSlug, setNamespaceSlug] = useState<string>(prefill.namespace)
@@ -91,6 +93,7 @@ export function PublishPage() {
     setNamespaceSlug(prefill.namespace)
     setVisibility(prefill.visibility)
     setAvatarEdit(KEEP_AVATAR)
+    setChangelog('')
   }, [prefill.namespace, prefill.visibility, updateSlug])
 
   const handleRemoveSelectedFile = () => {
@@ -149,6 +152,7 @@ export function PublishPage() {
         avatarUploadId: avatarEdit.uploadId,
         expectedSlug: updateSlug || undefined,
         displayName,
+        changelog,
       })
       setPrecheckWarnings([])
       setWarningDialogOpen(false)
@@ -342,6 +346,22 @@ export function PublishPage() {
           {selectedFile && packagePreview.data?.examplesStatus === 'ready' && <p role="status" className="text-xs text-muted-foreground">{t('publish.examplesReady', { count: packagePreview.data.examplesCount })}</p>}
           {selectedFile && packagePreview.data?.examplesStatus === 'none' && <p className="text-xs text-muted-foreground">{t('publish.examplesNone')}</p>}
           {selectedFile && packagePreview.data?.examplesStatus === 'invalid' && <p role="status" className="text-xs text-muted-foreground">{t('publish.examplesInvalid')}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="skill-changelog" className="text-sm font-semibold font-heading">{t('publish.changelog')}</Label>
+          <Textarea
+            id="skill-changelog"
+            data-analytics-id="skill.changelog.input"
+            value={changelog}
+            maxLength={4000}
+            rows={3}
+            disabled={ownerReadOnly || isBusy || !selectedFile}
+            placeholder={t('publish.changelogPlaceholder')}
+            aria-describedby="skill-changelog-help"
+            onChange={event => setChangelog(event.target.value)}
+          />
+          <p id="skill-changelog-help" className="text-sm text-muted-foreground">{t('publish.changelogHelp')}</p>
         </div>
 
         <SkillAvatarEditor key={`${namespaceSlug}/${updateSlug}`} name={search.updateName ?? updateSlug} currentUrl={avatarTarget.data?.avatarUrl} canRemove={!!updateSlug} disabled={ownerReadOnly || isBusy || avatarUnavailable} onChange={setAvatarEdit} />

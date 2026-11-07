@@ -256,10 +256,12 @@ class CliSkillAppServiceTest {
     @Test
     void deleteRemote_delegatesToDeleteAppService() {
         var auditContext = new AuditRequestContext("127.0.0.1", "CLI/1.0");
-        given(skillDeleteAppService.deleteSkill("global", "demo", null, "user-1", auditContext))
+        var principal = new com.iflytek.skillhub.auth.rbac.PlatformPrincipal(
+                "user-1", "User", "user@example.com", "", "api_token", Set.of("USER"));
+        given(skillDeleteAppService.deleteSkillFromCli("global", "demo", principal, auditContext))
                 .willReturn(new SkillDeleteAppService.DeleteResult(10L, "global", "demo", true));
 
-        CliDeleteResponse response = service.deleteRemote("global", "demo", "user-1", auditContext);
+        CliDeleteResponse response = service.deleteRemote("global", "demo", principal, auditContext);
 
         assertTrue(response.ok());
         assertEquals("remote", response.scope());

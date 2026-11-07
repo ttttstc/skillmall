@@ -52,4 +52,21 @@ class PostgresFullTextIndexServiceTest {
         assertThat(entity.getKeywords()).hasSize(700);
         assertThat(entity.getSearchText()).isEqualTo("search text");
     }
+
+    /**
+     * A removed Skill must disappear from public search in the same call that deletes it,
+     * otherwise the index keeps serving a Skill whose rows are already gone.
+     */
+    @Test
+    void removeShouldDeleteTheSearchDocumentBySkillId() {
+        SkillSearchDocumentJpaRepository repository = mock(SkillSearchDocumentJpaRepository.class);
+        PostgresFullTextIndexService service = new PostgresFullTextIndexService(
+                repository,
+                new HashingSearchEmbeddingService()
+        );
+
+        service.remove(42L);
+
+        verify(repository).deleteBySkillId(42L);
+    }
 }
