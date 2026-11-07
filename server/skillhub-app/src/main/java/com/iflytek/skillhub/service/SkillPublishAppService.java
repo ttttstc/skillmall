@@ -57,6 +57,15 @@ public class SkillPublishAppService {
     public SkillPublishService.PublishResult publish(String namespace, List<PackageEntry> entries, String actor,
             SkillVisibility visibility, Set<String> roles, boolean confirmWarnings, AvatarAction action,
             String uploadId, String expectedSlug, String displayName, AuditRequestContext context) {
+        return publish(namespace, entries, actor, visibility, roles, confirmWarnings, action,
+                uploadId, expectedSlug, displayName, null, context);
+    }
+
+    @Transactional
+    public SkillPublishService.PublishResult publish(String namespace, List<PackageEntry> entries, String actor,
+            SkillVisibility visibility, Set<String> roles, boolean confirmWarnings, AvatarAction action,
+            String uploadId, String expectedSlug, String displayName, String changelog,
+            AuditRequestContext context) {
         if (action == AvatarAction.REPLACE && (uploadId == null || uploadId.isBlank())
                 || action != AvatarAction.REPLACE && uploadId != null && !uploadId.isBlank()) {
             throw new DomainBadRequestException("error.skill.avatar.invalidUpload");
@@ -72,9 +81,18 @@ public class SkillPublishAppService {
                 uploads.validateReference(namespace, targetSlug, actor, uploadId);
             }
         }
-        SkillPublishService.PublishResult result = displayName == null || displayName.isBlank()
-                ? publications.publishFromEntries(namespace, entries, actor, visibility, roles, confirmWarnings)
-                : publications.publishFromEntries(namespace, entries, actor, visibility, roles, confirmWarnings, displayName);
+        boolean hasDisplayName = displayName != null && !displayName.isBlank();
+        boolean hasChangelog = changelog != null && !changelog.isBlank();
+        SkillPublishService.PublishResult result;
+        if (hasChangelog) {
+            result = publications.publishFromEntries(namespace, entries, actor, visibility, roles,
+                    confirmWarnings, hasDisplayName ? displayName : null, changelog);
+        } else if (hasDisplayName) {
+            result = publications.publishFromEntries(namespace, entries, actor, visibility, roles,
+                    confirmWarnings, displayName);
+        } else {
+            result = publications.publishFromEntries(namespace, entries, actor, visibility, roles, confirmWarnings);
+        }
         recordPublishAudit(actor, namespace, visibility, result, context);
         var review = reviews.findBySkillVersionIdAndStatus(
                 result.version().getId(), ReviewTaskStatus.PENDING).orElse(null);

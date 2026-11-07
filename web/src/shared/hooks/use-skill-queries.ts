@@ -45,7 +45,7 @@ async function getSkillDocumentation(namespace: string, slug: string, version: s
   return fetchText(`${WEB_API_PREFIX}/skills/${cleanNamespace}/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version)}/file?path=${encodeURIComponent(path)}`)
 }
 
-async function publishSkill(params: { namespace: string; file: File; visibility: string; confirmWarnings?: boolean; avatarAction?: 'KEEP' | 'REPLACE' | 'REMOVE'; avatarUploadId?: string; expectedSlug?: string; displayName?: string }): Promise<PublishResult> {
+async function publishSkill(params: { namespace: string; file: File; visibility: string; confirmWarnings?: boolean; avatarAction?: 'KEEP' | 'REPLACE' | 'REMOVE'; avatarUploadId?: string; expectedSlug?: string; displayName?: string; changelog?: string }): Promise<PublishResult> {
   const cleanNamespace = params.namespace.startsWith('@') ? params.namespace.slice(1) : params.namespace
   const formData = new FormData()
   formData.append('file', params.file)
@@ -55,6 +55,8 @@ async function publishSkill(params: { namespace: string; file: File; visibility:
   if (params.avatarUploadId) formData.append('avatarUploadId', params.avatarUploadId)
   if (params.expectedSlug) formData.append('expectedSlug', params.expectedSlug)
   if (params.displayName?.trim()) formData.append('displayName', params.displayName.trim())
+  // The change note is optional; omitting the field keeps the version's note empty.
+  if (params.changelog?.trim()) formData.append('changelog', params.changelog.trim())
 
   return fetchJson<PublishResult>(`${WEB_API_PREFIX}/skills/${cleanNamespace}/publish`, {
     method: 'POST',
