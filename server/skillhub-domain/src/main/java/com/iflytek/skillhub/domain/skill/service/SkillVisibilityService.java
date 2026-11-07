@@ -85,11 +85,7 @@ public class SkillVisibilityService {
     }
 
     private void assertCanManage(Skill skill, String actor, Map<Long, NamespaceRole> roles, Set<String> platformRoles) {
-        NamespaceRole role = roles.get(skill.getNamespaceId());
-        if (!Objects.equals(actor, skill.getOwnerId()) && role != NamespaceRole.OWNER
-                && role != NamespaceRole.ADMIN && !platformRoles.contains("SUPER_ADMIN")) {
-            throw new DomainForbiddenException("error.skill.lifecycle.noPermission");
-        }
+        ownerAccess.assertCanManage(skill, actor, roles, platformRoles);
     }
 
     public void assertNoPendingVisibility(Long skillId) {

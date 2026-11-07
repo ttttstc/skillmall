@@ -10,6 +10,8 @@ vi.mock('react-i18next', async () => ({ ...await vi.importActual<typeof import('
 vi.mock('@/shared/hooks/use-skill-queries', () => ({
   usePublishSkill: () => ({ mutateAsync: mocks.publish, isPending: false }),
   useSkillDetail: () => ({ data: { displayName: 'Foo', avatarUrl: '/active', ownerReadOnly: mocks.ownerReadOnly }, isLoading: false, isError: false }),
+  useSkillDomain: () => ({ data: undefined, isLoading: false }),
+  useChangeSkillDomain: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 vi.mock('@/shared/hooks/use-namespace-queries', () => ({ useMyNamespaces: () => ({ data: [{ slug: 'team', displayName: 'Team' }], isLoading: false }) }))
 vi.mock('@/features/publish/upload-zone', () => ({ UploadZone: ({ onFileSelect }: { onFileSelect: (file: File) => void }) => <button onClick={() => onFileSelect(new File(['zip'], 'skill.zip'))}>choose package</button> }))

@@ -93,7 +93,7 @@ behind.
 
 ## Provenance
 
-`V121__skill_import_source.sql` adds `skill_import_source`, one row per imported version:
+`V122__skill_import_source.sql` adds `skill_import_source`, one row per imported version:
 
 | Column | Meaning |
 | --- | --- |

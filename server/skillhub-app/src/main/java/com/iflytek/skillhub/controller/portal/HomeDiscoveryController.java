@@ -1,6 +1,7 @@
 package com.iflytek.skillhub.controller.portal;
 
 import com.iflytek.skillhub.controller.BaseApiController;
+import com.iflytek.skillhub.controller.support.DomainQueryParameters;
 import com.iflytek.skillhub.domain.namespace.NamespaceRole;
 import com.iflytek.skillhub.dto.ApiResponse;
 import com.iflytek.skillhub.dto.ApiResponseFactory;
@@ -53,9 +54,13 @@ public class HomeDiscoveryController extends BaseApiController {
             @RequestParam(defaultValue = "6") int size,
             @Parameter(description = "Skill ids already on screen; they are skipped so the row rotates")
             @RequestParam(name = "exclude", required = false) List<Long> exclude,
+            @Parameter(description = "Optional first-level category: DESIGN, DEVELOPMENT, TESTING, "
+                    + "ENGINEERING, PROJECT_MANAGEMENT, OTHER")
+            @RequestParam(name = "domain", required = false) String domain,
             @RequestAttribute(value = "userId", required = false) String userId,
             @RequestAttribute(value = "userNsRoles", required = false) Map<Long, NamespaceRole> userNsRoles) {
-        return ok("response.success.read", appService.recommendations(size, exclude, userId, userNsRoles));
+        return ok("response.success.read", appService.recommendations(
+                size, exclude, DomainQueryParameters.parse(domain), userId, userNsRoles));
     }
 
     @GetMapping("/rankings")
@@ -73,8 +78,12 @@ public class HomeDiscoveryController extends BaseApiController {
             @RequestParam(defaultValue = "recent-popular") String type,
             @Parameter(schema = @Schema(type = "integer", defaultValue = "10", minimum = "1"))
             @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Optional first-level category: DESIGN, DEVELOPMENT, TESTING, "
+                    + "ENGINEERING, PROJECT_MANAGEMENT, OTHER")
+            @RequestParam(name = "domain", required = false) String domain,
             @RequestAttribute(value = "userId", required = false) String userId,
             @RequestAttribute(value = "userNsRoles", required = false) Map<Long, NamespaceRole> userNsRoles) {
-        return ok("response.success.read", appService.ranking(type, size, userId, userNsRoles));
+        return ok("response.success.read", appService.ranking(
+                type, size, DomainQueryParameters.parse(domain), userId, userNsRoles));
     }
 }

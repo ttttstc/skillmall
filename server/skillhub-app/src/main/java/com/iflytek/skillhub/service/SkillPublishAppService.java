@@ -33,6 +33,13 @@ public class SkillPublishAppService {
     @Autowired
     public void setReviews(ReviewTaskRepository reviews) { this.reviews = reviews; }
 
+    /** Setter-injected so the category write is optional for callers that build this by hand. */
+    private com.iflytek.skillhub.domain.skill.service.SkillDomainService domains;
+    @Autowired
+    public void setDomains(com.iflytek.skillhub.domain.skill.service.SkillDomainService domains) {
+        this.domains = domains;
+    }
+
 
     public SkillPublishAppService(SkillPublishService publications, SkillAvatarUploadService uploads,
                                   SkillAvatarAppService avatars, SkillMetadataParser metadata,
@@ -66,6 +73,23 @@ public class SkillPublishAppService {
             SkillVisibility visibility, Set<String> roles, boolean confirmWarnings, AvatarAction action,
             String uploadId, String expectedSlug, String displayName, String changelog,
             AuditRequestContext context) {
+        return publish(namespace, entries, actor, visibility, roles, confirmWarnings, action,
+                uploadId, expectedSlug, displayName, changelog, null, context);
+    }
+
+    /**
+     * @param domain the first-level category chosen in the publish form, or {@code null} to keep
+     *               whatever the Skill already has (a new Skill starts at
+     *               {@link com.iflytek.skillhub.domain.skill.SkillDomain#DEFAULT}). It is written in
+     *               the same transaction as the version, so a published skill can never be left
+     *               categorised differently from what the publisher asked for.
+     */
+    @Transactional
+    public SkillPublishService.PublishResult publish(String namespace, List<PackageEntry> entries, String actor,
+            SkillVisibility visibility, Set<String> roles, boolean confirmWarnings, AvatarAction action,
+            String uploadId, String expectedSlug, String displayName, String changelog,
+            com.iflytek.skillhub.domain.skill.SkillDomain domain,
+            AuditRequestContext context) {
         if (action == AvatarAction.REPLACE && (uploadId == null || uploadId.isBlank())
                 || action != AvatarAction.REPLACE && uploadId != null && !uploadId.isBlank()) {
             throw new DomainBadRequestException("error.skill.avatar.invalidUpload");
@@ -94,6 +118,9 @@ public class SkillPublishAppService {
             result = publications.publishFromEntries(namespace, entries, actor, visibility, roles, confirmWarnings);
         }
         recordPublishAudit(actor, namespace, visibility, result, context);
+        if (domain != null && domains != null) {
+            domains.applyForPublish(result.skillId(), domain);
+        }
         var review = reviews.findBySkillVersionIdAndStatus(
                 result.version().getId(), ReviewTaskStatus.PENDING).orElse(null);
         if (action == AvatarAction.REPLACE) {

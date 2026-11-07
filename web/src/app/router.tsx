@@ -8,6 +8,7 @@ import { RouteError } from '@/shared/components/route-error'
 import { createRedirectAuthenticated, createRequireAuth, isSafeAuthReturnTo } from '@/shared/lib/auth-route'
 import { clearDynamicImportReloadGuard, recoverFromDynamicImportError } from '@/shared/lib/dynamic-import-recovery'
 import { normalizeSearchQuery } from '@/shared/lib/search-query'
+import { SKILL_DOMAINS, type SkillDomain } from '@/shared/lib/skill-domains'
 import { captureInvitationFragment } from '@/shared/lib/namespace-invitation'
 
 /**
@@ -303,11 +304,14 @@ const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'search',
   component: SearchPage,
-  validateSearch: (search: Record<string, unknown>): { q: string; namespace?: string; label?: string; sort: string; page: number; starredOnly: boolean; view?: 'grid' | 'list' } => {
+  validateSearch: (search: Record<string, unknown>): { q: string; namespace?: string; label?: string; domain?: SkillDomain; sort: string; page: number; starredOnly: boolean; view?: 'grid' | 'list' } => {
     return {
       q: normalizeSearchQuery(typeof search.q === 'string' ? search.q : ''),
       namespace: typeof search.namespace === 'string' && search.namespace ? search.namespace.replace(/^@/, '') : undefined,
       label: typeof search.label === 'string' && search.label ? search.label : undefined,
+      // An unknown category is dropped to "all" in the URL rather than sent to the API, where it
+      // would be a 400 caused by a hand-edited link rather than by the page.
+      domain: allowedSearchValue(search.domain, SKILL_DOMAINS),
       sort: (search.sort as string) || 'newest',
       page: Number(search.page) || 0,
       starredOnly: search.starredOnly === true || search.starredOnly === 'true',

@@ -31,16 +31,27 @@ describe.each(['update', 'resubmit'])('%s package rejection refreshes current pe
   it.each([true, false])('uses the server ownerReadOnly=%s response after a rejected package', async ownerReadOnly => {
     api.search = mode === 'update' ? { namespace: 'team', updateSkill: 'foo' } : { namespace: 'team', resubmitSkill: 'foo', resubmitVersion: '1.0' }
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
-    api.detail.mockResolvedValueOnce({ ownerReadOnly: false }).mockResolvedValue({ ownerReadOnly })
+    // The category control on the edit form issues its own GET (…/domain) through the same
+    // fetchJson, so a raw "fetchJson was called N times" count no longer describes the permission
+    // refresh this test is about. Answer that request separately and count only the detail
+    // request, keeping the original strictness ("exactly one, then exactly two").
+    const detailCalls = () =>
+      api.detail.mock.calls.filter(([url]) => !String(url).endsWith('/domain')).length
+    let detailResponses = 0
+    api.detail.mockImplementation((url: string) => {
+      if (String(url).endsWith('/domain')) return Promise.resolve({ domain: 'OTHER' })
+      detailResponses += 1
+      return Promise.resolve(detailResponses === 1 ? { ownerReadOnly: false } : { ownerReadOnly })
+    })
     api.publish.mockRejectedValue(new ApiError('Localized package rejection', 400))
     render(<QueryClientProvider client={client}><PublishPage /></QueryClientProvider>)
-    await waitFor(() => expect(api.detail).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(detailCalls()).toBe(1))
     fireEvent.click(screen.getByText('choose package'))
     const submit = screen.getByRole('button', { name: 'publish.confirm' })
     await waitFor(() => expect(submit.hasAttribute('disabled')).toBe(false))
     fireEvent.click(submit)
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
-    expect(api.detail).toHaveBeenCalledTimes(2)
+    expect(detailCalls()).toBe(2)
     expect(api.publish).toHaveBeenCalledTimes(1)
     expect(submit.hasAttribute('disabled')).toBe(ownerReadOnly)
     expect(Boolean(screen.queryByText('mySkills.ownerReadOnly'))).toBe(ownerReadOnly)

@@ -84,6 +84,7 @@ public class SkillPublishController extends BaseApiController {
             @RequestParam(value = "expectedSlug", required = false) String expectedSlug,
             @RequestParam(value = "displayName", required = false) String displayName,
             @RequestParam(value = "changelog", required = false) String changelog,
+            @RequestParam(value = "domain", required = false) String domain,
             @AuthenticationPrincipal PlatformPrincipal principal, HttpServletRequest request) throws IOException {
 
         SkillVisibility skillVisibility = SkillVisibility.valueOf(visibility.toUpperCase());
@@ -112,6 +113,7 @@ public class SkillPublishController extends BaseApiController {
                 skillVisibility,
                 principal.platformRoles(),
                 confirmWarnings, avatarAction, avatarUploadId, expectedSlug, displayName, changelog,
+                com.iflytek.skillhub.controller.support.DomainQueryParameters.parse(domain),
                 AuditRequestContext.from(request)
         );
 

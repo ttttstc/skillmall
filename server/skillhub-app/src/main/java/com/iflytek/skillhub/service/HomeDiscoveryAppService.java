@@ -1,6 +1,7 @@
 package com.iflytek.skillhub.service;
 
 import com.iflytek.skillhub.domain.namespace.NamespaceRole;
+import com.iflytek.skillhub.domain.skill.SkillDomain;
 import com.iflytek.skillhub.dto.HomeRankingItem;
 import com.iflytek.skillhub.dto.HomeRankingResponse;
 import com.iflytek.skillhub.dto.HomeSkillListResponse;
@@ -67,6 +68,7 @@ public class HomeDiscoveryAppService {
     @Transactional(readOnly = true)
     public HomeSkillListResponse recommendations(int size,
                                                  List<Long> excludeSkillIds,
+                                                 SkillDomain domain,
                                                  String userId,
                                                  Map<Long, NamespaceRole> userNsRoles) {
         int limit = clampSize(size, DEFAULT_RECOMMENDATION_SIZE);
@@ -74,13 +76,13 @@ public class HomeDiscoveryAppService {
         List<Long> excluded = normalizeExclusions(excludeSkillIds);
 
         List<RankedSkill> picked = new ArrayList<>(
-                rankingQueryRepository.findRandomRecommendations(memberNamespaceIds, excluded, limit));
+                rankingQueryRepository.findRandomRecommendations(memberNamespaceIds, excluded, domain, limit));
         if (!excluded.isEmpty() && picked.size() < limit) {
             // The eligible pool minus the caller's exclusions is smaller than one row. Fill the
             // remaining slots from the same real pool; if even that runs out the row stays short,
             // because a missing skill is shown as missing rather than invented.
             for (RankedSkill candidate : rankingQueryRepository.findRandomRecommendations(
-                    memberNamespaceIds, List.of(), limit + excluded.size())) {
+                    memberNamespaceIds, List.of(), domain, limit + excluded.size())) {
                 if (picked.size() >= limit) {
                     break;
                 }
@@ -95,9 +97,15 @@ public class HomeDiscoveryAppService {
                 skillSearchAppService.toSummaries(skillIds(picked), userId));
     }
 
+    public HomeSkillListResponse recommendations(int size, List<Long> excludeSkillIds,
+                                                 String userId, Map<Long, NamespaceRole> userNsRoles) {
+        return recommendations(size, excludeSkillIds, null, userId, userNsRoles);
+    }
+
     @Transactional(readOnly = true)
     public HomeRankingResponse ranking(String type,
                                        int size,
+                                       SkillDomain domain,
                                        String userId,
                                        Map<Long, NamespaceRole> userNsRoles) {
         int limit = clampSize(size, DEFAULT_RANKING_SIZE);
@@ -108,9 +116,9 @@ public class HomeDiscoveryAppService {
 
         List<RankedSkill> ranked = switch (rankingType) {
             case RECENT_POPULAR -> rankingQueryRepository.findRecentlyPopular(
-                    memberNamespaceIds, windowStart, windowEndExclusive, limit);
-            case MOST_DOWNLOADED -> rankingQueryRepository.findMostDownloaded(memberNamespaceIds, limit);
-            case NEWEST -> rankingQueryRepository.findNewestPublished(memberNamespaceIds, limit);
+                    memberNamespaceIds, windowStart, windowEndExclusive, domain, limit);
+            case MOST_DOWNLOADED -> rankingQueryRepository.findMostDownloaded(memberNamespaceIds, domain, limit);
+            case NEWEST -> rankingQueryRepository.findNewestPublished(memberNamespaceIds, domain, limit);
         };
 
         Map<Long, SkillSummaryResponse> summariesById = new LinkedHashMap<>();
@@ -126,6 +134,11 @@ public class HomeDiscoveryAppService {
                         row.firstPublishedAt()))
                 .toList();
         return new HomeRankingResponse(rankingType.wireName(), items);
+    }
+
+    public HomeRankingResponse ranking(String type, int size, String userId,
+                                       Map<Long, NamespaceRole> userNsRoles) {
+        return ranking(type, size, null, userId, userNsRoles);
     }
 
     private List<Long> skillIds(List<RankedSkill> rows) {

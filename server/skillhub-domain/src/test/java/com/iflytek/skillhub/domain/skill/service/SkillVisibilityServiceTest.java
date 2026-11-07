@@ -17,10 +17,14 @@ class SkillVisibilityServiceTest {
     private final SkillVersionRepository versions = mock(SkillVersionRepository.class);
     private final ReviewTaskRepository reviews = mock(ReviewTaskRepository.class);
     private final NamespaceRepository namespaces = mock(NamespaceRepository.class);
+    private final NamespaceMemberRepository members = mock(NamespaceMemberRepository.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
     private final SecurityScanService scanner = mock(SecurityScanService.class);
     private final SecurityAuditRepository audits = mock(SecurityAuditRepository.class);
-    private final SkillVisibilityService service = new SkillVisibilityService(org.mockito.Mockito.mock(com.iflytek.skillhub.domain.skill.SkillOwnerAccessPolicy.class), skills, versions, reviews, namespaces, events, scanner, audits);
+    // A real policy, not a mock: the ownership/role rule now lives in SkillOwnerAccessPolicy, so a
+    // mocked collaborator would make `ordinaryMemberCannotManageOthersSkill` assert nothing.
+    private final SkillVisibilityService service = new SkillVisibilityService(
+            new SkillOwnerAccessPolicy(namespaces, members), skills, versions, reviews, namespaces, events, scanner, audits);
     private Skill skill;
 
     @BeforeEach

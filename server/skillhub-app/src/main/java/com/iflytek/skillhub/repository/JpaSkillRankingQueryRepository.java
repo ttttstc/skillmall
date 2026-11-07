@@ -2,6 +2,7 @@ package com.iflytek.skillhub.repository;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
+import com.iflytek.skillhub.domain.skill.SkillDomain;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -39,6 +40,13 @@ public class JpaSkillRankingQueryRepository implements SkillRankingQueryReposito
                    OR (s.visibility = 'NAMESPACE_ONLY' AND s.namespace_id IN (:memberNamespaceIds)))
             """;
 
+    /**
+     * Category predicate, appended inside {@link #ELIGIBLE_SKILL_WHERE} rather than as a separate
+     * query so the public-distribution filter always applies first. Empty when no category is asked
+     * for, because an absent filter must widen the result rather than match nothing.
+     */
+    private static final String DOMAIN_FILTER = " AND s.domain = :domain";
+
     /** Deterministic tie-break shared by every ranking so identical counters stay stable. */
     private static final String STABLE_TIE_BREAK = "s.first_published_at DESC NULLS LAST, s.id DESC";
 
@@ -61,9 +69,11 @@ public class JpaSkillRankingQueryRepository implements SkillRankingQueryReposito
     public List<RankedSkill> findRecentlyPopular(Set<Long> memberNamespaceIds,
                                                  LocalDate windowStart,
                                                  LocalDate windowEndExclusive,
+                                                 SkillDomain domain,
                                                  int limit) {
         String sql = "SELECT s.id, " + WINDOW_SUM + " AS window_count, s.first_published_at "
                 + ELIGIBLE_SKILL_FROM + ELIGIBLE_SKILL_WHERE
+                + domainFilter(domain)
                 + " AND EXISTS (SELECT 1 FROM skill_download_daily d"
                 + " WHERE d.skill_id = s.id"
                 + " AND d.download_date >= :windowStart"
@@ -72,6 +82,7 @@ public class JpaSkillRankingQueryRepository implements SkillRankingQueryReposito
                 + " LIMIT :limit";
         Query query = entityManager.createNativeQuery(sql);
         bindScope(query, memberNamespaceIds);
+        bindDomain(query, domain);
         query.setParameter("windowStart", windowStart);
         query.setParameter("windowEndExclusive", windowEndExclusive);
         query.setParameter("limit", limit);
@@ -80,26 +91,30 @@ public class JpaSkillRankingQueryRepository implements SkillRankingQueryReposito
 
     @Override
     @Transactional(readOnly = true)
-    public List<RankedSkill> findMostDownloaded(Set<Long> memberNamespaceIds, int limit) {
+    public List<RankedSkill> findMostDownloaded(Set<Long> memberNamespaceIds, SkillDomain domain, int limit) {
         String sql = "SELECT s.id, NULL, s.first_published_at "
                 + ELIGIBLE_SKILL_FROM + ELIGIBLE_SKILL_WHERE
+                + domainFilter(domain)
                 + " ORDER BY s.download_count DESC, " + STABLE_TIE_BREAK
                 + " LIMIT :limit";
         Query query = entityManager.createNativeQuery(sql);
         bindScope(query, memberNamespaceIds);
+        bindDomain(query, domain);
         query.setParameter("limit", limit);
         return rankedSkills(query, false);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<RankedSkill> findNewestPublished(Set<Long> memberNamespaceIds, int limit) {
+    public List<RankedSkill> findNewestPublished(Set<Long> memberNamespaceIds, SkillDomain domain, int limit) {
         String sql = "SELECT s.id, NULL, s.first_published_at "
                 + ELIGIBLE_SKILL_FROM + ELIGIBLE_SKILL_WHERE
+                + domainFilter(domain)
                 + " ORDER BY s.first_published_at DESC NULLS LAST, s.id DESC"
                 + " LIMIT :limit";
         Query query = entityManager.createNativeQuery(sql);
         bindScope(query, memberNamespaceIds);
+        bindDomain(query, domain);
         query.setParameter("limit", limit);
         return rankedSkills(query, false);
     }
@@ -108,19 +123,32 @@ public class JpaSkillRankingQueryRepository implements SkillRankingQueryReposito
     @Transactional(readOnly = true)
     public List<RankedSkill> findRandomRecommendations(Set<Long> memberNamespaceIds,
                                                        List<Long> excludedSkillIds,
+                                                       SkillDomain domain,
                                                        int limit) {
         boolean hasExclusions = excludedSkillIds != null && !excludedSkillIds.isEmpty();
         String sql = "SELECT s.id, NULL, s.first_published_at "
                 + ELIGIBLE_SKILL_FROM + ELIGIBLE_SKILL_WHERE
+                + domainFilter(domain)
                 + (hasExclusions ? " AND s.id NOT IN (:excludedSkillIds)" : "")
                 + " ORDER BY random() LIMIT :limit";
         Query query = entityManager.createNativeQuery(sql);
         bindScope(query, memberNamespaceIds);
+        bindDomain(query, domain);
         query.setParameter("limit", limit);
         if (hasExclusions) {
             query.setParameter("excludedSkillIds", excludedSkillIds);
         }
         return rankedSkills(query, false);
+    }
+
+    private String domainFilter(SkillDomain domain) {
+        return domain == null ? "" : DOMAIN_FILTER;
+    }
+
+    private void bindDomain(Query query, SkillDomain domain) {
+        if (domain != null) {
+            query.setParameter("domain", domain.name());
+        }
     }
 
     private void bindScope(Query query, Set<Long> memberNamespaceIds) {

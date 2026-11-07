@@ -282,7 +282,17 @@
   },
   "home": {
     "domainTitle": "领域 Skills",
-    "domainUnavailable": "领域分类暂未开放",
+    "domainAll": "全部领域",
+    "domainFilterLabel": "按领域筛选",
+    "domainEmpty": "该领域暂无公开技能",
+    "domain": {
+      "DESIGN": "设计",
+      "DEVELOPMENT": "开发",
+      "TESTING": "测试",
+      "ENGINEERING": "工程",
+      "PROJECT_MANAGEMENT": "项目管理",
+      "OTHER": "其他"
+    },
     "subtitle": "技能注册中心",
     "description": "为开发者提供高效的技能管理、分发和协作平台",
     "browseSkills": "浏览技能",
@@ -2276,6 +2286,12 @@
     "copyright": "© 2026 SkillHub. Apache-2.0."
   },
   "publish": {
+    "domain": "技能分类",
+    "domainPlaceholder": "选择分类",
+    "domainHelp": "选择该技能所属的一级分类，默认归入“其他”。",
+    "domainHelpUpdate": "修改分类后可直接保存；仅调整分类无需重新上传安装包。",
+    "domainSaved": "分类已保存",
+    "saveDomain": "保存分类",
     "retryPackagePreview": "重试",
     "packageName": "包内名称",
     "displayName": "显示名称",
@@ -3384,3 +3400,6 @@
     "snapshotChanged": "该 commit 的内容与预览不一致，请重新读取仓库。"
   }
 }
+
+
+

@@ -1675,6 +1675,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/skills/{namespace}/{slug}/domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current first-level category of a Skill */
+        get: operations["getSkillDomain"];
+        put?: never;
+        /** Move a Skill to another first-level category */
+        post: operations["changeSkillDomain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{namespace}/{slug}/domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current first-level category of a Skill */
+        get: operations["getSkillDomain_1"];
+        put?: never;
+        /** Move a Skill to another first-level category */
+        post: operations["changeSkillDomain_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/skills/{namespace}/{slug}/confirm-publish": {
         parameters: {
             query?: never;
@@ -8201,6 +8237,10 @@ export interface components {
             /** Format: int64 */
             reportId?: number;
             status?: string;
+        };
+        ChangeDomainRequest: {
+            /** @enum {string} */
+            domain: "DESIGN" | "DEVELOPMENT" | "TESTING" | "ENGINEERING" | "PROJECT_MANAGEMENT" | "OTHER";
         };
         ConfirmPublishRequest: {
             version: string;
@@ -15304,6 +15344,106 @@ export interface operations {
             };
         };
     };
+    getSkillDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                namespace: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseResult"];
+                };
+            };
+        };
+    };
+    changeSkillDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                namespace: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeDomainRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseResult"];
+                };
+            };
+        };
+    };
+    getSkillDomain_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                namespace: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseResult"];
+                };
+            };
+        };
+    };
+    changeSkillDomain_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                namespace: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeDomainRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseResult"];
+                };
+            };
+        };
+    };
     confirmPublish: {
         parameters: {
             query?: never;
@@ -15726,6 +15866,7 @@ export interface operations {
                 expectedSlug?: string;
                 displayName?: string;
                 changelog?: string;
+                domain?: string;
             };
             header?: never;
             path: {
@@ -15763,6 +15904,7 @@ export interface operations {
                 expectedSlug?: string;
                 displayName?: string;
                 changelog?: string;
+                domain?: string;
             };
             header?: never;
             path: {
@@ -19681,6 +19823,8 @@ export interface operations {
                 q?: string;
                 namespace?: string;
                 label?: string[];
+                /** @description Optional first-level category: DESIGN, DEVELOPMENT, TESTING, ENGINEERING, PROJECT_MANAGEMENT, OTHER */
+                domain?: string;
                 /** @description Optional response expansions. Supported value: labels */
                 include?: string[];
                 sort?: string;
@@ -22418,6 +22562,8 @@ export interface operations {
                 size?: number;
                 /** @description Skill ids already on screen; they are skipped so the row rotates */
                 exclude?: number[];
+                /** @description Optional first-level category: DESIGN, DEVELOPMENT, TESTING, ENGINEERING, PROJECT_MANAGEMENT, OTHER */
+                domain?: string;
             };
             header?: never;
             path?: never;
@@ -22441,6 +22587,8 @@ export interface operations {
             query?: {
                 type?: "recent-popular" | "most-downloaded" | "newest";
                 size?: number;
+                /** @description Optional first-level category: DESIGN, DEVELOPMENT, TESTING, ENGINEERING, PROJECT_MANAGEMENT, OTHER */
+                domain?: string;
             };
             header?: never;
             path?: never;
