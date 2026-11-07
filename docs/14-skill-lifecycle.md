@@ -1,9 +1,9 @@
 # Skill Lifecycle
 
 Date: 2026-10-15
-Status: contract reference with documented implementation exception
+Status: contract reference
 
-本文件是 Skill 生命周期的统一导航入口；业务语义结合正式需求、设计与实现测试维护。发现冲突时应明确记录并确认预期，不能自动以代码或旧文档裁定。本次对齐依据见第 8 节；原始 latest 指针的 PRIVATE 例外见第 3.1 节。本页不定义 SuiteVersion 的状态模型。
+本文件是 Skill 生命周期的统一导航入口；业务语义结合正式需求、设计与实现测试维护。发现冲突时应明确记录并确认预期，不能自动以代码或旧文档裁定。本次对齐依据见第 8 节；原始 latest 指针的 PRIVATE 语义见第 3.1 节。本页不定义 SuiteVersion 的状态模型。
 
 ## 1. 设计原则
 
@@ -51,9 +51,9 @@ Status: contract reference with documented implementation exception
 
 - 公共 `latest`、搜索、兼容接口和默认公开分发必须解析到已发布版本，不能把未发布内容作为公开 latest。
 - 审核通过及自动发布时，`Skill.latestVersionId` 指向发布版本；无已发布版本时允许为空。
-- **已知实现例外：** PRIVATE 上传/重发会将原始 `latestVersionId` 指向新建 `UPLOADED` 版本；启用扫描后该版本可能处于 `SCANNING`。发布测试明确覆盖此指针更新，不能把这个字段单独当作已发布证明。
+- PRIVATE 上传/重发会把原始 `latestVersionId` 指向新建的 `UPLOADED` 版本；启用扫描后该版本可能处于 `SCANNING`。这是**已确认的预期语义**，权威表述见 §4.1 发布路径权威事实表，发布测试明确覆盖该指针更新；该字段本身不构成“已发布”证明。
 - 详情和 owner summary 的 projection 检查指针目标是否 `PUBLISHED`，否则查找已发布版本；批量公开摘要只检查原始指针目标是否可安装，不执行该回退。不能假设各读模型都以相同方式修复指针；`latest` 标签和消费者也不能无条件沿用原始指针。
-- 是否将 PRIVATE 持久化指针也统一为仅指向已发布版本，需要单独设计并检查消费者、历史数据及测试。本次只记录例外，不改变该行为，也不放宽公共 published 约束。
+- 上述 PRIVATE 指针行为是**已确认语义，不是待定例外**：不再为“把原始指针统一为只指向已发布版本”单独设计，也不再保留未决讨论。各消费方一律按本节的回退与授权规则处理，公共 published 约束不因此放宽。
 
 ### 3.2 Lifecycle Projection
 
@@ -69,7 +69,7 @@ Status: contract reference with documented implementation exception
 - 默认公开展示、安装与搜索以最新已发布版本为候选；显式版本或自定义标签可指向其他 `PUBLISHED` 版本，仍须通过入口授权与就绪检查
 - owner 详情页只有在不存在 `publishedVersion` 时，才允许 `headlineVersion = ownerPreviewVersion`
 - compat latest 和默认公开下载采用最新已发布版本语义；promotion 可选择来源 skill 的任一 `PUBLISHED` 版本，不要求等于 `publishedVersion`。原始指针与各入口解析差异见第 3.1 节
-- 管理者的授权预览下载与公开分发不同：owner 或 namespace ADMIN/OWNER 可下载 `UPLOADED` / `PENDING_REVIEW`，当前 owner 另可受控下载自己的 `DRAFT` / `REJECTED`，仍须通过 Skill 可见性、文件就绪及其他安全检查；不因此放行 `SCANNING` / `SCAN_FAILED` / `YANKED` 或公开分发未发布版本。常规 `downloadLatest` 读取原始指针后也使用相同版本授权判断，因此 PRIVATE 指针例外下，默认下载不一定是已发布版本；该行为不授予公众访问权。
+- 管理者的授权预览下载与公开分发不同：owner 或 namespace ADMIN/OWNER 可下载 `UPLOADED` / `PENDING_REVIEW`，当前 owner 另可受控下载自己的 `DRAFT` / `REJECTED`，仍须通过 Skill 可见性、文件就绪及其他安全检查；不因此放行 `SCANNING` / `SCAN_FAILED` / `YANKED` 或公开分发未发布版本。常规 `downloadLatest` 读取原始指针后也使用相同版本授权判断，因此在上述 PRIVATE 指针语义下，默认下载不一定是已发布版本；该行为不授予公众访问权。
 - 已发布版本可安装还要求 `downloadReady=true`、`yankedAt=null`；下载要求容器为 `ACTIVE`，元数据可读不等于可下载
 
 ## 4. 代码实际链路
@@ -86,6 +86,8 @@ Status: contract reference with documented implementation exception
 | 交互式上传 `PRIVATE` | `UPLOADED`（启用扫描时扫描期间可为 `SCANNING`，结束后回到 `UPLOADED`） | **立即**变为 `PRIVATE` | **立即**生效 | 否，仅需在详情页确认发布 |
 | 扩范围申请（如 `PRIVATE`→`PUBLIC`） | 不变 | 批准后才变 | 不变 | 是 |
 | GitHub 同步 / Suite Bundle 成员 | `PENDING_REVIEW` | 不变 | 待批准 | 是 |
+
+> **表注（“GitHub 同步 / Suite Bundle 成员”行的“标题/摘要”栏）：** 该行的“待批准”严格只指**更新既有技能**。技能**首次**进入内部审核队列时，标题/摘要会先行写入容器：写入条件是 `autoPublish || visibility == PRIVATE || skill.getLatestVersionId() == null`（[SkillPublishService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)），容器上还没有任何已发布版本指针时即命中第三项，因为此时没有旧标题需要保护。这种情况下待审版本的 `displayName` / `summary` 在批准前已生效，但版本状态仍是 `PENDING_REVIEW`，发布指针不动（仍为空），公开侧不会因此分发该版本。指针回到空值的其他情形（例如已发布版本全部 yank 后，见 §4.8）同样按此条件处理。
 
 三条最容易误解的地方：`PRIVATE` 上传在同一个事务内就把容器可见性切为 `PRIVATE`，并把原始 `latestVersionId` 指向这个尚未发布的版本，所以公开侧**立即**不再提供旧版本，不存在“旧版本继续可见直到审核批准”的过渡期。标题与摘要对 `PRIVATE` 上传同样立即生效，不等待确认发布。`SCANNING` 只是版本生命周期状态，表示扫描正在进行，既不是可见性，也不表示已发布或未发布；`PUBLIC` / `NAMESPACE_ONLY` 直发时版本已经是 `PUBLISHED`，扫描不会把它降为 `SCANNING`。
 

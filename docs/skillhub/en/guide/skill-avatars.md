@@ -9,7 +9,7 @@ Sign in to the same registry and identify the target skill and account. Skill ow
 | Operation | Responsible actor | Entry point and boundary |
 | --- | --- | --- |
 | Add, replace, or remove an avatar | Skill owner | Publishing page or My Skills → Update; avatar-only updates do not create versions |
-| Review an avatar application | Account with review permission in the target namespace | Existing skill review queue; package and avatar changes submitted together receive a joint decision |
+| Review an avatar application | Account with review permission in the target namespace | Existing skill review queue; package and avatar changes share one decision only when the upload still produces a version awaiting review (GitHub sync, Suite Bundle members) |
 | Change machine and manual switches | Super administrator (`SUPER_ADMIN`) | `/dashboard/admin/system-config`; credentials and provider selection are not configured here |
 | Integrate or switch a provider | Operator with deployment permission | Select a provider and inject private credentials through deployment configuration |
 
@@ -22,11 +22,11 @@ Team namespace Owners and Admins review their namespace; platform skill administ
 3. After submission, inspect the candidate image and its machine/manual states in My Skills or the update page. Until activation, public detail and lists retain the previous avatar or initial letter; that does not indicate a lost submission.
 4. After rejection, read the reason, revise the image, and resubmit. A new application supersedes the previous pending candidate; old review results cannot overwrite it. Application records remain available.
 
-Updates retain the existing image by default. Avatar-only removal restores the initial letter after successful submission; removal submitted with a package waits for that application's approval. Cancelling or failing submission leaves the active image unchanged. There is no separate avatar-management entry point.
+Updates retain the existing image by default. Avatar-only removal restores the initial letter after successful submission; removal submitted with a package waits for that application's approval only when the upload still produces a version awaiting review, and takes effect right after a successful submission on direct publish and private upload. Cancelling or failing submission leaves the active image unchanged. There is no separate avatar-management entry point.
 
 ## Moderation policy and application relationship
 
-An avatar submitted with a package has its own application. After the first-phase change a direct publish creates no content review task, so the avatar waits for its own avatar-only application and never holds back the skill publication. An avatar-only change requiring a human decision enters the same avatar queue, marked as an avatar change, without creating a skill version.
+An avatar submitted with a package shares the content review application only when that upload still produces a version awaiting review (GitHub sync, Suite Bundle members). After the first-phase change a direct publish creates no content review task, so the avatar waits for its own avatar-only application and never holds back the skill publication. An avatar-only change requiring a human decision enters the same avatar queue, marked as an avatar change, without creating a skill version.
 
 Super administrators manage two switches in System Configuration. Machine moderation defaults off; manual moderation defaults on. Provider credentials are not configured or displayed there. The following matrix applies to avatar-only changes for non-private skills.
 
@@ -37,7 +37,7 @@ Super administrators manage two switches in System Configuration. Machine modera
 | On | Off | Machine pass; blocked or error results do not activate |
 | On | On | Machine processing followed by a manual decision |
 
-PRIVATE avatars are owner-readable and used directly without these checks. Expanding visibility requires moderation for the target audience. An avatar submitted with a package waits for the original skill application's approval regardless of avatar switches.
+PRIVATE avatars are owner-readable and used directly without these checks. Expanding visibility requires moderation for the target audience. An avatar submitted with a package shares that application only when the upload still produces a version awaiting review (GitHub sync, Suite Bundle members); direct publish and private upload create no content review application, so the avatar follows its own policy.
 
 ## Machine results and human decisions
 
