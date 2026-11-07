@@ -114,6 +114,70 @@ class SkillPublishControllerTest {
         verify(skillHubMetrics).incrementSkillPublish("global", "PENDING_REVIEW");
     }
 
+    /**
+     * The change note is only useful if the multipart form field reaches the domain publish
+     * call, so this drives the real application service through the controller.
+     */
+    @Test
+    void publish_forwardsTheAuthorChangeNoteToTheNewVersion() throws Exception {
+        SkillVersion version = new SkillVersion(12L, "1.0.0", "usr_1");
+        version.setStatus(SkillVersionStatus.PENDING_REVIEW);
+        version.setFileCount(1);
+        version.setTotalSize(128L);
+        ReflectionTestUtils.setField(version, "id", 34L);
+
+        given(skillPublishService.publishFromEntries(
+            eq("global"),
+            ArgumentMatchers.<List<PackageEntry>>any(),
+            eq("usr_1"),
+            eq(SkillVisibility.PUBLIC),
+            eq(Set.of("SUPER_ADMIN")),
+            eq(false),
+            ArgumentMatchers.<String>isNull(),
+            eq("补充安装说明")))
+            .willReturn(new SkillPublishService.PublishResult(12L, "demo-skill", version));
+
+        PlatformPrincipal principal = new PlatformPrincipal(
+            "usr_1",
+            "publisher",
+            "publisher@example.com",
+            "",
+            "local",
+            Set.of("SUPER_ADMIN")
+        );
+        var auth = new UsernamePasswordAuthenticationToken(
+            principal,
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))
+        );
+
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "skill.zip",
+            "application/zip",
+            buildZipBytes()
+        );
+
+        mockMvc.perform(multipart("/api/v1/skills/global/publish")
+                .file(file)
+                .param("visibility", "PUBLIC")
+                .param("changelog", "补充安装说明")
+                .with(authentication(auth))
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.slug").value("demo-skill"));
+
+        verify(skillPublishService).publishFromEntries(
+            eq("global"),
+            ArgumentMatchers.<List<PackageEntry>>any(),
+            eq("usr_1"),
+            eq(SkillVisibility.PUBLIC),
+            eq(Set.of("SUPER_ADMIN")),
+            eq(false),
+            ArgumentMatchers.<String>isNull(),
+            eq("补充安装说明"));
+    }
+
     @Test
     void publish_passesWarningConfirmationFlag() throws Exception {
         SkillVersion version = new SkillVersion(12L, "1.0.0", "usr_1");
