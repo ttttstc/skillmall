@@ -76,6 +76,11 @@ public class RouteSecurityPolicyRegistry {
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skills"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/avatar-uploads"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/package-preview"),
+            // GitCode import is an authenticated write: anonymous callers must get 401 before any
+            // provider request or publication is attempted.
+            RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/import/gitcode/resolve"),
+            RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/import/gitcode/publish"),
+            RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/skills/import/gitcode/versions/*"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/skills/avatar-uploads/*/image"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skills/*/*"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skills/*/*/avatar"),
@@ -184,6 +189,11 @@ public class RouteSecurityPolicyRegistry {
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/v1/skills"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/v1/skills/package-preview", "skill:publish"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/package-preview", "skill:publish"),
+            // Importing publishes a new version, so both the preview and the publication need the
+            // publish scope; reading provenance needs the read scope.
+            ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/import/gitcode/resolve", "skill:publish"),
+            ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/import/gitcode/publish", "skill:publish"),
+            ApiTokenPolicy.require(HttpMethod.GET, "/api/web/skills/import/gitcode/versions/*", "skill:read"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/v1/skills/**"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/skills"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/skills/**"),

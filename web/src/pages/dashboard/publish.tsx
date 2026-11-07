@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { UploadZone } from '@/features/publish/upload-zone'
+import { GitCodeImportPanel } from '@/features/publish/gitcode-import'
 import { packageFolderAsZip } from '@/features/publish/folder-zip'
 import {
   extractPrecheckWarnings,
@@ -223,6 +224,8 @@ export function PublishPage() {
   return (
     <div className="mx-auto max-w-[1704px] space-y-8 animate-fade-up">
       <DashboardPageHeader title={t(isUpdate ? 'publish.updateTitle' : 'publish.title')} subtitle={t(isUpdate ? 'publish.updateSubtitle' : 'publish.subtitle')} />
+
+      <GitCodeImportPanel />
 
       {ownerReadOnly && <p role="status" className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">{t('mySkills.ownerReadOnly')}</p>}
       <Card className="space-y-8 border-0 bg-transparent p-0 shadow-none">
