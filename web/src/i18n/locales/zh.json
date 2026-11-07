@@ -2252,7 +2252,7 @@
     "packageName": "包内名称",
     "displayName": "显示名称",
     "displayNamePlaceholder": "例如：会议纪要助手",
-    "displayNameHelp": "支持中文，最多 200 个字符。默认读取包内名称；修改后随本次版本审核，不改变技能标识或包内文件。留空则使用包内名称。",
+    "displayNameHelp": "支持中文，最多 200 个字符。默认读取包内名称；直发时立即生效，仅仍走审核的路径需审核后生效，且不改变技能标识或包内文件。留空则使用包内名称。",
     "readingPackage": "正在读取技能包信息…",
     "examplesReady": "已识别 {{count}} 条使用案例（包含全部语种）。",
     "examplesNone": "未提供使用案例，可正常发布和使用。",

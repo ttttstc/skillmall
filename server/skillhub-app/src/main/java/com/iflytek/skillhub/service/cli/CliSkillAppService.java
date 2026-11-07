@@ -181,6 +181,15 @@ public class CliSkillAppService {
         );
     }
 
+    /**
+     * Publishes one package and records its audit entry in a single transaction.
+     *
+     * <p>{@code SkillPublishService#publishFromEntries} uses the default {@code REQUIRED}
+     * propagation, so this method's transaction is the one that commits both the version and the
+     * audit row. Without it the version would already be committed when the audit write runs, and
+     * a failing audit would leave a published version with no trace behind it.
+     */
+    @org.springframework.transaction.annotation.Transactional
     public CliPublishResponse publish(String namespace, List<PackageEntry> entries, String publisherId,
             SkillVisibility visibility, Set<String> platformRoles, AuditRequestContext auditContext) {
         SkillPublishService.PublishResult result = skillPublishService.publishFromEntries(
@@ -210,7 +219,8 @@ public class CliSkillAppService {
                 namespace,
                 result.slug(),
                 result.version().getVersion(),
-                visibility.name()
+                visibility.name(),
+                result.version().getStatus() == null ? null : result.version().getStatus().name()
         );
     }
 

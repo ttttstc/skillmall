@@ -137,6 +137,11 @@ public class CliSkillController extends BaseApiController {
                 namespace, entries, principal.userId(),
                 SkillVisibility.valueOf((visibility != null ? visibility : "PUBLIC").toUpperCase()),
                 principal.platformRoles(), AuditRequestContext.from(request));
-        return ok("response.success.published", result);
+        // A direct publish and a private upload are different outcomes; the envelope message must
+        // not claim "published" for a version that still waits for confirmation.
+        String messageKey = "PUBLISHED".equals(result.status())
+                ? "response.success.published"
+                : "response.success.uploaded";
+        return ok(messageKey, result);
     }
 }
