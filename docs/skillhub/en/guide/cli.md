@@ -407,7 +407,7 @@ Visibility options:
 - `namespace-only` — Visible to namespace members only
 - `private` — Visible to yourself only
 
-After the server accepts the submission, the CLI shows its current status and detail URL. After the first-phase change an ordinary `public` / `namespace-only` submission returns `PUBLISHED` and is searchable, viewable and downloadable immediately, while `private` returns `UPLOADED` and needs confirmation on the detail page. `SCANNING` only means a scan is still running; it never holds back a published version.
+After the server accepts the submission, the CLI shows its current status and detail URL. After the first-phase change an ordinary `public` / `namespace-only` submission returns `PUBLISHED` and is searchable, viewable and downloadable immediately, while `private` returns `UPLOADED` — or `SCANNING` while security scanning runs when it is enabled, then back to `UPLOADED` — and still needs confirmation on the detail page. The `status` field is a **version lifecycle state**, not visibility: visibility comes from the requested `visibility`, and a `private` submission has already switched the container to private by the time it returns. `SCANNING` only means a scan is still running; it never holds back a published version.
 
 ## Self-Update
 

@@ -42,7 +42,7 @@ The object definitions are grounded in the [Skill Suite member model](https://gi
 | Upload several local skills and assemble a suite | Suite Bundle | Import a definition, preview differences and create member versions; follow [Bundle import](./guide/suite-bundle.html) |
 | Manage visibility, membership and review | Namespace and governance workflows | Platform roles do not imply namespace roles; start with the prerequisites in [namespace management](./guide/namespace.html) |
 
-Installing and using skills does not require deploying a registry or preparing a Suite Bundle first. Publication follows the applicable preparation, submission and publication path: a Public or Namespace Only upload publishes directly, while a Private upload waits for publication confirmation, and scanning is optional defence in depth rather than a prerequisite. The entry point is [publishing and version management](./guide/skill-publish.html).
+Installing and using skills does not require deploying a registry or preparing a Suite Bundle first. Publication follows the applicable preparation, submission and publication path: a Public or Namespace Only upload publishes directly, while a Private upload waits for publication confirmation, and scanning is optional defence in depth rather than a prerequisite. The [authoritative lifecycle table](https://github.com/iflytek/skillhub/blob/main/docs/14-skill-lifecycle.md) is the single reference for version states, container visibility and review ownership on each path; this page does not restate them. The entry point is [publishing and version management](./guide/skill-publish.html).
 
 ## Deployment forms and technical components
 

@@ -25,7 +25,7 @@ Resolve versions by an exact version, tag, or fingerprint; `^` / `~` ranges are 
 
 ### Updating an Existing Skill
 
-Use Update in My Skills or publish again to the same namespace and skill name. Verify the coordinate: changing `name` may create a different skill. Published versions cannot be overwritten; use a new version for normal updates. A Public or Namespace Only upload replaces the published version immediately; only an update that still goes through review (Private confirmation, GitHub sync, Suite member) leaves the previous published version visible until it is approved. Afterwards, check the displayed version, title and summary.
+Use Update in My Skills or publish again to the same namespace and skill name. Verify the coordinate: changing `name` may create a different skill. Published versions cannot be overwritten; use a new version for normal updates. A Public or Namespace Only upload replaces the published version immediately. A Private upload switches the container to private right away, so the public side no longer serves the previous published version, and its title and summary update immediately as well; that version then needs its publication confirmed on the detail page. Only GitHub sync and Suite Bundle members enter human review and leave the previous published version in place until approved; refer to the [authoritative lifecycle table](https://github.com/iflytek/skillhub/blob/main/docs/14-skill-lifecycle.md) for the full rules. Afterwards, check the displayed version, title and summary.
 
 Existing local installations do not update automatically. Consumers explicitly upgrade through the CLI. Suite members remain pinned until a new Suite version is published.
 
@@ -77,15 +77,16 @@ metadata:
 
 `name` still determines the slug, installation coordinate, and links. The display name
 must be a string of at most 200 characters after trimming surrounding whitespace.
-Missing, null, or blank display names fall back to `name`. A direct publish applies the title
-immediately; only a version that still goes through review (Private confirmation, GitHub sync,
-Suite member) leaves an existing published title in place until it is approved.
+Missing, null, or blank display names fall back to `name`. A direct publish and a Private upload
+both apply the title immediately (the Private version then waits for publication confirmation on
+the detail page); only GitHub sync and Suite Bundle members leave an existing published title in
+place until approved.
 No database migration is needed; existing skills can keep their `name` and publish a new
 version with this optional metadata.
 
-On the web publish/update form, upload a package and edit **Display name**. The package's `metadata.display-name` (or `name`) pre-fills the field. Your edits take precedence and survive selecting another package; leave it blank to use the package title. The name is limited to 200 characters; a direct publish applies it immediately, and only the paths that still review (Private confirmation, GitHub sync, Suite member) wait for approval. Avatar-only updates cannot rename a skill.
+On the web publish/update form, upload a package and edit **Display name**. The package's `metadata.display-name` (or `name`) pre-fills the field. Your edits take precedence and survive selecting another package; leave it blank to use the package title. The name is limited to 200 characters; a direct publish and a Private upload apply it immediately, and only GitHub sync and Suite Bundle members wait for approval. Avatar-only updates cannot rename a skill.
 
-**My Skills** shows this version's title and summary with one main status and a plain-text comparison to the published version. Open the card to preview that update. When the update is pending review, public readers still see the published version; a direct publish is already public. Details always show the copyable `@namespace/slug`; renaming does not change links or install identifiers.
+**My Skills** shows this version's title and summary with one main status and a plain-text comparison to the published version. Open the card to preview that update. When an internal review queue holds a pending version (GitHub sync, Suite Bundle members), public readers still see the published version; a direct publish is already public, and a Private upload has already switched the container to private. Details always show the copyable `@namespace/slug`; renaming does not change links or install identifiers.
 
 `skillhub.example.com`, `YOUR_API_TOKEN`, and `my-team` are placeholders. Replace them with the instance, caller credential, and target namespace; never commit a real token.
 

@@ -74,17 +74,23 @@ Status: contract reference with documented implementation exception
 
 ## 4. 代码实际链路
 
-### 4.1 首次上传
+### 4.1 发布路径、可见性与审核归属
 
 > **首期产品变更（GitHub issue #2）：允许直接公开发布。** 本地上传的 `PUBLIC` / `NAMESPACE_ONLY` 技能包通过包校验即直接发布，不再要求安全扫描器启用，也不再等待人工审核；扫描退化为可选的纵深防御，其结果只记录、不阻断、不回退已发布版本。GitHub 同步与 Suite Bundle 成员仍走各自独立的审核队列，`PRIVATE` 上传仍需显式确认发布。审核能力本身保留，用于上述内部队列、扩大可见范围和内容治理，不再是公开发布的前置条件。
 
-| 上传路径 | 扫描与后续状态 | 审核任务 / latest |
-|---|---|---|
-| 普通 `PUBLIC` / `NAMESPACE_ONLY`（Web / CLI / 兼容入口） | 直接 `PUBLISHED`，不要求扫描器启用；启用扫描时仍触发扫描，但不降为 `SCANNING` | 不创建审核任务；更新发布指针 |
-| 普通 `PRIVATE` | 启用扫描时 `SCANNING -> UPLOADED`；未启用时直接 `UPLOADED` | 不自动创建审核任务；原始指针例外见 3.1 |
-| 提交人持有 `SUPER_ADMIN` 的直发 | 直接 `PUBLISHED`；启用扫描时仍扫描，但不降为 `SCANNING` | 不创建审核任务；额外跳过目标 namespace 成员检查 |
-| 内部路径：GitHub 同步、Suite Bundle 成员 | 创建待审版本；启用扫描时先 `SCANNING`，完成后回到 `PENDING_REVIEW` | 创建对应 `PENDING` review task；不移动 published 指针 |
+**发布路径权威事实表。** 下表是本仓库对发布路径的唯一权威表述；其他文档只解释或指向它，不得另立一份生命周期步骤。
 
+| 路径 | 版本状态 | 容器可见性 | 标题/摘要 | 人工审核 |
+|---|---|---|---|---|
+| 交互式上传 `PUBLIC` / `NAMESPACE_ONLY` | 直接 `PUBLISHED` | 立即应用 | 立即生效 | 否 |
+| 交互式上传 `PRIVATE` | `UPLOADED`（启用扫描时扫描期间可为 `SCANNING`，结束后回到 `UPLOADED`） | **立即**变为 `PRIVATE` | **立即**生效 | 否，仅需在详情页确认发布 |
+| 扩范围申请（如 `PRIVATE`→`PUBLIC`） | 不变 | 批准后才变 | 不变 | 是 |
+| GitHub 同步 / Suite Bundle 成员 | `PENDING_REVIEW` | 不变 | 待批准 | 是 |
+
+三条最容易误解的地方：`PRIVATE` 上传在同一个事务内就把容器可见性切为 `PRIVATE`，并把原始 `latestVersionId` 指向这个尚未发布的版本，所以公开侧**立即**不再提供旧版本，不存在“旧版本继续可见直到审核批准”的过渡期。标题与摘要对 `PRIVATE` 上传同样立即生效，不等待确认发布。`SCANNING` 只是版本生命周期状态，表示扫描正在进行，既不是可见性，也不表示已发布或未发布；`PUBLIC` / `NAMESPACE_ONLY` 直发时版本已经是 `PUBLISHED`，扫描不会把它降为 `SCANNING`。
+
+- 上表按**路径**分类，不按权限分类。持有平台 `SUPER_ADMIN` 的交互式上传属于权限旁路：`autoPublish` 为真，即使选择 `PRIVATE` 也直接置为 `PUBLISHED`（容器可见性仍写为 `PRIVATE`），并额外跳过目标 namespace 成员检查。
+- 只有**扩范围申请**（§4.9）会在 `SkillVisibilityService` 中创建审核任务；交互式上传路径从不创建审核任务，`PRIVATE` 也不需要审核，只需确认发布。
 - 扫描执行失败可进入 `SCAN_FAILED`。扫描完成不代表无风险；风险发现与警告确认仍是独立检查，但都不再是公开发布的门槛。过期扫描结果不能完成新一轮扫描。
 - 直发在同一事务内同时应用**容器可见性**：交互式上传把请求的 `visibility` 写到 Skill 容器并移动发布指针，因此 `PRIVATE` 技能被以 `PUBLIC` 重新上传后立即公开，不再等待 §4.9 的范围审核。只有带 `PUBLISHED` 版本的容器才可能被匿名发现。
 - 头像受众复核改为**事后异步**：直发不再产生内容审核任务，头像候选按其自身审核策略处理；技能发布后由 [SkillAvatarScopeReviewListener](../server/skillhub-app/src/main/java/com/iflytek/skillhub/listener/SkillAvatarScopeReviewListener.java) 监听 `SkillPublishedEvent` 复核受众。§4.9 的“扩大范围申请”只适用于**不发布新版本**、单独调整可见范围的入口，不是扩大受众的唯一路径。
