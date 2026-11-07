@@ -87,6 +87,10 @@ Check the coordinate, Agent and `installDir`, then open that directory's `SKILL.
 
 Output definitions are in the [install command](https://github.com/iflytek/skillhub/blob/main/cli/src/commands/install.ts) and [list command](https://github.com/iflytek/skillhub/blob/main/cli/src/commands/list.ts).
 
+### Manual install (without the CLI)
+
+When the CLI is unavailable, download the complete archive of the selected version from the skill detail page's installation tab, then place the extracted skill directory under your agent's skills directory, named after the skill slug. A manual extraction does not write the CLI's `.skillhub/metadata.json`, so a later CLI install into the same directory is refused instead of overwriting those files. The actual directory per Agent is listed in the install path table of the [CLI reference](./guide/cli.html).
+
 ## 4. Verify Agent discovery and execute a task
 
 Open that project in the target Agent, then reload skills or create a session according to that product's loading mechanism. Check that the target name appears in the Agent's available skills, then provide a concrete task, input and expected artifact as required by the skill. The invocation name depends on the actual `name` in `SKILL.md` and the Agent's discovery result.

@@ -87,6 +87,10 @@ Installed team/example-skill -> /work/project/.codex/skills/example-skill (codex
 
 输出依据见[安装命令](https://github.com/iflytek/skillhub/blob/main/cli/src/commands/install.ts)与[安装清单命令](https://github.com/iflytek/skillhub/blob/main/cli/src/commands/list.ts)。
 
+### 手动安装（不使用 CLI）
+
+CLI 不可用时，在技能详情页的「安装说明」下载所选版本的完整压缩包，解压后把技能目录放到 Agent 的 skills 目录下，目录名必须是技能标识。手动解压不会写入 CLI 的 `.skillhub/metadata.json`；之后用 CLI 安装到同一目录会被拒绝，而不是覆盖这些文件。各 Agent 的实际目录见[CLI 参考](./guide/cli.html)中的「安装路径」表。
+
 ## 4. 验证 Agent 发现并执行任务
 
 在目标 Agent 中打开上述项目，按该产品的加载机制重载技能或新建会话。核对 Agent 可用技能中出现目标名称，再按技能说明提供一次具体任务、输入与预期产物。调用名称以实际 `SKILL.md` 的 `name` 及 Agent 识别结果为准。
