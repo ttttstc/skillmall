@@ -162,22 +162,21 @@ class SkillPublishServiceTest {
                 Set.of()
         );
 
-        // Assert
+        // Assert — an interactive PUBLIC upload publishes directly (product change, issue #2)
         assertNotNull(result);
         assertEquals(1L, result.skillId());
         assertEquals("test-skill", result.slug());
         assertEquals("1.0.0", result.version().getVersion());
-        assertEquals(SkillVersionStatus.PENDING_REVIEW, result.version().getStatus());
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
         verify(skillFileRepository).saveAll(anyList());
         verify(objectStorageService, atLeastOnce()).putObject(anyString(), any(), anyLong(), anyString());
-        verify(reviewTaskRepository).save(any(ReviewTask.class));
+        verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
-        ReviewSubmittedEvent submittedEvent = (ReviewSubmittedEvent) eventCaptor.getValue();
-        assertEquals(1L, submittedEvent.skillId());
-        assertEquals(10L, submittedEvent.versionId());
-        assertEquals(publisherId, submittedEvent.submitterId());
-        assertEquals(1L, submittedEvent.namespaceId());
+        SkillPublishedEvent publishedEvent = (SkillPublishedEvent) eventCaptor.getValue();
+        assertEquals(1L, publishedEvent.skillId());
+        assertEquals(10L, publishedEvent.versionId());
+        assertEquals(publisherId, publishedEvent.publisherId());
     }
 
     @Test
@@ -421,7 +420,7 @@ class SkillPublishServiceTest {
         );
 
         assertEquals("1.0.0", result.version().getVersion());
-        assertEquals(SkillVersionStatus.PENDING_REVIEW, result.version().getStatus());
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
         verify(skillVersionRepository, atLeastOnce()).save(any(SkillVersion.class));
     }
 
@@ -474,19 +473,15 @@ class SkillPublishServiceTest {
         );
 
         assertEquals("1.0.0", result.version().getVersion());
-        assertEquals(SkillVersionStatus.PENDING_REVIEW, result.version().getStatus());
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
         verify(reviewTaskRepository, never()).deleteBySkillVersionIdIn(List.of(8L));
         verify(skillFileRepository).deleteByVersionId(8L);
         verify(skillVersionRepository).delete(rejectedVersion);
         verify(skillVersionRepository, times(2)).flush();
         verify(objectStorageService).deleteObjects(List.of("skills/1/8/SKILL.md", "packages/1/8/bundle.zip"));
 
-        ArgumentCaptor<ReviewTask> reviewTaskCaptor = ArgumentCaptor.forClass(ReviewTask.class);
-        verify(reviewTaskRepository).save(reviewTaskCaptor.capture());
-        assertEquals(result.version().getId(), reviewTaskCaptor.getValue().getSkillVersionId());
-        assertEquals(skill.getId(), reviewTaskCaptor.getValue().getSkillId());
-        assertEquals("1.0.0", reviewTaskCaptor.getValue().getSkillVersion());
-        assertEquals(publisherId, reviewTaskCaptor.getValue().getSubmittedBy());
+        // A direct publish no longer creates a review task for the replacing version.
+        verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
     }
 
     @Test
@@ -704,7 +699,8 @@ class SkillPublishServiceTest {
                 Set.of()
         );
 
-        assertNull(skill.getLatestVersionId());
+        // The replaced DRAFT version was the latest pointer; the direct publish re-points it.
+        assertEquals(10L, skill.getLatestVersionId());
         InOrder inOrder = inOrder(skillRepository, skillVersionRepository);
         inOrder.verify(skillRepository).save(skill);
         inOrder.verify(skillRepository).flush();
@@ -757,7 +753,7 @@ class SkillPublishServiceTest {
 
         assertEquals("smoke-skill-two", result.slug());
         verify(skillRepository).findByNamespaceIdAndSlug(1L, "smoke-skill-two");
-        verify(reviewTaskRepository).save(any(ReviewTask.class));
+        verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
     }
 
     @Test
@@ -1013,13 +1009,13 @@ class SkillPublishServiceTest {
         );
 
         assertEquals(longDescription, skill.getSummary());
-        assertEquals(SkillVersionStatus.PENDING_REVIEW, result.version().getStatus());
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
         verify(prePublishValidator).validate(any());
         verify(skillRepository).save(skill);
     }
 
     @Test
-    void testRereleasePublishedVersion_ShouldCloneFilesAndSubmitForReview() throws Exception {
+    void testRereleasePublishedVersion_ShouldCloneFilesAndPublishDirectly() throws Exception {
         String publisherId = "user-100";
         Skill skill = new Skill(1L, "demo-skill", publisherId, SkillVisibility.PUBLIC);
         setId(skill, 11L);
@@ -1085,11 +1081,10 @@ class SkillPublishServiceTest {
 
         assertEquals("1.2.4", result.version().getVersion());
         assertEquals("原网页标题", objectMapper.readTree(result.version().getParsedMetadataJson()).path("displayNameOverride").asText());
-        // Rerelease for PUBLIC skill should go to PENDING_REVIEW (respecting visibility rules)
-        assertEquals(SkillVersionStatus.PENDING_REVIEW, result.version().getStatus());
-        // Review task should be created for PUBLIC skill
-        verify(reviewTaskRepository).save(any());
-        verify(eventPublisher, never()).publishEvent(any(SkillPublishedEvent.class));
+        // Rerelease of a PUBLIC skill publishes directly, like an interactive upload (issue #2)
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
+        verify(reviewTaskRepository, never()).save(any());
+        verify(eventPublisher).publishEvent(any(SkillPublishedEvent.class));
         verify(skillPackageValidator).validate(argThat(entries ->
                 entries.size() == 2
                         && entries.stream().anyMatch(entry ->
@@ -1284,7 +1279,7 @@ class SkillPublishServiceTest {
         );
 
         assertEquals("1.2.4", result.version().getVersion());
-        assertEquals(SkillVersionStatus.PENDING_REVIEW, result.version().getStatus());
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
         verify(skillVersionRepository, atLeastOnce()).save(any(SkillVersion.class));
     }
 
@@ -1449,7 +1444,7 @@ class SkillPublishServiceTest {
     }
 
     @Test
-    void testPublishFromEntries_ShouldDeferVisibilityChangeUntilApproval() throws Exception {
+    void testPublishFromEntries_ShouldApplyVisibilityImmediatelyOnDirectPublish() throws Exception {
         // Arrange
         String namespaceSlug = "test-ns";
         String publisherId = "user-100";
@@ -1484,7 +1479,7 @@ class SkillPublishServiceTest {
         });
         when(skillRepository.save(any())).thenReturn(skill);
 
-        // Act — submit with PUBLIC visibility on an existing PRIVATE skill
+        // Act — publish with PUBLIC visibility on an existing PRIVATE skill
         SkillPublishService.PublishResult result = service.publishFromEntries(
                 namespaceSlug,
                 entries,
@@ -1493,9 +1488,11 @@ class SkillPublishServiceTest {
                 Set.of()
         );
 
-        // Assert — current published visibility stays unchanged until approval
-        assertEquals(SkillVisibility.PRIVATE, skill.getVisibility());
+        // Assert — a direct publish widens the container scope immediately; there is no approval step
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
+        assertEquals(SkillVisibility.PUBLIC, skill.getVisibility());
         assertEquals(SkillVisibility.PUBLIC, result.version().getRequestedVisibility());
+        verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
     }
 
     @Test
@@ -1505,49 +1502,46 @@ class SkillPublishServiceTest {
     }
 
     @Test
-    void testPublishFromEntries_PublicWhenScannerDisabled_ShouldRejectBeforeSideEffects() throws Exception {
+    void testPublishFromEntries_PublicWhenScannerDisabled_ShouldPublishDirectly() throws Exception {
         String namespaceSlug = "test-ns";
         String publisherId = "user-100";
         PublishFixture fixture = stubValidPublishInputs(namespaceSlug, publisherId, "test-skill", "test-skill", "1.0.0", true);
         when(securityScanService.isEnabled()).thenReturn(false);
 
-        DomainBadRequestException exception = assertThrows(DomainBadRequestException.class, () -> service.publishFromEntries(
+        SkillPublishService.PublishResult result = service.publishFromEntries(
                 namespaceSlug,
                 fixture.entries(),
                 publisherId,
                 SkillVisibility.PUBLIC,
                 Set.of()
-        ));
+        );
 
-        assertEquals("error.security.scanner.required", exception.messageCode());
-        verify(skillRepository, never()).findByNamespaceIdAndSlug(anyLong(), anyString());
-        verify(skillRepository, never()).save(any(Skill.class));
-        verify(skillVersionRepository, never()).save(any(SkillVersion.class));
-        verify(objectStorageService, never()).putObject(anyString(), any(), anyLong(), anyString());
+        // Product change (issue #2): no scanner requirement, no review task, PUBLISHED immediately.
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
         verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
+        verify(securityScanService, never()).triggerScan(anyLong(), anyList(), anyString());
+        verify(eventPublisher).publishEvent(any(SkillPublishedEvent.class));
     }
 
     @Test
-    void testPublishFromEntries_NamespaceOnlyWhenScannerDisabled_ShouldRejectBeforeSideEffects() throws Exception {
+    void testPublishFromEntries_NamespaceOnlyWhenScannerDisabled_ShouldPublishDirectly() throws Exception {
         String namespaceSlug = "test-ns";
         String publisherId = "user-100";
         PublishFixture fixture = stubValidPublishInputs(namespaceSlug, publisherId, "team-skill", "team-skill", "1.0.0", true);
         when(securityScanService.isEnabled()).thenReturn(false);
 
-        DomainBadRequestException exception = assertThrows(DomainBadRequestException.class, () -> service.publishFromEntries(
+        SkillPublishService.PublishResult result = service.publishFromEntries(
                 namespaceSlug,
                 fixture.entries(),
                 publisherId,
                 SkillVisibility.NAMESPACE_ONLY,
                 Set.of()
-        ));
+        );
 
-        assertEquals("error.security.scanner.required", exception.messageCode());
-        verify(skillRepository, never()).findByNamespaceIdAndSlug(anyLong(), anyString());
-        verify(skillRepository, never()).save(any(Skill.class));
-        verify(skillVersionRepository, never()).save(any(SkillVersion.class));
-        verify(objectStorageService, never()).putObject(anyString(), any(), anyLong(), anyString());
+        // Product change (issue #2): NAMESPACE_ONLY is no more gated than PUBLIC.
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
         verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
+        verify(securityScanService, never()).triggerScan(anyLong(), anyList(), anyString());
     }
 
     @Test
@@ -1571,27 +1565,27 @@ class SkillPublishServiceTest {
     }
 
     @Test
-    void testPublishFromEntries_SuperAdminPublicWhenScannerDisabled_ShouldStillRejectBeforeAutoPublish() throws Exception {
+    void testPublishFromEntries_SuperAdminPublicWhenScannerDisabled_ShouldPublishDirectly() throws Exception {
         String namespaceSlug = "test-ns";
         String publisherId = "admin-user";
         PublishFixture fixture = stubValidPublishInputs(namespaceSlug, publisherId, "admin-skill", "admin-skill", "1.0.0", false);
         when(securityScanService.isEnabled()).thenReturn(false);
 
-        DomainBadRequestException exception = assertThrows(DomainBadRequestException.class, () -> service.publishFromEntries(
+        SkillPublishService.PublishResult result = service.publishFromEntries(
                 namespaceSlug,
                 fixture.entries(),
                 publisherId,
                 SkillVisibility.PUBLIC,
                 Set.of("SUPER_ADMIN")
-        ));
+        );
 
-        assertEquals("error.security.scanner.required", exception.messageCode());
-        verify(skillVersionRepository, never()).save(any(SkillVersion.class));
-        verify(eventPublisher, never()).publishEvent(any(SkillPublishedEvent.class));
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
+        verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
+        verify(eventPublisher).publishEvent(any(SkillPublishedEvent.class));
     }
 
     @Test
-    void testValidateOnly_PublicWhenScannerDisabled_ShouldReturnScannerRequiredError() throws Exception {
+    void testValidateOnly_PublicWhenScannerDisabled_ShouldStayValid() throws Exception {
         String namespaceSlug = "test-ns";
         String publisherId = "user-100";
         List<PackageEntry> entries = skillEntries("test-skill", "1.0.0");
@@ -1599,7 +1593,6 @@ class SkillPublishServiceTest {
         setId(namespace, 1L);
         NamespaceMember member = mock(NamespaceMember.class);
         SkillMetadata metadata = new SkillMetadata("test-skill", "Test", "1.0.0", "Body", Map.of());
-        when(securityScanService.isEnabled()).thenReturn(false);
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(namespaceMemberRepository.findByNamespaceIdAndUserId(any(), eq(publisherId))).thenReturn(Optional.of(member));
         when(skillPackageValidator.validate(entries)).thenReturn(ValidationResult.pass());
@@ -1614,12 +1607,13 @@ class SkillPublishServiceTest {
                 Set.of()
         );
 
-        assertFalse(result.valid());
-        assertTrue(result.errors().contains("error.security.scanner.required"));
+        // The dry run mirrors the real publish, which no longer requires a scanner.
+        assertTrue(result.valid());
+        assertFalse(result.errors().contains("error.security.scanner.required"));
     }
 
     @Test
-    void testPublishFromEntries_WhenScannerEnabled_ShouldCreateReviewTaskAndTriggerScan() throws Exception {
+    void testPublishFromEntries_WhenScannerEnabled_ShouldPublishAndStillTriggerScan() throws Exception {
         String namespaceSlug = "test-ns";
         String publisherId = "user-100";
         String skillMdContent = "---\nname: test-skill\ndescription: Test\nversion: 1.0.0\n---\nBody";
@@ -1662,7 +1656,8 @@ class SkillPublishServiceTest {
         );
 
         assertNotNull(result);
-        verify(reviewTaskRepository).save(any(ReviewTask.class));
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
+        verify(reviewTaskRepository, never()).save(any(ReviewTask.class));
         verify(securityScanService).triggerScan(eq(10L), anyList(), eq(publisherId));
     }
 
@@ -1976,7 +1971,7 @@ class SkillPublishServiceTest {
     }
 
     @Test
-    void pendingUpdateKeepsPublishedDisplayNameAndSummary() throws Exception {
+    void directPublishRefreshesDisplayNameSummaryAndLatestPointer() throws Exception {
         PublishFixture fixture = stubValidPublishInputs("test-ns", "user-100", "test-skill", "test-skill", "2.0.0", true);
         Skill skill = skillRepository.findByNamespaceIdAndSlugAndOwnerId(1L, "test-skill", "user-100").orElseThrow();
         skill.setLatestVersionId(9L);
@@ -1989,10 +1984,11 @@ class SkillPublishServiceTest {
         SkillPublishService.PublishResult result = service.publishFromEntries(
                 "test-ns", fixture.entries(), "user-100", SkillVisibility.PUBLIC, Set.of());
 
-        assertEquals(SkillVersionStatus.PENDING_REVIEW, result.version().getStatus());
-        assertEquals("已审核的标题", skill.getDisplayName());
-        assertEquals("Published summary", skill.getSummary());
-        assertEquals(9L, skill.getLatestVersionId());
+        // A direct publish is the new published version, so it owns the public title, summary and pointer.
+        assertEquals(SkillVersionStatus.PUBLISHED, result.version().getStatus());
+        assertEquals("待审核的标题", skill.getDisplayName());
+        assertEquals("Pending summary", skill.getSummary());
+        assertEquals(10L, skill.getLatestVersionId());
     }
 
     private record PublishFixture(List<PackageEntry> entries) {

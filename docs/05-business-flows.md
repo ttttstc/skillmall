@@ -2,7 +2,7 @@
 
 ## 1 发布流程
 
-上传、包校验、对象存储写入和数据库持久化在一次请求中同步完成；接收成功不等于安全扫描和人工审核已经完成。扫描启用时，上传会触发后续扫描，包含直发版本；`PUBLIC` / `NAMESPACE_ONLY` 上传要求扫描器启用。具体状态及分发条件见[生命周期文档](./14-skill-lifecycle.md)。
+上传、包校验、对象存储写入和数据库持久化在一次请求中同步完成；响应返回时版本状态已按可见性落库，但安全扫描结果仍可能异步产生。**首期产品变更（GitHub issue #2）：本地上传的 `PUBLIC` / `NAMESPACE_ONLY` 技能包通过包校验后直接公开发布，不再要求安全扫描器启用，也不再等待人工审核；扫描退化为可选的纵深防御，只记录结果，不阻断发布。** GitHub 同步与 Suite Bundle 成员仍走各自独立的审核队列。具体状态及分发条件见[生命周期文档](./14-skill-lifecycle.md)。
 
 ### 1.1 当前发布流程基线
 
@@ -27,23 +27,23 @@
     ▼
 ④ 持久化数据
    - 创建或关联 skill 记录（首次发布时创建 skill）
-   - 创建 skill_version（普通 PRIVATE 为 `UPLOADED`；普通 PUBLIC/NAMESPACE_ONLY 为 `PENDING_REVIEW`；直发为 `PUBLISHED`）
+   - 创建 skill_version（普通 `PRIVATE` 为 `UPLOADED`；`PUBLIC` / `NAMESPACE_ONLY` 及特权直发为 `PUBLISHED`；GitHub 同步与 Suite Bundle 成员为 `PENDING_REVIEW`）
    - 创建 skill_file 记录
    - 解析 SKILL.md frontmatter → parsed_metadata_json
    - 生成 manifest_json
    - 直发及 PRIVATE 上传更新 skill.latest_version_id（指针非空不代表可公开分发）
     │
     ▼
-⑤ 同步写入审计日志
+⑤ 同步写入审计日志（Web 发布入口记录 `SKILL_PUBLISH`，含版本、可见性与结果状态；CLI 发布入口当前仍未单独记录发布审计，属既有缺口，见第 9 节）
     │
     ▼
-⑥ 按发布分支触发后续处理：扫描启用时触发安全扫描；直发产生发布事件，待审版本等待审核
+⑥ 按发布分支触发后续处理：直发产生发布事件；扫描启用时异步触发安全扫描，不阻断也不回退已发布版本；GitHub 同步与 Suite Bundle 成员的待审版本等待各自审核
 ```
 
-以下是版本创建时的初始分支；扫描启用时，返回前触发扫描会将非发布版本设为 `SCANNING`，扫描完成后才回到对应的 `UPLOADED` 或 `PENDING_REVIEW`。初始状态不等于响应状态：
+以下是版本创建时的初始分支；扫描启用时，返回前触发扫描只会把非发布版本设为 `SCANNING`，已发布版本保持 `PUBLISHED`。初始状态不等于最终响应状态：
 
+- 普通 `PUBLIC` / `NAMESPACE_ONLY` 上传直接创建 `PUBLISHED` 版本，不创建审核任务；这是首期产品变更（GitHub issue #2），不依赖扫描器是否启用。
 - 普通 `PRIVATE` 上传创建 `UPLOADED` 版本，不创建审核任务；保存私有版本不等于公开发布。
-- 普通 `PUBLIC` / `NAMESPACE_ONLY` 上传创建 `PENDING_REVIEW` 版本及 `PENDING` 审核任务。
 - 审核通过转为 `PUBLISHED`，审核拒绝转为 `REJECTED`；扫描与可分发条件仍需分别检查。
 - 撤回审核将 `PENDING_REVIEW` 版本变为 `UPLOADED`，删除关联待审任务。
 - 提交人持有 `SUPER_ADMIN` 时，上传直接创建 `PUBLISHED`，跳过审核任务及目标 namespace 成员检查；内部 `forceAutoPublish` 路径也可直发。直发不等于跳过所有安全扫描与下载就绪检查。
@@ -105,9 +105,9 @@ Parts:
 
 一期同步响应：服务端同步完成上传、校验、存储、持久化，返回 `200 OK` + skill_version 信息。
 
-普通 CLI 上传启用扫描时，响应状态为 `SCANNING`；扫描完成后 PUBLIC/NAMESPACE_ONLY 进入 `PENDING_REVIEW`，PRIVATE 进入 `UPLOADED`。PRIVATE 关闭扫描时直接返回 `UPLOADED`。
-如果调用方持有 `SUPER_ADMIN`，则直接创建 `PUBLISHED` 版本，分发仍受就绪检查约束。
-Web 端与 CLI 保持同一发布语义，只是在交互上可提供更明确的审核提示。
+普通 CLI 上传的 `PUBLIC` / `NAMESPACE_ONLY` 包通过校验后直接返回 `PUBLISHED`，不要求扫描器启用；扫描启用时的后续扫描不改变响应状态，也不回退已发布版本。`PRIVATE` 上传返回 `UPLOADED`，需要显式确认发布。GitHub 同步与 Suite Bundle 成员仍走各自审核队列，返回待审状态。
+如果调用方持有 `SUPER_ADMIN`，同样直接创建 `PUBLISHED` 版本，并跳过目标 namespace 成员检查；分发仍受就绪检查约束。
+Web 端与 CLI 保持同一发布语义。
 
 `/api/v1/publish` 直发响应示例（普通上传的 status 按上述扫描与可见性分支返回）：
 

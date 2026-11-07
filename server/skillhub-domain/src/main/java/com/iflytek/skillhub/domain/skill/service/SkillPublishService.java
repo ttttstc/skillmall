@@ -221,10 +221,6 @@ public class SkillPublishService {
                 errors.add("Publisher is not a member of namespace: " + namespaceSlug);
             }
         }
-        if (requiresSecurityScanner(visibility) && !securityScanService.isEnabled()) {
-            errors.add("error.security.scanner.required");
-        }
-
         // 3. Package validation
         ValidationResult packageValidation = skillPackageValidator.validate(entries);
         errors.addAll(packageValidation.errors());
@@ -307,8 +303,12 @@ public class SkillPublishService {
     /**
      * Publishes an extracted package into the target namespace.
      *
-     * <p>Super administrators may auto-publish, while regular publishers
-     * usually create a pending-review version.
+     * <p>Interactive uploads (Web and CLI) publish directly: once the package passes
+     * validation a {@code PUBLIC} or {@code NAMESPACE_ONLY} version becomes
+     * {@code PUBLISHED} immediately. Security scanning is optional defence in depth and
+     * never gates publication. GitHub sync and Suite Bundle member publishing keep their
+     * own review queues, and {@code PRIVATE} uploads keep waiting for explicit
+     * confirmation.
      */
     @Transactional
     public PublishResult publishFromEntries(
@@ -438,7 +438,7 @@ public class SkillPublishService {
 
         // Rerelease follows the same visibility-based workflow as normal publish:
         // - PRIVATE skills go to UPLOADED status
-        // - PUBLIC/NAMESPACE_ONLY skills go to PENDING_REVIEW (or UPLOADED after scan)
+        // - PUBLIC/NAMESPACE_ONLY skills publish directly, like an interactive upload
         return publishFromEntriesInternal(
                 resolveNamespaceSlug(skill.getNamespaceId()),
                 entries,
@@ -446,7 +446,7 @@ public class SkillPublishService {
                 skill.getVisibility(),
                 Set.of(),
                 confirmWarnings,  // confirmWarnings: honour caller's choice for rerelease
-                false,  // forceAutoPublish=false: respect visibility rules
+                false,  // forceAutoPublish=false: the visibility rules above decide direct publish
                 true,
                 null,
                 null,
@@ -576,9 +576,6 @@ public class SkillPublishService {
             throw new DomainBadRequestException(
                     "error.skill.publish.precheck.confirmRequired",
                     formatValidationMessages(publishWarnings));
-        }
-        if (requiresSecurityScanner(visibility) && !securityScanService.isEnabled()) {
-            throw new DomainBadRequestException("error.security.scanner.required");
         }
 
         // 6. Find or create Skill record (with owner isolation)
@@ -714,7 +711,13 @@ public class SkillPublishService {
         if (syncTarget != null) {
             version.setGithubSyncIngestionId(syncTarget.ingestionId());
         }
-        boolean autoPublish = forceAutoPublish || isSuperAdmin;
+        // Direct publish policy: an interactive upload that passed package validation is
+        // published immediately for PUBLIC / NAMESPACE_ONLY. GitHub sync and Suite Bundle
+        // member publishing carry their own review contracts, so they keep creating review
+        // tasks; PRIVATE uploads still wait for an explicit confirm-publish.
+        boolean interactiveUpload = bundleTarget == null && syncTarget == null;
+        boolean autoPublish = forceAutoPublish || isSuperAdmin
+                || (interactiveUpload && visibility != SkillVisibility.PRIVATE);
         if (autoPublish) {
             version.setStatus(SkillVersionStatus.PUBLISHED);
             version.setPublishedAt(currentTime());
@@ -877,7 +880,9 @@ public class SkillPublishService {
             ));
         }
 
-        // Trigger security scan for all versions (including auto-publish)
+        // Optional defence in depth: when a deployment enables scanning, every new version is
+        // scanned after publication. The result is recorded for audit and never blocks or
+        // downgrades an already published version.
         if (securityScanService.isEnabled()) {
             securityScanService.triggerScan(version.getId(), entries, publisherId);
         }
@@ -986,10 +991,6 @@ public class SkillPublishService {
         securityScanService.softDeleteByVersionId(version.getId());
         skillVersionRepository.delete(version);
         skillVersionRepository.flush();
-    }
-
-    private boolean requiresSecurityScanner(SkillVisibility visibility) {
-        return visibility == SkillVisibility.PUBLIC || visibility == SkillVisibility.NAMESPACE_ONLY;
     }
 
     private String resolveNamespaceSlug(Long namespaceId) {

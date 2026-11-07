@@ -76,13 +76,16 @@ Status: contract reference with documented implementation exception
 
 ### 4.1 首次上传
 
+> **首期产品变更（GitHub issue #2）：允许直接公开发布。** 本地上传的 `PUBLIC` / `NAMESPACE_ONLY` 技能包通过包校验即直接发布，不再要求安全扫描器启用，也不再等待人工审核；扫描退化为可选的纵深防御，其结果只记录、不阻断、不回退已发布版本。GitHub 同步与 Suite Bundle 成员仍走各自独立的审核队列，`PRIVATE` 上传仍需显式确认发布。审核能力本身保留，用于上述内部队列、扩大可见范围和内容治理，不再是公开发布的前置条件。
+
 | 上传路径 | 扫描与后续状态 | 审核任务 / latest |
 |---|---|---|
-| 普通 `PUBLIC` / `NAMESPACE_ONLY` | 要求扫描启用；创建待审版本，触发扫描进入 `SCANNING`，当前扫描完成后回到 `PENDING_REVIEW` | 创建 `PENDING` review task；不移动 published 指针 |
+| 普通 `PUBLIC` / `NAMESPACE_ONLY`（Web / CLI / 兼容入口） | 直接 `PUBLISHED`，不要求扫描器启用；启用扫描时仍触发扫描，但不降为 `SCANNING` | 不创建审核任务；更新发布指针 |
 | 普通 `PRIVATE` | 启用扫描时 `SCANNING -> UPLOADED`；未启用时直接 `UPLOADED` | 不自动创建审核任务；原始指针例外见 3.1 |
-| 特权自动发布 | 直接 `PUBLISHED`；启用扫描时仍扫描，但不降为 `SCANNING` | 不创建审核任务；更新发布指针 |
+| 提交人持有 `SUPER_ADMIN` 的直发 | 直接 `PUBLISHED`；启用扫描时仍扫描，但不降为 `SCANNING` | 不创建审核任务；额外跳过目标 namespace 成员检查 |
+| 内部路径：GitHub 同步、Suite Bundle 成员 | 创建待审版本；启用扫描时先 `SCANNING`，完成后回到 `PENDING_REVIEW` | 创建对应 `PENDING` review task；不移动 published 指针 |
 
-- 扫描执行失败可进入 `SCAN_FAILED`。扫描完成不代表无风险，风险发现、警告确认和审核门槛是独立检查；过期扫描结果不能完成新一轮扫描。
+- 扫描执行失败可进入 `SCAN_FAILED`。扫描完成不代表无风险；风险发现与警告确认仍是独立检查，但都不再是公开发布的门槛。过期扫描结果不能完成新一轮扫描。
 - `submit-review` 接受 `UPLOADED`（兼容历史 `DRAFT`），设为 `PENDING_REVIEW` 并创建审核任务，保存请求的目标可见性。
 - `confirm-publish` 仅用于 PRIVATE Skill 的 `UPLOADED`（兼容 `DRAFT`）：转为 `PUBLISHED`，更新发布时间与 latest，发出发布事件，不触发新扫描。
 
@@ -116,7 +119,7 @@ Status: contract reference with documented implementation exception
 
 - rerelease 当前本质上是从已发布版本复制并重新走发布流程
 - 入口先检查生命周期管理权限，要求来源版本为 `PUBLISHED`、目标版本号未占用；内部传空平台角色集且 `forceAutoPublish=false`，不沿用平台特权直发
-- 新版本按原 skill 的可见性及扫描配置进入 4.1 对应的上传、扫描或待审路径；内部绕过重复成员校验不等于绕过审核
+- 新版本按原 skill 的可见性进入 4.1 对应路径：`PUBLIC` / `NAMESPACE_ONLY` 直接 `PUBLISHED`，`PRIVATE` 仍为 `UPLOADED`；内部绕过重复成员校验不等于绕过可见性与维护权限检查
 - 该能力是复制内容重新发布，不是生命周期展示态
 
 ### 4.7 隐藏 / 恢复 / 归档 / 撤回已发布版本
@@ -135,7 +138,7 @@ Status: contract reference with documented implementation exception
 
 ### 4.9 独立调整已发布技能的可见范围
 
-可见范围属于 Skill 容器，不需要新建 SkillVersion。缩小立即生效；扩大创建 `SKILL_METADATA` 范围申请，与内容待审互斥。原范围、目标范围和发布版本快照保存在 ReviewTask，审核通过才更新范围；旧审批不能覆盖新版本。未扫描的已发布包复用存量 bundle 扫描，保持 PUBLISHED，申请绑定扫描 taskId；未通过不得批准。头像按目标受众复用同一审核申请。范围事件仅刷新搜索，不发送“新内容版本发布”通知。操作和接口详见[使用指南](./skill-visibility.md)。
+可见范围属于 Skill 容器，不需要新建 SkillVersion。缩小立即生效；扩大创建 `SKILL_METADATA` 范围申请，与内容待审互斥。原范围、目标范围和发布版本快照保存在 ReviewTask，审核通过才更新范围；旧审批不能覆盖新版本。未扫描的已发布包复用存量 bundle 扫描结果并保持 PUBLISHED；扫描器启用时申请绑定新扫描 taskId，未通过不得批准；部署方未启用扫描器时申请照常进入人工审核，不把“没有扫描器”变成无法申请的硬阻塞（首期产品变更，扫描不再是门禁）。头像按目标受众复用同一审核申请。范围事件仅刷新搜索，不发送“新内容版本发布”通知。操作和接口详见[使用指南](./skill-visibility.md)。
 
 ## 5. 对外协议约束
 
@@ -200,6 +203,7 @@ Status: contract reference with documented implementation exception
 - 正式语义：[核心语义规则 §6](./oss-02-core-semantic-rules.md#61-状态转换表)、[Bundle 发布规格](../openspec/changes/add-suite-bundle-publishing/specs/suite-bundle-publishing/spec.md)；Bundle 不自动撤回，SuiteVersion 使用独立模型。
 - 提升展示信息：[版本展示名规格](../openspec/changes/refine-display-name-publishing/specs/skill-display-name/spec.md)要求标题与摘要匹配所选版本快照，取代旧提升方案中读取来源 Skill 当前展示信息的描述；[PromotionService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/PromotionService.java)保留空元数据的兼容回退。
 - 上传及 PRIVATE 指针：[SkillPublishService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)、[发布测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/skill/service/SkillPublishServiceTest.java)。
+- 首期直发策略（GitHub issue #2）：[SkillPublishService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java) 的交互上传分支（`interactiveUpload`）对 `PUBLIC` / `NAMESPACE_ONLY` 直接置 `PUBLISHED`，扫描启用只触发异步扫描；[SkillVisibilityService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillVisibilityService.java) 的扩大范围申请在无扫描器时仍可进入人工审核。测试锚点见同目录下的 `SkillPublishServiceTest`、`SkillVisibilityServiceTest`。
 - 扫描：[SecurityScanService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/security/SecurityScanService.java)、[扫描测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/security/SecurityScanServiceTest.java)。
 - 提审 / PRIVATE 确认：[SkillReviewSubmitService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillReviewSubmitService.java)、[提审与确认测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/skill/service/SkillReviewSubmitServiceTest.java)。
 - 撤回 / 删除 / yank：[SkillGovernanceService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillGovernanceService.java)、[治理测试](../server/skillhub-domain/src/test/java/com/iflytek/skillhub/domain/skill/service/SkillGovernanceServiceTest.java)。
