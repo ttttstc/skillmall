@@ -187,6 +187,7 @@ public class SkillReviewSubmitService {
 
         // Update skill's latest version
         skill.setLatestVersionId(versionId);
+        skill.markFirstPublished(version.getPublishedAt());
         skill.setUpdatedBy(actorUserId);
         skillRepository.save(skill);
 

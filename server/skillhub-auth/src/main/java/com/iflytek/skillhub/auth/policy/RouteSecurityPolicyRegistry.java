@@ -125,6 +125,10 @@ public class RouteSecurityPolicyRegistry {
             RouteAuthorizationPolicy.authenticated(HttpMethod.PUT, "/api/web/suites/*/*/labels/*"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.DELETE, "/api/web/suites/*/*/labels/*"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/resources"),
+            // Home discovery is anonymous-first: rankings and recommendations only ever return
+            // publicly distributable skills, and the visibility filter lives in the query.
+            RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/home/recommendations"),
+            RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/home/rankings"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/me/suites"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/suites/*/*/versions"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.POST, "/api/web/suites/*/*/install-plan"),
@@ -205,6 +209,8 @@ public class RouteSecurityPolicyRegistry {
             ApiTokenPolicy.require(HttpMethod.PUT, "/api/v1/skills/*/*/labels/*", "skill:publish"),
             ApiTokenPolicy.require(HttpMethod.DELETE, "/api/v1/skills/*/*/labels/*", "skill:publish"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/v1/resources"),
+            ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/home/recommendations"),
+            ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/home/rankings"),
             ApiTokenPolicy.require(HttpMethod.GET, "/api/v1/me/suites", "skill:read"),
             ApiTokenPolicy.allow(HttpMethod.POST, "/api/v1/suites/*/*/install-plan"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/v1/suites", "skill:publish"),

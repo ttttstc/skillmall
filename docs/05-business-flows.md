@@ -188,7 +188,7 @@ Web 端与 CLI 保持同一发布语义。
 ③ 构建下载结果：优先预生成整包，缺失时按可读取文件重新打包
     │
     ▼
-④ 对 PUBLISHED 同步更新技能和版本下载计数，再发布 SkillDownloadedEvent
+④ 对 PUBLISHED 同步更新累计计数（`skill`、`skill_version_stats`）与当日桶（`skill_download_daily`），再发布 SkillDownloadedEvent
    - 授权的未发布版本下载不计入公开下载量
     │
     ▼
@@ -198,6 +198,14 @@ Web 端与 CLI 保持同一发布语义。
 计数表示请求通过授权并成功构建下载结果，不证明客户端已完整接收。审核绑定下载是独立授权入口，不计入上述公开下载量。缺失 bundle 时的回退会过滤不存在的单文件，因此“生成 ZIP 成功”也不证明历史包完整；完整性保障需要单独验证。
 
 下载审计仍是业务要求：登录用户记录身份，匿名用户记录 IP / User-Agent 等必要请求信息。当前已核对的普通 Web / CLI 下载链尚未找到对应的同步审计落库；`SkillDownloadedEvent` 仅携带技能与版本 ID，不能替代该审计。覆盖入口、记录时机与失败行为需要独立确认和验证，本次文档对齐不取消此要求。
+
+### 下载计数、窗口与空数据口径
+
+- **累计口径**：`skill.download_count` 与 `skill_version_stats.download_count`，表示历史累计下载次数。
+- **窗口口径**：“最近 7 天”指以 UTC 自然日计、含今天在内的 7 个自然日；只对 `skill_download_daily` 按 `download_date` 求和。
+- **两种口径各自独立**：窗口数值不得由累计数值推算，累计数值也不得冒充窗口数值。窗口内没有任何桶时返回空结果，页面按真实空态展示，不回退为累计量。
+- **计数语义**：计的是下载次数，既不是安装成功人数，也不代表客户端完整接收。
+- 首页展示口径与查询实现见[首页推荐与三类榜单](./28-home-rankings-and-download-metrics.md)。
 
 ### download_count 热点行优化预案
 
