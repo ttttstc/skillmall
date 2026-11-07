@@ -170,7 +170,8 @@ public final class SkillPackagePolicy {
                 || path.endsWith(".zsh") || path.endsWith(".bash");
     }
 
-    private static boolean isUtf8Text(byte[] content) {
+    /** True when {@code content} is NUL-free and decodes as UTF-8; shared by every package source. */
+    public static boolean isUtf8Text(byte[] content) {
         for (byte value : content) {
             if (value == 0) {
                 return false;

@@ -197,7 +197,11 @@ public class SkillPackageArchiveExtractor {
         return outputStream.toByteArray();
     }
 
-    private String determineContentType(String filename) {
+    /**
+     * Media type recorded in the package manifest for one entry. Shared with the GitCode importer so
+     * both package sources describe files the same way.
+     */
+    public static String determineContentType(String filename) {
         String lower = filename.toLowerCase();
         if (lower.endsWith(".py")) return "text/x-python";
         if (lower.endsWith(".json")) return "application/json";
