@@ -63,6 +63,12 @@ public record GitCodeRepoUrl(String owner, String repo) {
         if (candidate.chars().anyMatch(Character::isWhitespace)) {
             throw new DomainBadRequestException("error.skill.import.url.invalid");
         }
+        // An scp-style remote (user@host:path) is not a URI at all and is never a supported source.
+        // It is recognised before URI parsing so "unsupported source" stays distinguishable from
+        // "malformed URL" — the two codes are the observable contract for this check.
+        if (candidate.matches("^[^/@\\s]+@[^/:\\s]+:.+$")) {
+            throw new DomainBadRequestException("error.skill.import.source.unsupported", "scp");
+        }
         URI uri;
         try {
             uri = new URI(candidate);

@@ -2,6 +2,10 @@ package com.iflytek.skillhub.service;
 
 import com.iflytek.skillhub.config.SkillPublishProperties;
 import com.iflytek.skillhub.domain.shared.exception.DomainBadRequestException;
+import com.iflytek.skillhub.domain.shared.exception.DomainNotFoundException;
+import com.iflytek.skillhub.domain.skill.SkillImportSource;
+import com.iflytek.skillhub.domain.skill.SkillImportSourceRepository;
+import com.iflytek.skillhub.domain.skill.service.SkillQueryService;
 import com.iflytek.skillhub.domain.skill.SkillVisibility;
 import com.iflytek.skillhub.dto.GitCodeImportPublishRequest;
 import com.iflytek.skillhub.dto.GitCodeImportPublishResponse;
@@ -16,10 +20,15 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Proves the core import invariant: the commit resolved for a preview is the commit that is
@@ -36,7 +45,8 @@ class GitCodeImportAppServiceTest {
     private final GitCodeSnapshotMaterializer materializer = new GitCodeSnapshotMaterializer(
             client, new GitCodeImportProperties(), new SkillPublishProperties());
     private final RecordingPublisher publisher = new RecordingPublisher();
-    private final GitCodeImportAppService service = new GitCodeImportAppService(materializer, publisher, null);
+    private final GitCodeImportAppService service =
+            new GitCodeImportAppService(materializer, publisher, null, null);
 
     @Test
     void resolvePinsHeadCommitOfDefaultBranchAndListsEverySkill() {
@@ -166,6 +176,36 @@ class GitCodeImportAppServiceTest {
                         assertThat(exception.messageCode()).isEqualTo("error.skill.import.path.unsafe"));
     }
 
+    @Test
+    void provenanceLookupRejectsVersionsTheCallerMayNotInspect() {
+        SkillQueryService skills = mock(SkillQueryService.class);
+        SkillImportSourceRepository repository = mock(SkillImportSourceRepository.class);
+        GitCodeImportAppService guarded =
+                new GitCodeImportAppService(materializer, publisher, repository, skills);
+        when(skills.getVersionDetail("team", "secret", "1.0.0", "user-1", Map.of()))
+                .thenThrow(new DomainNotFoundException("error.notFound"));
+
+        assertThatThrownBy(() -> guarded.source("team", "secret", "1.0.0", "user-1", Map.of()))
+                .isInstanceOf(DomainNotFoundException.class);
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void provenanceLookupReturnsTheRowForAVisibleVersion() {
+        SkillQueryService skills = mock(SkillQueryService.class);
+        SkillImportSourceRepository repository = mock(SkillImportSourceRepository.class);
+        when(skills.getVersionDetail("global", "demo", "1.0.0", "user-1", Map.of()))
+                .thenReturn(new SkillQueryService.SkillVersionDetailDTO(
+                        42L, "1.0.0", "PUBLISHED", null, 1, 5L, null, null, null));
+        SkillImportSource row = SkillImportSource.unpublished(
+                42L, SkillImportSource.PROVIDER_GITCODE, "https://gitcode.com/a/b", "a", "b",
+                "main", "c".repeat(40), "skill", "d".repeat(64), "[]", 1, 5L, "user-1");
+        when(repository.findBySkillVersionId(42L)).thenReturn(Optional.of(row));
+        GitCodeImportAppService guarded =
+                new GitCodeImportAppService(materializer, publisher, repository, skills);
+
+        assertThat(guarded.source("global", "demo", "1.0.0", "user-1", Map.of())).contains(row);
+    }
     /** Captures the snapshot handed to publication instead of touching the database. */
     private static final class RecordingPublisher extends GitCodeImportPublisher {
 

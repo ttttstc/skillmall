@@ -80,7 +80,7 @@ public class RouteSecurityPolicyRegistry {
             // provider request or publication is attempted.
             RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/import/gitcode/resolve"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/import/gitcode/publish"),
-            RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/skills/import/gitcode/versions/*"),
+            RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/skills/*/*/versions/*/import-source"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/skills/avatar-uploads/*/image"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skills/*/*"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skills/*/*/avatar"),
@@ -193,7 +193,7 @@ public class RouteSecurityPolicyRegistry {
             // publish scope; reading provenance needs the read scope.
             ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/import/gitcode/resolve", "skill:publish"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/import/gitcode/publish", "skill:publish"),
-            ApiTokenPolicy.require(HttpMethod.GET, "/api/web/skills/import/gitcode/versions/*", "skill:read"),
+            ApiTokenPolicy.require(HttpMethod.GET, "/api/web/skills/*/*/versions/*/import-source", "skill:read"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/v1/skills/**"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/skills"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/skills/**"),

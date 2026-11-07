@@ -29,7 +29,7 @@ success). They are registered in `RouteSecurityPolicyRegistry`; API tokens need 
 | --- | --- | --- |
 | `POST` | `/api/web/skills/import/gitcode/resolve` | `skill:publish` |
 | `POST` | `/api/web/skills/import/gitcode/publish` | `skill:publish` |
-| `GET` | `/api/web/skills/import/gitcode/versions/{skillVersionId}` | `skill:read` |
+| `GET` | `/api/web/skills/{namespace}/{slug}/versions/{version}/import-source` | `skill:read` |
 
 `resolve` is read-only: without `path` it returns the pinned commit, the default branch name (when
 it can be determined) and every directory that contains a `SKILL.md`; with `path` it additionally
@@ -106,8 +106,11 @@ behind.
 | `file_manifest`, `file_count`, `total_size` | exact published file set |
 | `imported_by`, `created_at` | who imported it and when |
 
-`GET /api/web/skills/import/gitcode/versions/{id}` reads this row back. The digest and manifest are
-enough to compare a published version against the repository later without re-downloading it.
+`GET /api/web/skills/{namespace}/{slug}/versions/{version}/import-source` reads this row back. The
+row is addressed by the same coordinates as the version detail endpoint and is only returned after
+that endpoint's visibility-checked lookup succeeds, so provenance (including who imported the
+version) is no easier to read than the version itself. The digest and manifest are enough to compare
+a published version against the repository later without re-downloading it.
 
 ## Testing
 

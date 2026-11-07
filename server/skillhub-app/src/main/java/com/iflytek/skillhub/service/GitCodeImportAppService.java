@@ -1,10 +1,11 @@
 package com.iflytek.skillhub.service;
 
+import com.iflytek.skillhub.domain.namespace.NamespaceRole;
 import com.iflytek.skillhub.domain.shared.exception.DomainBadRequestException;
-import com.iflytek.skillhub.domain.shared.exception.DomainNotFoundException;
 import com.iflytek.skillhub.domain.skill.SkillImportSource;
 import com.iflytek.skillhub.domain.skill.SkillImportSourceRepository;
 import com.iflytek.skillhub.domain.skill.SkillVisibility;
+import com.iflytek.skillhub.domain.skill.service.SkillQueryService;
 import com.iflytek.skillhub.dto.GitCodeImportPublishRequest;
 import com.iflytek.skillhub.dto.GitCodeImportPublishResponse;
 import com.iflytek.skillhub.dto.GitCodeImportResolveRequest;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,12 +38,14 @@ public class GitCodeImportAppService {
     private final GitCodeSnapshotMaterializer materializer;
     private final GitCodeImportPublisher publisher;
     private final SkillImportSourceRepository sources;
+    private final SkillQueryService skills;
 
     public GitCodeImportAppService(GitCodeSnapshotMaterializer materializer, GitCodeImportPublisher publisher,
-                                   SkillImportSourceRepository sources) {
+                                   SkillImportSourceRepository sources, SkillQueryService skills) {
         this.materializer = materializer;
         this.publisher = publisher;
         this.sources = sources;
+        this.skills = skills;
     }
 
     /** Resolves the pinned commit, the available skill roots, and optionally one materialized skill. */
@@ -78,12 +82,20 @@ public class GitCodeImportAppService {
                 toSelected(snapshot));
     }
 
-    /** Provenance of one published version, for traceability outside the publishing call. */
-    public Optional<SkillImportSource> source(Long skillVersionId) {
-        if (skillVersionId == null || skillVersionId <= 0) {
-            throw new DomainNotFoundException("error.notFound");
-        }
-        return sources.findBySkillVersionId(skillVersionId);
+    /**
+     * Provenance of one published version.
+     *
+     * <p>The version is resolved through the same visibility-checked query as the public version
+     * detail endpoint, so a caller who may not inspect the version cannot learn its repository,
+     * commit or importer either. An unreadable version therefore behaves exactly like the detail
+     * endpoint instead of introducing a second authorization semantic.
+     */
+    public Optional<SkillImportSource> source(String namespace, String slug, String version,
+                                              String currentUserId,
+                                              Map<Long, NamespaceRole> userNsRoles) {
+        SkillQueryService.SkillVersionDetailDTO detail = skills.getVersionDetail(
+                namespace, slug, version, currentUserId, userNsRoles == null ? Map.of() : userNsRoles);
+        return sources.findBySkillVersionId(detail.id());
     }
 
     /**

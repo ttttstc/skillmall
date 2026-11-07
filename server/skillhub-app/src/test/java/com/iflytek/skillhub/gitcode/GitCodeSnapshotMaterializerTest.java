@@ -104,7 +104,7 @@ class GitCodeSnapshotMaterializerTest {
         assertThat(snapshot.fileCount()).isEqualTo(2);
         assertThat(snapshot.totalSize()).isEqualTo(13);
         assertThat(snapshot.files()).extracting(GitCodeSnapshotMaterializer.FileBlob::size)
-                .containsExactly(3L, 10L);
+                .containsExactly(10L, 3L);
     }
 
     @Test

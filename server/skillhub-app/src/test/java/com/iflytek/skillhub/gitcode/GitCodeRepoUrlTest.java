@@ -100,6 +100,36 @@ class GitCodeRepoUrlTest {
     }
 
     @Test
+    void reportsEveryUnsupportedTransportAsUnsupportedSourceNotAsAMalformedUrl() {
+        for (String source : new String[]{
+                "ssh://git@gitcode.com/a/b",
+                "git+ssh://git@gitcode.com/a/b",
+                "git://gitcode.com/a/b",
+                "git@gitcode.com:a/b.git",
+                "http://gitcode.com/a/b"}) {
+            assertThatThrownBy(() -> GitCodeRepoUrl.parse(source))
+                    .as(source)
+                    .isInstanceOfSatisfying(DomainBadRequestException.class, exception ->
+                            assertThat(exception.messageCode()).isEqualTo("error.skill.import.source.unsupported"));
+        }
+    }
+
+    @Test
+    void keepsMalformedInputsAsUrlErrorsSoTheTwoCodesStayDistinguishable() {
+        for (String source : new String[]{
+                "not a url",
+                "just-a-string",
+                "https://gitcode.com/owner",
+                "https://gitcode.com/",
+                "a@b"}) {
+            assertThatThrownBy(() -> GitCodeRepoUrl.parse(source))
+                    .as(source)
+                    .isInstanceOfSatisfying(DomainBadRequestException.class, exception ->
+                            assertThat(exception.messageCode()).isEqualTo("error.skill.import.url.invalid"));
+        }
+    }
+
+    @Test
     void rejectsUrlsThatAreNotARepositoryRoot() {
         for (String source : new String[]{
                 "",

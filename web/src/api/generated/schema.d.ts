@@ -1931,6 +1931,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/skills/import/gitcode/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/skills/import/gitcode/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publish_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/skills/avatar-uploads": {
         parameters: {
             query?: never;
@@ -3032,7 +3064,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["publish_2"];
+        post: operations["publish_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3794,7 +3826,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["publish_3"];
+        post: operations["publish_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4111,6 +4143,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["list_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/skills/{namespace}/{slug}/versions/{version}/import-source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["source"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5833,6 +5881,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/home/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generic (non-personalised) recommendations; pass current ids to reshuffle */
+        get: operations["homeRecommendations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/home/rankings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One ranking: recent-popular (7-day downloads), most-downloaded (cumulative), newest (first published) */
+        get: operations["homeRankings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/governance/summary": {
         parameters: {
             query?: never;
@@ -6254,7 +6336,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["resolve"];
+        get: operations["resolve_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6913,7 +6995,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["resolve_1"];
+        get: operations["resolve_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8193,6 +8275,87 @@ export interface components {
             /** Format: int32 */
             examplesCount?: number;
         };
+        GitCodeImportResolveRequest: {
+            repoUrl?: string;
+            commit?: string;
+            path?: string;
+        };
+        ApiResponseGitCodeImportResolveResponse: {
+            /** Format: int32 */
+            code?: number;
+            msg?: string;
+            data?: components["schemas"]["GitCodeImportResolveResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+            requestId?: string;
+        };
+        Candidate: {
+            path?: string;
+        };
+        File: {
+            path?: string;
+            /** Format: int64 */
+            size?: number;
+            sha256?: string;
+        };
+        GitCodeImportResolveResponse: {
+            provider?: string;
+            repoUrl?: string;
+            owner?: string;
+            repo?: string;
+            defaultBranch?: string;
+            commit?: string;
+            candidates?: components["schemas"]["Candidate"][];
+            selected?: components["schemas"]["Selected"];
+        };
+        Selected: {
+            path?: string;
+            contentDigest?: string;
+            /** Format: int32 */
+            fileCount?: number;
+            /** Format: int64 */
+            totalSize?: number;
+            files?: components["schemas"]["File"][];
+        };
+        GitCodeImportPublishRequest: {
+            repoUrl?: string;
+            commit?: string;
+            branch?: string;
+            path?: string;
+            namespace?: string;
+            visibility?: string;
+            displayName?: string;
+            changelog?: string;
+            contentDigest?: string;
+        };
+        ApiResponseGitCodeImportPublishResponse: {
+            /** Format: int32 */
+            code?: number;
+            msg?: string;
+            data?: components["schemas"]["GitCodeImportPublishResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+            requestId?: string;
+        };
+        GitCodeImportPublishResponse: {
+            /** Format: int64 */
+            skillId?: number;
+            /** Format: int64 */
+            skillVersionId?: number;
+            namespace?: string;
+            slug?: string;
+            version?: string;
+            status?: string;
+            /** Format: int32 */
+            fileCount?: number;
+            /** Format: int64 */
+            totalSize?: number;
+            repoUrl?: string;
+            skillPath?: string;
+            branch?: string;
+            commit?: string;
+            contentDigest?: string;
+        };
         ApiResponseSkillAvatarUploadResponse: {
             /** Format: int32 */
             code?: number;
@@ -9230,6 +9393,32 @@ export interface components {
             score?: number;
             rated?: boolean;
         };
+        ApiResponseSkillImportSourceResponse: {
+            /** Format: int32 */
+            code?: number;
+            msg?: string;
+            data?: components["schemas"]["SkillImportSourceResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+            requestId?: string;
+        };
+        SkillImportSourceResponse: {
+            provider?: string;
+            repoUrl?: string;
+            repoOwner?: string;
+            repoName?: string;
+            branch?: string;
+            commit?: string;
+            skillPath?: string;
+            contentDigest?: string;
+            /** Format: int32 */
+            fileCount?: number;
+            /** Format: int64 */
+            totalSize?: number;
+            importedBy?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
         ApiResponseListSkillFileResponse: {
             /** Format: int32 */
             code?: number;
@@ -10260,6 +10449,38 @@ export interface components {
             /** Format: date-time */
             timestamp?: string;
             requestId?: string;
+        };
+        ApiResponseHomeSkillListResponse: {
+            /** Format: int32 */
+            code?: number;
+            msg?: string;
+            data?: components["schemas"]["HomeSkillListResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+            requestId?: string;
+        };
+        HomeSkillListResponse: {
+            items?: components["schemas"]["SkillSummaryResponse"][];
+        };
+        ApiResponseHomeRankingResponse: {
+            /** Format: int32 */
+            code?: number;
+            msg?: string;
+            data?: components["schemas"]["HomeRankingResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+            requestId?: string;
+        };
+        HomeRankingItem: {
+            skill?: components["schemas"]["SkillSummaryResponse"];
+            /** Format: int64 */
+            windowDownloadCount?: number;
+            /** Format: date-time */
+            firstPublishedAt?: string;
+        };
+        HomeRankingResponse: {
+            type?: string;
+            items?: components["schemas"]["HomeRankingItem"][];
         };
         ApiResponseGovernanceSummaryResponse: {
             /** Format: int32 */
@@ -15623,6 +15844,54 @@ export interface operations {
             };
         };
     };
+    resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GitCodeImportResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGitCodeImportResolveResponse"];
+                };
+            };
+        };
+    };
+    publish_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GitCodeImportPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGitCodeImportPublishResponse"];
+                };
+            };
+        };
+    };
     upload: {
         parameters: {
             query?: never;
@@ -17757,7 +18026,7 @@ export interface operations {
             };
         };
     };
-    publish_2: {
+    publish_3: {
         parameters: {
             query: {
                 namespace: string;
@@ -18974,7 +19243,7 @@ export interface operations {
             };
         };
     };
-    publish_3: {
+    publish_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -19481,6 +19750,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePageResponseSkillReviewResponse"];
+                };
+            };
+        };
+    };
+    source: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                namespace: string;
+                slug: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSkillImportSourceResponse"];
                 };
             };
         };
@@ -22119,6 +22412,53 @@ export interface operations {
             };
         };
     };
+    homeRecommendations: {
+        parameters: {
+            query?: {
+                size?: number;
+                /** @description Skill ids already on screen; they are skipped so the row rotates */
+                exclude?: number[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recommendation row returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseHomeSkillListResponse"];
+                };
+            };
+        };
+    };
+    homeRankings: {
+        parameters: {
+            query?: {
+                type?: "recent-popular" | "most-downloaded" | "newest";
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ranked Skill summaries returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseHomeRankingResponse"];
+                };
+            };
+        };
+    };
     summary: {
         parameters: {
             query?: never;
@@ -22760,7 +23100,7 @@ export interface operations {
             };
         };
     };
-    resolve: {
+    resolve_1: {
         parameters: {
             query?: {
                 version?: string;
@@ -23699,7 +24039,7 @@ export interface operations {
             };
         };
     };
-    resolve_1: {
+    resolve_2: {
         parameters: {
             query?: {
                 version?: string;

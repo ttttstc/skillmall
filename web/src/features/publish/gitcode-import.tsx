@@ -29,13 +29,37 @@ function formatBytes(bytes: number): string {
 }
 
 /**
- * Imports one skill from a pinned snapshot of a public GitCode repository.
+ * Import entry point on the publish page.
  *
- * The panel shows the pinned commit before anything is published and sends that same commit plus
- * the previewed content digest when publishing, so a branch that moves in between cannot change the
- * published version.
+ * The form is a secondary path, so it stays collapsed until the author asks for it; that also keeps
+ * the default publish page free of importer-specific queries.
  */
 export function GitCodeImportPanel() {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Card className="space-y-4 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold font-heading text-foreground">{t('gitcodeImport.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('gitcodeImport.subtitle')}</p>
+        </div>
+        <Button type="button" variant="outline" onClick={() => setOpen((value) => !value)}>
+          {t(open ? 'gitcodeImport.close' : 'gitcodeImport.open')}
+        </Button>
+      </div>
+      {open && <GitCodeImportForm />}
+    </Card>
+  )
+}
+
+/**
+ * Pins one commit of a public GitCode repository, previews one skill directory and publishes that
+ * exact snapshot. The publish call always carries the previewed commit and content digest, so a
+ * branch that moves in between cannot change the published version.
+ */
+function GitCodeImportForm() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -126,12 +150,7 @@ export function GitCodeImportPanel() {
     && !publishMutation.isPending
 
   return (
-    <Card className="space-y-6 p-6">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold font-heading text-foreground">{t('gitcodeImport.title')}</h2>
-        <p className="text-sm text-muted-foreground">{t('gitcodeImport.subtitle')}</p>
-      </div>
-
+    <div className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="gitcode-repo-url">{t('gitcodeImport.repoUrl')}</Label>
         <div className="flex gap-3">
@@ -297,6 +316,6 @@ export function GitCodeImportPanel() {
       <Button type="button" size="lg" onClick={publish} disabled={!canPublish} className="w-full">
         {publishMutation.isPending ? t('gitcodeImport.publishing') : t('gitcodeImport.publish')}
       </Button>
-    </Card>
+    </div>
   )
 }

@@ -3356,6 +3356,8 @@
   "gitcodeImport": {
     "title": "从 GitCode 导入",
     "subtitle": "把 GitCode 公开仓固定到某个 commit，预览其中的 Skill 再发布。仓库后续提交不会改变已发布内容。",
+    "open": "打开 GitCode 导入",
+    "close": "收起 GitCode 导入",
     "repoUrl": "仓库地址",
     "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
     "repoUrlHelp": "只接受 GitCode 公开仓，例如 https://gitcode.com/openharmony/docs。",

@@ -3638,6 +3638,8 @@
   "gitcodeImport": {
     "title": "GitCode에서 가져오기",
     "subtitle": "공개 GitCode 저장소를 하나의 커밋에 고정하고, 스킬을 미리 본 뒤 게시합니다. 이후 커밋은 게시된 내용을 바꾸지 않습니다.",
+    "open": "GitCode 가져오기 열기",
+    "close": "GitCode 가져오기 접기",
     "repoUrl": "저장소 URL",
     "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
     "repoUrlHelp": "공개 GitCode 저장소만 허용합니다. 예: https://gitcode.com/openharmony/docs",

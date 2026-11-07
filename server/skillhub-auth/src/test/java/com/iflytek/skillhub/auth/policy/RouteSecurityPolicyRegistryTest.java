@@ -490,7 +490,7 @@ class RouteSecurityPolicyRegistryTest {
             assertTrue(registry.authorizeApiToken("POST", path, Set.of("skill:publish")).allowed(), path);
         }
 
-        String provenance = "/api/web/skills/import/gitcode/versions/7";
+        String provenance = "/api/web/skills/global/demo/versions/1.0.0/import-source";
         assertEquals(RouteSecurityPolicyRegistry.AccessLevel.AUTHENTICATED,
                 registry.accessLevel("GET", provenance));
         assertTrue(registry.authorizeApiToken("GET", provenance, Set.of("skill:read")).allowed());

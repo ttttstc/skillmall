@@ -3356,6 +3356,8 @@
   "gitcodeImport": {
     "title": "Import from GitCode",
     "subtitle": "Pin a public GitCode repository at one commit, preview a skill and publish it. Later commits never change what you published.",
+    "open": "Open GitCode import",
+    "close": "Hide GitCode import",
     "repoUrl": "Repository URL",
     "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
     "repoUrlHelp": "Public GitCode repositories only, for example https://gitcode.com/openharmony/docs.",

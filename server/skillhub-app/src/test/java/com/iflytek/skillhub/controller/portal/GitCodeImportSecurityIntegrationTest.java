@@ -3,7 +3,9 @@ package com.iflytek.skillhub.controller.portal;
 import com.iflytek.skillhub.auth.entity.ApiToken;
 import com.iflytek.skillhub.auth.rbac.PlatformPrincipal;
 import com.iflytek.skillhub.auth.token.ApiTokenService;
+import com.iflytek.skillhub.domain.shared.exception.DomainNotFoundException;
 import com.iflytek.skillhub.domain.skill.SkillImportSource;
+import com.iflytek.skillhub.domain.skill.service.SkillQueryService;
 import com.iflytek.skillhub.domain.user.UserAccount;
 import com.iflytek.skillhub.domain.user.UserAccountRepository;
 import com.iflytek.skillhub.dto.GitCodeImportPublishRequest;
@@ -34,6 +36,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -41,6 +45,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -62,6 +67,7 @@ class GitCodeImportSecurityIntegrationTest {
     @Autowired UserAccountRepository users;
     @MockBean ApiTokenService tokens;
     @MockBean GitCodeImportAppService imports;
+    @MockBean SkillQueryService skills;
 
     private String userId;
     private String rawToken;
@@ -92,7 +98,7 @@ class GitCodeImportSecurityIntegrationTest {
 
     @Test
     void anonymousCannotReadProvenance() throws Exception {
-        mockMvc.perform(get("/api/web/skills/import/gitcode/versions/7").with(csrf()))
+        mockMvc.perform(get("/api/web/skills/global/demo/versions/1.0.0/import-source").with(csrf()))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(imports);
     }
@@ -128,30 +134,52 @@ class GitCodeImportSecurityIntegrationTest {
     }
 
     @Test
-    void authenticatedSessionCanReadProvenance() throws Exception {
-        given(imports.source(7L)).willReturn(Optional.of(SkillImportSource.unpublished(
-                7L, SkillImportSource.PROVIDER_GITCODE, "https://gitcode.com/openharmony/docs",
-                "openharmony", "docs", "master", COMMIT, "skills/alpha", DIGEST, "[]", 1, 5, userId)));
+    void ownerCanReadProvenanceThroughTheVisibilityCheckedVersionLookup() throws Exception {
+        given(skills.getVersionDetail(eq("global"), eq("demo"), eq("1.0.0"), eq(userId), any()))
+                .willReturn(new SkillQueryService.SkillVersionDetailDTO(
+                        7L, "1.0.0", "PUBLISHED", null, 2, 10L, null, null, null));
+        given(imports.source(eq("global"), eq("demo"), eq("1.0.0"), any(), any()))
+                .willReturn(Optional.of(SkillImportSource.unpublished(
+                        7L, SkillImportSource.PROVIDER_GITCODE, "https://gitcode.com/openharmony/docs",
+                        "openharmony", "docs", "main", COMMIT, "skills/alpha", DIGEST, "[]", 1, 5, userId)));
 
-        mockMvc.perform(get("/api/web/skills/import/gitcode/versions/7").session(session()))
+        mockMvc.perform(get("/api/web/skills/global/demo/versions/1.0.0/import-source").session(session()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.commit").value(COMMIT))
                 .andExpect(jsonPath("$.data.skillPath").value("skills/alpha"))
-                .andExpect(jsonPath("$.data.contentDigest").value(DIGEST));
+                .andExpect(jsonPath("$.data.contentDigest").value(DIGEST))
+                .andExpect(jsonPath("$.data.importedBy").value(userId));
     }
 
     @Test
-    void missingProvenanceIsNotFound() throws Exception {
-        given(imports.source(8L)).willReturn(Optional.empty());
+    void unreadableVersionYieldsNotFoundWithoutLeakingProvenance() throws Exception {
+        // The visibility-checked version lookup rejects a version the caller may not inspect; the
+        // provenance route must then behave like that lookup instead of answering with metadata.
+        given(skills.getVersionDetail(eq("global"), eq("demo"), eq("1.0.0"), eq(userId), any()))
+                .willThrow(new DomainNotFoundException("error.notFound"));
 
-        mockMvc.perform(get("/api/web/skills/import/gitcode/versions/8").session(session()))
+        mockMvc.perform(get("/api/web/skills/global/demo/versions/1.0.0/import-source").session(session()))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(not(containsString("gitcode.com"))))
+                .andExpect(content().string(not(containsString(COMMIT))))
+                .andExpect(content().string(not(containsString(DIGEST))));
+    }
+
+    @Test
+    void missingProvenanceForAVisibleVersionIsNotFound() throws Exception {
+        given(skills.getVersionDetail(eq("global"), eq("demo"), eq("1.0.0"), eq(userId), any()))
+                .willReturn(new SkillQueryService.SkillVersionDetailDTO(
+                        7L, "1.0.0", "PUBLISHED", null, 2, 10L, null, null, null));
+        given(imports.source(eq("global"), eq("demo"), eq("1.0.0"), any(), any())).willReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/web/skills/global/demo/versions/1.0.0/import-source").session(session()))
                 .andExpect(status().isNotFound());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {RESOLVE, PUBLISH})
     void publishTokenWithPublishScopeCanImport(String path) throws Exception {
-        givenToken("[\\\"skill:publish\\\"]");
+        givenToken("[\"skill:publish\"]");
         given(imports.resolve(any(GitCodeImportResolveRequest.class)))
                 .willReturn(new GitCodeImportResolveResponse("GITCODE",
                         "https://gitcode.com/openharmony/docs", "openharmony", "docs", "master",
@@ -166,7 +194,7 @@ class GitCodeImportSecurityIntegrationTest {
     @ParameterizedTest
     @ValueSource(strings = {RESOLVE, PUBLISH})
     void readOnlyTokenCannotImport(String path) throws Exception {
-        givenToken("[\\\"skill:read\\\"]");
+        givenToken("[\"skill:read\"]");
 
         mockMvc.perform(post(path).with(bearer())
                         .contentType(MediaType.APPLICATION_JSON)

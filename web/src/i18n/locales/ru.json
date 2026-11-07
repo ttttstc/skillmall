@@ -3356,6 +3356,8 @@
   "gitcodeImport": {
     "title": "Импорт из GitCode",
     "subtitle": "Закрепите публичный репозиторий GitCode на одном коммите, просмотрите навык и опубликуйте его. Последующие коммиты не меняют опубликованное содержимое.",
+    "open": "Открыть импорт из GitCode",
+    "close": "Скрыть импорт из GitCode",
     "repoUrl": "URL репозитория",
     "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
     "repoUrlHelp": "Только публичные репозитории GitCode, например https://gitcode.com/openharmony/docs.",
