@@ -407,7 +407,7 @@ Visibility options:
 - `namespace-only` — Visible to namespace members only
 - `private` — Visible to yourself only
 
-After the server accepts the submission, the CLI shows its current status and detail URL. `SCANNING` and `PENDING_REVIEW` are asynchronous states, not final publication; check the detail page for completion.
+After the server accepts the submission, the CLI shows its current status and detail URL. After the first-phase change an ordinary `public` / `namespace-only` submission returns `PUBLISHED` and is searchable, viewable and downloadable immediately, while `private` returns `UPLOADED` and needs confirmation on the detail page. `SCANNING` only means a scan is still running; it never holds back a published version.
 
 ## Self-Update
 

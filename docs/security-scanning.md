@@ -12,12 +12,12 @@ Published images support `linux/amd64` and `linux/arm64`.
 The publish flow changes are:
 
 1. publish request enters `SkillPublishService`
-2. if scanner is enabled, the version moves to `SCANNING`
-3. the backend enqueues a `ScanTask`
+2. package validation decides the outcome; the scanner is not a publication gate. An interactive upload publishes `PUBLIC` / `NAMESPACE_ONLY` directly as `PUBLISHED`, and `PRIVATE` as `UPLOADED`
+3. if the scanner is enabled, the backend enqueues a `ScanTask`
 4. `ScanTaskConsumer` calls `skill-scanner`
 5. the scan result is stored in `security_audit`
-6. the version moves to `PENDING_REVIEW`, or to `SCAN_FAILED` after final retry exhaustion
-7. review still happens through the existing review workflow
+6. the result is recorded on the version: an already `PUBLISHED` version keeps its state, and an in-flight version becomes `SCAN_FAILED` after final retry exhaustion
+7. GitHub sync and Suite Bundle member publications keep their own review queues
 
 Frontend is intentionally out of scope here. The frontend should fetch audit details through the dedicated backend API instead of expecting scanner data inside existing review detail payloads.
 
@@ -141,9 +141,9 @@ sh scripts/verify-scanner.sh http://localhost:8000 /path/to/skill.zip
 Recommended backend checks after enabling the feature:
 
 1. publish a test package
-2. confirm the version status becomes `SCANNING`
-3. confirm a `security_audit` row is created
-4. confirm the version eventually moves to `PENDING_REVIEW` or `SCAN_FAILED`
+2. confirm the version is already `PUBLISHED` (`UPLOADED` for `PRIVATE`) before any scan result arrives
+3. confirm a `security_audit` row is created when the scanner is enabled
+4. confirm a scan failure never moves the published version out of `PUBLISHED`
 5. call `GET /api/v1/skills/{skillId}/versions/{versionId}/security-audit`
 
 ## Audit Query API
@@ -179,6 +179,7 @@ therefore renders this state as **No high-risk findings**, not as an uncondition
 - the timeout is evaluated during pending reclaim; terminal handling can occur roughly one `reclaim-min-idle` plus one `reclaim-interval` after the configured age
 - terminal failures retain a failure reason in the security audit response for operators and authorized users
 - other final failures mark the version as `SCAN_FAILED` after retry exhaustion
-- even after scan failure, a review task is still created so the package does not get stuck forever
+- a scan failure never blocks, downgrades or rolls back a publication; the failure stays visible on the security audit
+- direct publication does not wait for a review decision, so the audit trail is what records who published which version
 
-This keeps the existing human review path intact while making scanner failures visible.
+This keeps human review available for the queues that still need it (GitHub sync, Suite Bundle members, visibility expansion) while making scanner failures visible.

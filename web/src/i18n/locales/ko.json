@@ -2542,13 +2542,17 @@
     "packagePreviewFailed": "패키지를 읽을 수 없습니다. SKILL.md를 확인하고 패키지를 다시 선택하거나 재시도하세요.",
     "title": "스킬 게시",
     "subtitle": "SkillHub에 스킬 패키지 업로드",
-    "reviewNotice": {
-      "title": "검토 안내",
-      "description": "제출된 스킬 패키지는 게시 전에 관리자 검토가 필요합니다."
+    "directPublishNotice": {
+      "title": "직접 게시 안내",
+      "description": "공개 또는 네임스페이스 전용으로 게시하면 패키지 검증을 통과한 즉시 공개되어 검색, 조회, 다운로드가 가능합니다. 보안 스캔과 관리자 검토는 더 이상 게시 전제 조건이 아닙니다."
+    },
+    "privateUploadNotice": {
+      "title": "비공개 업로드 안내",
+      "description": "비공개 패키지는 업로드되지만 공개되지 않습니다. 준비되면 스킬 상세 페이지에서 게시를 확인하세요."
     },
     "resubmitNotice": {
       "title": "{{skill}} v{{version}} 재제출",
-      "description": "스킬 이름과 버전을 유지한 수정 패키지를 업로드하세요. 일반 검토 절차로 다시 진행됩니다."
+      "description": "스킬 이름과 버전을 유지한 수정 패키지를 업로드하세요. 선택한 공개 범위에 따라 바로 게시되거나 비공개로 유지됩니다."
     },
     "namespace": "네임스페이스",
     "selectNamespace": "네임스페이스 선택",
@@ -2563,12 +2567,10 @@
     "removeSelectedFile": "선택한 파일 제거",
     "publishing": "게시하는 중...",
     "confirm": "게시 확인",
-    "success": "게시 성공",
-    "successDescription": "{{skill}}의 검토를 요청했습니다. 관리자 승인 후 사용할 수 있습니다",
     "publishedTitle": "게시 성공",
     "publishedDescription": "{{skill}}이 게시되어 다운로드할 수 있습니다",
-    "pendingReviewTitle": "검토를 요청했습니다",
-    "pendingReviewDescription": "{{skill}}의 검토를 요청했습니다. 관리자 승인 후 사용할 수 있습니다",
+    "privateUploadedTitle": "업로드됨(비공개)",
+    "privateUploadedDescription": "{{skill}}이 비공개 버전으로 업로드되었습니다. 공개하려면 스킬 상세 페이지에서 게시를 확인하세요.",
     "error": "게시 실패",
     "timeoutTitle": "게시 시간 초과",
     "timeoutDescription": "게시 요청이 너무 오래 걸렸습니다. 나중에 스킬 목록을 확인하거나 다시 시도하세요.",

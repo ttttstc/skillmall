@@ -1,5 +1,7 @@
 package com.iflytek.skillhub.service.cli;
 
+import com.iflytek.skillhub.domain.audit.AuditDetail;
+import com.iflytek.skillhub.domain.audit.AuditLogService;
 import com.iflytek.skillhub.domain.namespace.NamespaceRole;
 import com.iflytek.skillhub.domain.skill.Skill;
 import com.iflytek.skillhub.domain.skill.SkillVisibility;
@@ -16,6 +18,7 @@ import com.iflytek.skillhub.dto.cli.CliResolveResponse;
 import com.iflytek.skillhub.service.AuditRequestContext;
 import com.iflytek.skillhub.service.SkillDeleteAppService;
 import com.iflytek.skillhub.service.SkillSearchAppService;
+import com.iflytek.skillhub.observability.RequestIdAccessor;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
@@ -37,18 +40,24 @@ public class CliSkillAppService {
     private final SkillDownloadService skillDownloadService;
     private final SkillDeleteAppService skillDeleteAppService;
     private final SkillPublishService skillPublishService;
+    private final AuditLogService audit;
+    private final RequestIdAccessor requestIds;
 
     public CliSkillAppService(
             SkillSearchAppService skillSearchAppService,
             SkillQueryService skillQueryService,
             SkillDownloadService skillDownloadService,
             SkillDeleteAppService skillDeleteAppService,
-            SkillPublishService skillPublishService) {
+            SkillPublishService skillPublishService,
+            AuditLogService audit,
+            RequestIdAccessor requestIds) {
         this.skillSearchAppService = skillSearchAppService;
         this.skillQueryService = skillQueryService;
         this.skillDownloadService = skillDownloadService;
         this.skillDeleteAppService = skillDeleteAppService;
         this.skillPublishService = skillPublishService;
+        this.audit = audit;
+        this.requestIds = requestIds;
     }
 
     public record CliSearchItem(String namespace, String slug, String latestVersion, String summary) {}
@@ -172,10 +181,30 @@ public class CliSkillAppService {
         );
     }
 
-    public CliPublishResponse publish(String namespace, List<PackageEntry> entries, String publisherId, SkillVisibility visibility, Set<String> platformRoles) {
+    public CliPublishResponse publish(String namespace, List<PackageEntry> entries, String publisherId,
+            SkillVisibility visibility, Set<String> platformRoles, AuditRequestContext auditContext) {
         SkillPublishService.PublishResult result = skillPublishService.publishFromEntries(
                 namespace, entries, publisherId, visibility, platformRoles, false
         );
+        // A direct publish has no review task left to record who released which version, so the
+        // CLI entry point writes the same publish audit entry the portal entry point writes.
+        audit.record(
+                publisherId,
+                "SKILL_PUBLISH",
+                "SKILL_VERSION",
+                result.version().getId(),
+                requestIds == null ? null : requestIds.current(),
+                auditContext == null ? null : auditContext.clientIp(),
+                auditContext == null ? null : auditContext.userAgent(),
+                AuditDetail.builder()
+                        .put("skillId", result.skillId())
+                        .put("namespace", namespace)
+                        .put("slug", result.slug())
+                        .put("version", result.version().getVersion())
+                        .put("visibility", visibility == null ? null : visibility.name())
+                        .put("status", result.version().getStatus() == null ? null : result.version().getStatus().name())
+                        .put("entry", "CLI")
+                        .build());
 
         return new CliPublishResponse(
                 namespace,

@@ -10,7 +10,7 @@ A namespace supplies the ownership segment of a Skill coordinate, such as `@team
 | --- | --- | --- |
 | Create a team namespace | Platform Skill administrator (`SKILL_ADMIN`) or super administrator (`SUPER_ADMIN`) | Creation entry at `/dashboard/namespaces`; ordinary members cannot create one |
 | Maintain members and settings | Namespace Owner or Admin | Namespace is `ACTIVE` and the detail page exposes the action |
-| Publish Skills | Member or another authorized publisher | Select the namespace in the publishing form; scanning, review and Skill maintenance permissions still apply |
+| Publish Skills | Member or another authorized publisher | Select the namespace in the publishing form; skill maintenance permissions still apply, and a Public or Namespace Only upload is published directly while scanning is optional |
 | View members | Existing namespace member | Members tab; read access does not include membership mutation |
 
 Sources: [creation service](https://github.com/iflytek/skillhub/blob/main/server/skillhub-app/src/main/java/com/iflytek/skillhub/service/NamespacePortalCommandAppService.java) and [namespace policy](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/namespace/NamespaceAccessPolicy.java).

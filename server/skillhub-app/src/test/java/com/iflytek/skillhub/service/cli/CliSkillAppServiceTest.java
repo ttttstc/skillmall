@@ -58,6 +58,8 @@ class CliSkillAppServiceTest {
     @Mock SkillVersionRepository skillVersionRepository;
     @Mock NamespaceService namespaceService;
     @Mock RbacService rbacService;
+    @Mock com.iflytek.skillhub.domain.audit.AuditLogService auditLogService;
+    @Mock com.iflytek.skillhub.observability.RequestIdAccessor requestIdAccessor;
 
     private CliSkillAppService service;
 
@@ -65,7 +67,8 @@ class CliSkillAppServiceTest {
     void setUp() {
         service = new CliSkillAppService(
                 skillSearchAppService, skillQueryService,
-                skillDownloadService, skillDeleteAppService, skillPublishService);
+                skillDownloadService, skillDeleteAppService, skillPublishService,
+                auditLogService, requestIdAccessor);
     }
 
     @Test
@@ -168,7 +171,9 @@ class CliSkillAppServiceTest {
                 skillQueryService,
                 skillDownloadService,
                 skillDeleteAppService,
-                skillPublishService
+                skillPublishService,
+                auditLogService,
+                requestIdAccessor
         );
 
         Skill installableSecondMatch = new Skill(1L, "ready-second", "owner-1", SkillVisibility.PUBLIC);
@@ -270,15 +275,27 @@ class CliSkillAppServiceTest {
         );
         var mockVersion = org.mockito.Mockito.mock(SkillVersion.class);
         given(mockVersion.getVersion()).willReturn("1.0.0");
+        given(mockVersion.getStatus()).willReturn(SkillVersionStatus.PUBLISHED);
         given(skillPublishService.publishFromEntries("global", entries, "user-1", SkillVisibility.PUBLIC, Set.of("USER"), false))
                 .willReturn(new SkillPublishService.PublishResult(1L, "test-skill", mockVersion));
 
-        CliPublishResponse response = service.publish("global", entries, "user-1", SkillVisibility.PUBLIC, Set.of("USER"));
+        CliPublishResponse response = service.publish("global", entries, "user-1", SkillVisibility.PUBLIC,
+                Set.of("USER"), new com.iflytek.skillhub.service.AuditRequestContext("127.0.0.1", "junit"));
 
         assertEquals("global", response.namespace());
         assertEquals("test-skill", response.slug());
         assertEquals("1.0.0", response.version());
         assertEquals("PUBLIC", response.visibility());
+        // The CLI entry point must leave the same publish audit trail the portal entry point leaves.
+        org.mockito.Mockito.verify(auditLogService).record(
+                org.mockito.ArgumentMatchers.eq("user-1"),
+                org.mockito.ArgumentMatchers.eq("SKILL_PUBLISH"),
+                org.mockito.ArgumentMatchers.eq("SKILL_VERSION"),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("127.0.0.1"),
+                org.mockito.ArgumentMatchers.eq("junit"),
+                org.mockito.ArgumentMatchers.contains("\"status\":\"PUBLISHED\""));
     }
 
     private boolean requiresInstallableLatest(SearchQuery query) {

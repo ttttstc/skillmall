@@ -2260,13 +2260,17 @@
     "packagePreviewFailed": "无法读取技能包，请检查 SKILL.md 后重新选择，或重试。",
     "title": "发布技能",
     "subtitle": "上传技能包到 SkillHub",
-    "reviewNotice": {
-      "title": "发布审核说明",
-      "description": "技能包提交后需要经过管理员审核才能正式发布。"
+    "directPublishNotice": {
+      "title": "直接发布说明",
+      "description": "选择「公开」或「仅命名空间」时，技能包通过校验后立即发布，马上可以被搜索、查看和下载；安全扫描与管理员审核不再是发布前置。"
+    },
+    "privateUploadNotice": {
+      "title": "私有上传说明",
+      "description": "私有技能包会先上传并保持不可见；需要时在技能详情页确认发布。"
     },
     "resubmitNotice": {
       "title": "重新提交 {{skill}} v{{version}}",
-      "description": "上传修正后的技能包，并保持相同的技能名称和版本；提交后会重新进入正常审核流程。"
+      "description": "上传修正后的技能包，并保持相同的技能名称和版本；将按你选择的范围直接发布，私有则保持未公开。"
     },
     "namespace": "命名空间",
     "selectNamespace": "选择命名空间",
@@ -2281,12 +2285,10 @@
     "removeSelectedFile": "删除已选文件",
     "publishing": "发布中...",
     "confirm": "确认发布",
-    "success": "发布成功",
-    "successDescription": "{{skill}} 已提交审核，等待管理员批准后即可使用",
     "publishedTitle": "发布成功",
     "publishedDescription": "{{skill}} 已发布，现在可以下载使用",
-    "pendingReviewTitle": "已提交审核",
-    "pendingReviewDescription": "{{skill}} 已提交审核，等待管理员批准后即可使用",
+    "privateUploadedTitle": "已上传（私有）",
+    "privateUploadedDescription": "{{skill}} 已作为私有版本上传。需要公开时，请在技能详情页确认发布。",
     "error": "发布失败",
     "timeoutTitle": "发布请求超时",
     "timeoutDescription": "本次发布等待时间过长，请稍后到技能列表确认结果，或重新尝试发布。",

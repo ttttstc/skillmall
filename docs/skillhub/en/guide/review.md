@@ -13,7 +13,7 @@ This page covers pending-content inspection, decision submission and result veri
 
 Owners and Admins of a team namespace can review their own submissions; super administrators can self-review. Other own submissions cannot be self-reviewed solely through the platform Skill administrator role. Only a super administrator can review their own global promotion request. Ordinary review decisions also require an `ACTIVE` namespace. Source: [review permission policy](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/ReviewPermissionChecker.java).
 
-Ordinary public (`PUBLIC`) or namespace-member-visible (`NAMESPACE_ONLY`) uploads enter scanning and review. Private (`PRIVATE`) uploads are retained first and still require publication confirmation or a separate review submission. A previously published version may remain available while an update is pending.
+After the first-phase change (GitHub issue #2), an ordinary interactive public (`PUBLIC`) or namespace-member-visible (`NAMESPACE_ONLY`) upload is **published directly as `PUBLISHED`** and never enters this review queue. This page covers what still needs a human decision: GitHub sync, Suite Bundle members, visibility-expansion requests and avatars. Private (`PRIVATE`) uploads are retained first and still require publication confirmation or a separate review submission. While an internal review queue has a pending update, the previously published version may remain available.
 
 ## Inspect Content and Submit a Decision
 

@@ -86,6 +86,8 @@ Status: contract reference with documented implementation exception
 | 内部路径：GitHub 同步、Suite Bundle 成员 | 创建待审版本；启用扫描时先 `SCANNING`，完成后回到 `PENDING_REVIEW` | 创建对应 `PENDING` review task；不移动 published 指针 |
 
 - 扫描执行失败可进入 `SCAN_FAILED`。扫描完成不代表无风险；风险发现与警告确认仍是独立检查，但都不再是公开发布的门槛。过期扫描结果不能完成新一轮扫描。
+- 直发在同一事务内同时应用**容器可见性**：交互式上传把请求的 `visibility` 写到 Skill 容器并移动发布指针，因此 `PRIVATE` 技能被以 `PUBLIC` 重新上传后立即公开，不再等待 §4.9 的范围审核。只有带 `PUBLISHED` 版本的容器才可能被匿名发现。
+- 头像受众复核改为**事后异步**：直发不再产生内容审核任务，头像候选按其自身审核策略处理；技能发布后由 [SkillAvatarScopeReviewListener](../server/skillhub-app/src/main/java/com/iflytek/skillhub/listener/SkillAvatarScopeReviewListener.java) 监听 `SkillPublishedEvent` 复核受众。§4.9 的“扩大范围申请”只适用于**不发布新版本**、单独调整可见范围的入口，不是扩大受众的唯一路径。
 - `submit-review` 接受 `UPLOADED`（兼容历史 `DRAFT`），设为 `PENDING_REVIEW` 并创建审核任务，保存请求的目标可见性。
 - `confirm-publish` 仅用于 PRIVATE Skill 的 `UPLOADED`（兼容 `DRAFT`）：转为 `PUBLISHED`，更新发布时间与 latest，发出发布事件，不触发新扫描。
 

@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 读取报告 | 已登录且有报告访问权限的账号 | 技能及目标版本可定位 | 技能详情或审核详情中核对版本；公开可见不代表匿名可读报告。 |
 | 修订内容 | 技能作者 | 具有版本更新权限 | 根据发现项修改包，再沿发布流程提交，不修改历史报告。 |
-| 审核决策 | 具有目标命名空间审核权限的账号 | 读取本次提交及扫描状态 | 扫描完成不等于批准。 |
+| 审核决策 | 具有目标命名空间审核权限的账号 | 读取本次提交及扫描状态 | 扫描完成不等于批准，也不决定是否能发布。 |
 | 配置与诊断 | 部署方 | 具有容器或集群操作权限 | 业务角色不自动授予主机操作权限。 |
 
 ![扫描执行、报告判读与人工审核之间的关系](/diagrams/scan-result-flow.svg)
@@ -57,7 +57,7 @@
 
 | 配置项 | 应用默认与部署覆盖 | 影响 | 说明 |
 | --- | --- | --- | --- |
-| `SKILLHUB_SECURITY_SCANNER_ENABLED` | 应用、release Compose、Kustomize、Helm 为 `true`；运行脚本 `--no-scanner` 为 `false` | 关闭后拒绝普通新非私有上传 | 生效需重建或滚动。 |
+| `SKILLHUB_SECURITY_SCANNER_ENABLED` | 应用、release Compose、Kustomize、Helm 为 `true`；运行脚本 `--no-scanner` 为 `false` | 关闭后不再扫描；普通上传照常直接发布（首期变更） | 生效需重建或滚动。 |
 | `SKILLHUB_SECURITY_SCANNER_URL` | 应用 `http://localhost:8000`；Compose `http://skill-scanner:8000`；Kustomize `http://skillhub-scanner:8000`；Helm 按 release 生成 | 注册中心访问 Scanner 的地址 | 生效需重建或滚动。 |
 | `SKILLHUB_SECURITY_SCANNER_MODE` | 应用 `local`；Compose、Kustomize、Helm 覆盖为 `upload` | `local` 需双方共享相同目录路径；`upload` 传包 | 生效需重建或滚动。 |
 | `SKILLHUB_SCANNER_POLICY_PRESET` | `balanced`；可选 `strict`、`permissive` | 传给 Scanner 的分析策略 | 显式透传并重建后生效。 |
@@ -68,7 +68,7 @@
 
 策略选项依据[装配代码](https://github.com/iflytek/skillhub/blob/main/server/skillhub-app/src/main/java/com/iflytek/skillhub/config/SkillScannerConfig.java)与[扫描选项](https://github.com/iflytek/skillhub/blob/main/server/skillhub-infra/src/main/java/com/iflytek/skillhub/infra/scanner/ScanOptions.java)。LLM 分析可能向配置的外部服务发送内容并产生费用；启用前由部署方核对数据范围与服务条款，不公开密钥或完整环境输出。
 
-扫描关闭时，普通公开（`PUBLIC`）和空间成员可见（`NAMESPACE_ONLY`）新上传返回 `error.security.scanner.required`。私有（`PRIVATE`）仍可上传，但停留在 `UPLOADED`，须另行确认发布。已发布私有技能扩大范围时，最新版本已有可复用报告（`taskId`、`scannedAt` 非空，`failureReason=null`、`isSafe=true`）可继续审核；否则扫描关闭时拒绝。依据[发布前置](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)、[可见范围变更](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillVisibilityService.java)与[私有发布确认](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillReviewSubmitService.java)。
+首期产品变更（GitHub issue #2）：扫描是**可选的纵深防御**，不再是发布前置。扫描关闭时，普通公开（`PUBLIC`）和空间成员可见（`NAMESPACE_ONLY`）上传照常直接发布，不再返回 `error.security.scanner.required`，也不再产生内容审核任务。私有（`PRIVATE`）仍可上传，但停留在 `UPLOADED`，须另行确认发布。已发布私有技能扩大范围时，最新版本已有可复用报告（`taskId`、`scannedAt` 非空，`failureReason=null`、`isSafe=true`）会沿用它；否则不绑定扫描结果，申请照常进入人工审核，不因扫描关闭而失败。依据[发布规则](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)、[可见范围变更](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillVisibilityService.java)与[私有发布确认](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillReviewSubmitService.java)。
 
 ## 诊断连接与任务
 
@@ -164,11 +164,11 @@ Kustomize：
 
 ## 结果确认与失败处置
 
-已生成报告应能定位目标版本、扫描时间及具体发现；普通非私有版本扫描执行完成后进入 `PENDING_REVIEW`，私有版本进入 `UPLOADED`。已发布版本补扫不改变其发布状态。上述结果均不等于人工已批准。
+已生成报告应能定位目标版本、扫描时间及具体发现；首期变更后扫描结果只记录在版本上，不改变发布状态：非私有版本在上传时已直接 `PUBLISHED`，私有版本进入 `UPLOADED`。已发布版本补扫同样不改变其发布状态。上述结果均不等于人工已批准。
 
 | 现象 | 最可能原因 | 定位手段 | 处置 |
 | --- | --- | --- | --- |
-| 非私有上传返回 `error.security.scanner.required` | 扫描关闭 | 探测显示 `enabled=false` | 恢复服务与开关；不要修改数据库状态绕过检查。 |
+| 上传返回 `error.security.scanner.required`（仅旧版本会出现） | 运行的仍是带“扫描前置”门禁的旧构建 | 核对镜像标签与发布提交 | 升级到首期变更（GitHub issue #2）之后的版本；不要修改数据库或绕过检查。 |
 | 标准部署显示 `local` 或 `localhost` | 透传缺失或覆盖不正确 | 对照本页配置表与容器输出 | 修正配置并重建；不要将容器 localhost 当作宿主机。 |
 | `health_exit` 非零 | 服务未就绪或网络/地址错误 | Compose 执行 `docker compose --env-file .env.release -f compose.release.yml ps skill-scanner`；Kustomize 执行 `kubectl -n skillhub get pods -l app.kubernetes.io/name=skillhub-scanner` | 恢复连接后跟踪原任务；不要删除数据库或持久卷。 |
 | 健康可达但版本仍扫描或失败 | 执行错误、超时或恢复重试超限 | 本版本 `failureReason` 与上述日志 | 仅在页面提供重试且有权限时重试；不要重复上传制造新版本。 |

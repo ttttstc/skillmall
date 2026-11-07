@@ -26,7 +26,7 @@ Updates retain the existing image by default. Avatar-only removal restores the i
 
 ## Moderation policy and application relationship
 
-An avatar submitted with a package shares one skill application and receives a joint approval or rejection in the existing review detail. It does not activate early. An avatar-only change requiring a human decision enters the same queue, marked as an avatar change, without creating a skill version.
+An avatar submitted with a package has its own application. After the first-phase change a direct publish creates no content review task, so the avatar waits for its own avatar-only application and never holds back the skill publication. An avatar-only change requiring a human decision enters the same avatar queue, marked as an avatar change, without creating a skill version.
 
 Super administrators manage two switches in System Configuration. Machine moderation defaults off; manual moderation defaults on. Provider credentials are not configured or displayed there. The following matrix applies to avatar-only changes for non-private skills.
 
@@ -76,5 +76,5 @@ Owners should see the submitted image and status on the update page. Application
 | Avatar cannot be submitted | Failed upload, invalid image, or expired reference | Read the upload error and compare input limits and reference time | Crop and upload again; do not change only the extension to bypass validation |
 | Public detail retains the old image | New candidate is pending or inactive | Compare the candidate and its machine/manual states in My Skills or Update | Track the current application; do not repeatedly submit the same image instead of querying its state |
 | Machine errors persist | Configuration, dependency, or provider failure | Read `ERROR` and retry time; deployment operators inspect service configuration | Retry after recovery and cooldown; do not approve an error as a pass |
-| Package still awaits review with manual moderation off | Avatar switches do not control package review | Check whether the application also contains a package and inspect its state | Complete the normal skill review; do not force publication through database changes |
+| Package already published but the avatar still waits | Avatar review is independent of content publication | Check the avatar-only application and its machine/manual switch state | Review the avatar application; the skill publication itself is already complete |
 | A suspected false positive cannot activate | Blocked candidate needs human review or an explicit reason | Inspect `BLOCKED`, the manual switch, and review state | The owner requests review; an authorized reviewer evaluates evidence. Do not switch accounts to bypass moderation |

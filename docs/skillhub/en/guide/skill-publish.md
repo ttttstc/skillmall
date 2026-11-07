@@ -7,7 +7,7 @@ A single-skill upload has one root `SKILL.md`. For multiple skills, use [Suite i
 1. Exercise the instructions, scripts and relative references in your local Agent, then prepare a standalone directory.
 2. Choose a writable namespace and PUBLIC, NAMESPACE_ONLY or PRIVATE visibility. Document dependencies: publishing does not distribute your local environment.
 3. Check the package preview, version, summary and warnings before submitting. Fix blocking errors; acknowledging a warning does not prove the package passed every check.
-4. Follow the submitted version in My Skills through scanning, review or private publication confirmation.
+4. Follow the submitted version in My Skills: a Public or Namespace Only upload is published immediately, while a Private upload waits for your publish confirmation.
 5. Check access as an intended recipient, install in the target Agent and invoke it. Registry publication does not establish task effectiveness.
 
 ### Package Layout and Version Choice
@@ -126,9 +126,9 @@ The diagram covers ordinary uploads; scan failures, review rejection and privile
 
 ## Submission is not publication
 
-After uploading, inspect the returned status and the version in My Skills. For ordinary PUBLIC and NAMESPACE_ONLY submissions, scanning must be enabled: the version passes through `SCANNING` and then `PENDING_REVIEW`. Approval publishes it. A PRIVATE upload remains `UPLOADED` after any configured scan; use its publish confirmation action to publish it. Privileged automatic publishing follows a separate path.
+After uploading, inspect the returned status and the version in My Skills. First-phase product change (GitHub issue #2): an ordinary PUBLIC or NAMESPACE_ONLY upload is **published directly as `PUBLISHED`** once the package passes validation. Scanning is not required and no human review happens; when scanning is enabled it only records a result and does not change publication state. A PRIVATE upload remains `UPLOADED` (briefly `SCANNING` when scanning is enabled) until you use its publish confirmation action. GitHub sync and Suite Bundle members keep their own review queues.
 
-`SCAN_FAILED` means the scan could not complete, not that the package was proven unsafe. A completed scan can still contain findings. A successful upload, HTTP response, or CLI exit is not evidence of `PUBLISHED`. During an update, public readers continue to see the published version while authorized maintainers can preview the pending version.
+`SCAN_FAILED` means the scan could not complete, not that the package was proven unsafe. A completed scan can still contain findings. A successful upload, HTTP response, or CLI exit is not on its own evidence that the version is publicly distributable. A direct publish replaces the public version immediately; only the internal review queues (GitHub sync, Suite Bundle) produce a pending version, and while one exists public readers keep seeing the published version while authorized maintainers can preview the pending one.
 
 ### Authoring drafts: create, edit, and validate structure
 
