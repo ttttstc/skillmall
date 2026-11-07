@@ -132,7 +132,7 @@ Status: contract reference
 - 新版本按原 skill 的可见性进入 4.1 对应路径：`PUBLIC` / `NAMESPACE_ONLY` 直接 `PUBLISHED`，`PRIVATE` 仍为 `UPLOADED`；内部绕过重复成员校验不等于绕过可见性与维护权限检查
 - 该能力是复制内容重新发布，不是生命周期展示态
 - 重发**不继承**变更说明：`rereleasePublishedVersion` 给新版本传 `changelog = null`（[SkillPublishService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)），即使来源版本带说明，重发产生的新版本在版本历史里显示为“没有说明”
-- 这与**提升**不同：提升会复制来源版本的说明（[PromotionService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/PromotionService.java) 的 `setChangelog(sourceVersion.getChangelog())`）。两条路径的说明继承口径目前不一致，属于**待定产品口径**，已由 root 单独开票跟踪；本节只如实记录当前行为，不在文档里替产品拍板
+- 这与**提升**不同：提升会复制来源版本的说明（[PromotionService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/PromotionService.java) 的 `setChangelog(sourceVersion.getChangelog())`）。两条路径的说明继承口径目前不一致，属于**待定产品口径**，由 issue #22 跟踪（同一张票也覆盖删除后读接口 400/404 语义与 GitHub 测试偶发）；本节只如实记录当前行为，不在文档里替产品拍板
 
 ### 4.7 隐藏 / 恢复 / 归档 / 撤回已发布版本
 
@@ -192,7 +192,7 @@ Status: contract reference
 - 首次和后续提升均优先从所选来源版本的 `parsedMetadataJson` 读取展示名和摘要；字段为空才回退到审核时来源 Skill 的展示信息，非空但解析失败则抛错。
 - 全局 Skill 也可独立上传并审核。提升更新与独立上传使用相同版本号时不能互相覆盖；不同号版本分别发布，latest 指向最后通过审核的版本，不按版本字符串大小排序。
 - 撤销提升不同于归档或隐藏：平台审核通过后移除全局派生 Skill 的公众入口及记录，保留来源团队 Skill、提升和撤销审计，并保护共用对象存储文件。重新提升形成新的全局 Skill ID。
-- 提升生成的全局版本会**复制来源版本的变更说明**（[PromotionService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/PromotionService.java) 的 `setChangelog(sourceVersion.getChangelog())`），与 §4.6 重发不继承说明的口径不同；这两条路径的说明继承差异属于**待定产品口径**，已由 root 单独开票跟踪。
+- 提升生成的全局版本会**复制来源版本的变更说明**（[PromotionService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/PromotionService.java) 的 `setChangelog(sourceVersion.getChangelog())`），与 §4.6 重发不继承说明的口径不同；这两条路径的说明继承差异属于**待定产品口径**，由 issue #22 跟踪。
 
 ### 5.4 已提升技能如何删除
 
