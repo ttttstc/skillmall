@@ -3650,6 +3650,36 @@
       "title": "구독한 스킬 버전 배포 철회",
       "description": "{{skillName}}{{versionSuffix}} 버전의 배포가 철회되었습니다."
     }
+  },
+  "gitcodeImport": {
+    "title": "GitCode에서 가져오기",
+    "subtitle": "공개 GitCode 저장소를 하나의 커밋에 고정하고, 스킬을 미리 본 뒤 게시합니다. 이후 커밋은 게시된 내용을 바꾸지 않습니다.",
+    "open": "GitCode 가져오기 열기",
+    "close": "GitCode 가져오기 접기",
+    "repoUrl": "저장소 URL",
+    "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
+    "repoUrlHelp": "공개 GitCode 저장소만 허용합니다. 예: https://gitcode.com/openharmony/docs",
+    "resolve": "저장소 읽기",
+    "resolving": "저장소를 읽는 중…",
+    "pinnedCommit": "고정된 커밋",
+    "defaultBranch": "기본 브랜치",
+    "candidatesTitle": "저장소의 스킬",
+    "candidatesEmpty": "이 저장소에는 SKILL.md가 없습니다.",
+    "choosePath": "미리 볼 스킬 선택",
+    "selectedTitle": "미리보기",
+    "filesTitle": "파일",
+    "fileCount": "파일 {{files}}개",
+    "totalSize": "전체 크기",
+    "contentDigest": "콘텐츠 해시",
+    "branchLabel": "브랜치",
+    "publish": "고정된 스냅숏 게시",
+    "publishing": "게시 중…",
+    "pathRequired": "먼저 스킬 디렉터리를 선택하세요",
+    "resolved": "{{branch}}의 {{commit}}에 고정했습니다.",
+    "published": "{{commit}}에서 {{skill}}을(를) 게시했습니다.",
+    "resolveFailed": "이 저장소를 읽을 수 없습니다",
+    "publishFailed": "이 스냅숏을 게시할 수 없습니다",
+    "snapshotChanged": "이 커밋의 내용이 미리보기와 다릅니다. 저장소를 다시 읽어 주세요."
   }
 }
 

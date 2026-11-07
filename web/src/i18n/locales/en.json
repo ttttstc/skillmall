@@ -3368,6 +3368,36 @@
       "title": "Subscribed skill version yanked",
       "description": "{{skillName}}{{versionSuffix}} version was yanked."
     }
+  },
+  "gitcodeImport": {
+    "title": "Import from GitCode",
+    "subtitle": "Pin a public GitCode repository at one commit, preview a skill and publish it. Later commits never change what you published.",
+    "open": "Open GitCode import",
+    "close": "Hide GitCode import",
+    "repoUrl": "Repository URL",
+    "repoUrlPlaceholder": "https://gitcode.com/owner/repository",
+    "repoUrlHelp": "Public GitCode repositories only, for example https://gitcode.com/openharmony/docs.",
+    "resolve": "Load repository",
+    "resolving": "Reading repository…",
+    "pinnedCommit": "Pinned commit",
+    "defaultBranch": "Default branch",
+    "candidatesTitle": "Skills in this repository",
+    "candidatesEmpty": "No SKILL.md found in this repository.",
+    "choosePath": "Select a skill to preview",
+    "selectedTitle": "Preview",
+    "filesTitle": "Files",
+    "fileCount": "{{files}} files",
+    "totalSize": "Total size",
+    "contentDigest": "Content digest",
+    "branchLabel": "Branch",
+    "publish": "Publish pinned snapshot",
+    "publishing": "Publishing…",
+    "pathRequired": "Select a skill directory first",
+    "resolved": "Pinned {{commit}} on {{branch}}.",
+    "published": "Published {{skill}} from {{commit}}.",
+    "resolveFailed": "Could not read this repository",
+    "publishFailed": "Could not publish this snapshot",
+    "snapshotChanged": "The repository content at this commit differs from the preview. Load the repository again."
   }
 }
 
