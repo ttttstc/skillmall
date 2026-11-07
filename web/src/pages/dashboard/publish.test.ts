@@ -105,4 +105,26 @@ describe('PublishPage', () => {
   it('exports a named component function', () => {
     expect(typeof PublishPage).toBe('function')
   })
+
+  it('explains direct publication for a non-private visibility instead of promising a review', () => {
+    useSearchMock.mockReturnValue({ namespace: 'team-ai', visibility: 'public' })
+
+    const html = renderToStaticMarkup(createElement(PublishPage))
+
+    expect(html).toContain('publish.directPublishNotice.title')
+    expect(html).toContain('publish.directPublishNotice.description')
+    expect(html).not.toContain('publish.privateUploadNotice')
+    expect(html).not.toContain('publish.reviewNotice')
+  })
+
+  it('explains the private upload path when the selected visibility is private', () => {
+    useSearchMock.mockReturnValue({ namespace: 'team-ai', visibility: 'private' })
+
+    const html = renderToStaticMarkup(createElement(PublishPage))
+
+    expect(html).toContain('publish.privateUploadNotice.title')
+    expect(html).toContain('publish.privateUploadNotice.description')
+    expect(html).not.toContain('publish.directPublishNotice')
+    expect(html).not.toContain('publish.reviewNotice')
+  })
 })

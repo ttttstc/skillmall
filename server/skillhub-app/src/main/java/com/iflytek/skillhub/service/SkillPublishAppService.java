@@ -1,5 +1,7 @@
 package com.iflytek.skillhub.service;
 
+import com.iflytek.skillhub.domain.audit.AuditDetail;
+import com.iflytek.skillhub.domain.audit.AuditLogService;
 import com.iflytek.skillhub.domain.review.ReviewTaskRepository;
 import com.iflytek.skillhub.domain.review.ReviewTaskStatus;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,7 @@ import com.iflytek.skillhub.domain.namespace.SlugValidator;
 import java.nio.charset.StandardCharsets;
 import com.iflytek.skillhub.domain.skill.service.SkillPublishService;
 import com.iflytek.skillhub.domain.skill.validation.PackageEntry;
+import com.iflytek.skillhub.observability.RequestIdAccessor;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,17 +27,22 @@ public class SkillPublishAppService {
     private final SkillAvatarUploadService uploads;
     private final SkillAvatarAppService avatars;
     private final SkillMetadataParser metadata;
+    private final AuditLogService audit;
+    private final RequestIdAccessor requestIds;
     private ReviewTaskRepository reviews;
     @Autowired
     public void setReviews(ReviewTaskRepository reviews) { this.reviews = reviews; }
 
 
     public SkillPublishAppService(SkillPublishService publications, SkillAvatarUploadService uploads,
-                                  SkillAvatarAppService avatars, SkillMetadataParser metadata) {
+                                  SkillAvatarAppService avatars, SkillMetadataParser metadata,
+                                  AuditLogService audit, RequestIdAccessor requestIds) {
         this.publications = publications;
         this.uploads = uploads;
         this.avatars = avatars;
         this.metadata = metadata;
+        this.audit = audit;
+        this.requestIds = requestIds;
     }
 
     @Transactional
@@ -67,6 +75,7 @@ public class SkillPublishAppService {
         SkillPublishService.PublishResult result = displayName == null || displayName.isBlank()
                 ? publications.publishFromEntries(namespace, entries, actor, visibility, roles, confirmWarnings)
                 : publications.publishFromEntries(namespace, entries, actor, visibility, roles, confirmWarnings, displayName);
+        recordPublishAudit(actor, namespace, visibility, result, context);
         var review = reviews.findBySkillVersionIdAndStatus(
                 result.version().getId(), ReviewTaskStatus.PENDING).orElse(null);
         if (action == AvatarAction.REPLACE) {
@@ -80,5 +89,30 @@ public class SkillPublishAppService {
             avatars.attachScopeToReview(review.getSkillId(), visibility, review, actor, context);
         }
         return result;
+    }
+
+    /**
+     * Records the publish attempt itself, independent of whether the version waits for review:
+     * a direct publication is no longer reviewed, so the audit trail is the remaining record of
+     * who published which version under which visibility.
+     */
+    private void recordPublishAudit(String actor, String namespace, SkillVisibility visibility,
+                                    SkillPublishService.PublishResult result, AuditRequestContext context) {
+        audit.record(
+                actor,
+                "SKILL_PUBLISH",
+                "SKILL_VERSION",
+                result.version().getId(),
+                requestIds.current(),
+                context == null ? null : context.clientIp(),
+                context == null ? null : context.userAgent(),
+                AuditDetail.builder()
+                        .put("skillId", result.skillId())
+                        .put("namespace", namespace)
+                        .put("slug", result.slug())
+                        .put("version", result.version().getVersion())
+                        .put("visibility", visibility == null ? null : visibility.name())
+                        .put("status", result.version().getStatus() == null ? null : result.version().getStatus().name())
+                        .build());
     }
 }

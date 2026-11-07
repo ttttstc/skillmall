@@ -7,7 +7,7 @@ A single-skill upload has one root `SKILL.md`. For multiple skills, use [Suite i
 1. Exercise the instructions, scripts and relative references in your local Agent, then prepare a standalone directory.
 2. Choose a writable namespace and PUBLIC, NAMESPACE_ONLY or PRIVATE visibility. Document dependencies: publishing does not distribute your local environment.
 3. Check the package preview, version, summary and warnings before submitting. Fix blocking errors; acknowledging a warning does not prove the package passed every check.
-4. Follow the submitted version in My Skills through scanning, review or private publication confirmation.
+4. Follow the submitted version in My Skills: a Public or Namespace Only upload is published immediately, while a Private upload waits for your publish confirmation.
 5. Check access as an intended recipient, install in the target Agent and invoke it. Registry publication does not establish task effectiveness.
 
 ### Package Layout and Version Choice
@@ -25,7 +25,7 @@ Resolve versions by an exact version, tag, or fingerprint; `^` / `~` ranges are 
 
 ### Updating an Existing Skill
 
-Use Update in My Skills or publish again to the same namespace and skill name. Verify the coordinate: changing `name` may create a different skill. Published versions cannot be overwritten; use a new version for normal updates. While it awaits review, public users retain the previously published version. After approval, check the displayed version, title and summary.
+Use Update in My Skills or publish again to the same namespace and skill name. Verify the coordinate: changing `name` may create a different skill. Published versions cannot be overwritten; use a new version for normal updates. A Public or Namespace Only upload replaces the published version immediately. A Private upload switches the container to private right away, so the public side no longer serves the previous published version, and its title and summary update immediately as well; that version then needs its publication confirmed on the detail page. Only GitHub sync and Suite Bundle members enter human review and leave the previous published version in place until approved; refer to the [authoritative lifecycle table](https://github.com/iflytek/skillhub/blob/main/docs/14-skill-lifecycle.md) for the full rules. Afterwards, check the displayed version, title and summary.
 
 Existing local installations do not update automatically. Consumers explicitly upgrade through the CLI. Suite members remain pinned until a new Suite version is published.
 
@@ -77,14 +77,16 @@ metadata:
 
 `name` still determines the slug, installation coordinate, and links. The display name
 must be a string of at most 200 characters after trimming surrounding whitespace.
-Missing, null, or blank display names fall back to `name`. Titles follow the version's
-review lifecycle: an update awaiting review does not replace an existing published title.
+Missing, null, or blank display names fall back to `name`. A direct publish and a Private upload
+both apply the title immediately (the Private version then waits for publication confirmation on
+the detail page); only GitHub sync and Suite Bundle members leave an existing published title in
+place until approved.
 No database migration is needed; existing skills can keep their `name` and publish a new
 version with this optional metadata.
 
-On the web publish/update form, upload a package and edit **Display name**. The package's `metadata.display-name` (or `name`) pre-fills the field. Your edits take precedence and survive selecting another package; leave it blank to use the package title. The name is limited to 200 characters and follows this version's review. Avatar-only updates cannot rename a skill.
+On the web publish/update form, upload a package and edit **Display name**. The package's `metadata.display-name` (or `name`) pre-fills the field. Your edits take precedence and survive selecting another package; leave it blank to use the package title. The name is limited to 200 characters; a direct publish and a Private upload apply it immediately, and only GitHub sync and Suite Bundle members wait for approval. Avatar-only updates cannot rename a skill.
 
-**My Skills** shows the pending update's title and summary with one main status and a plain-text comparison to the published version. Open the card to preview that update; public readers still see the published version. Details always show the copyable `@namespace/slug`; renaming does not change links or install identifiers.
+**My Skills** shows this version's title and summary with one main status and a plain-text comparison to the published version. Open the card to preview that update. When an internal review queue holds a pending version (GitHub sync, Suite Bundle members), public readers still see the published version; a direct publish is already public, and a Private upload has already switched the container to private. Details always show the copyable `@namespace/slug`; renaming does not change links or install identifiers.
 
 `skillhub.example.com`, `YOUR_API_TOKEN`, and `my-team` are placeholders. Replace them with the instance, caller credential, and target namespace; never commit a real token.
 
@@ -122,13 +124,13 @@ visibility: PUBLIC
 
 ![Ordinary public and private publication paths](/diagrams/skill-publish-lifecycle-sketch.png)
 
-The diagram covers ordinary uploads; scan failures, review rejection and privileged publishing are described below.
+The diagram shows the **former review flow**. After the first-phase change (GitHub issue #2) an ordinary public or namespace-only upload is published directly once validation passes, without the scanner prerequisite and approval step shown there; private uploads still stop at `UPLOADED` until you confirm publication.
 
 ## Submission is not publication
 
-After uploading, inspect the returned status and the version in My Skills. For ordinary PUBLIC and NAMESPACE_ONLY submissions, scanning must be enabled: the version passes through `SCANNING` and then `PENDING_REVIEW`. Approval publishes it. A PRIVATE upload remains `UPLOADED` after any configured scan; use its publish confirmation action to publish it. Privileged automatic publishing follows a separate path.
+After uploading, inspect the returned status and the version in My Skills. First-phase product change (GitHub issue #2): an ordinary PUBLIC or NAMESPACE_ONLY upload is **published directly as `PUBLISHED`** once the package passes validation. Scanning is not required and no human review happens; when scanning is enabled it only records a result and does not change publication state. A PRIVATE upload remains `UPLOADED` (briefly `SCANNING` when scanning is enabled) until you use its publish confirmation action. GitHub sync and Suite Bundle members keep their own review queues.
 
-`SCAN_FAILED` means the scan could not complete, not that the package was proven unsafe. A completed scan can still contain findings. A successful upload, HTTP response, or CLI exit is not evidence of `PUBLISHED`. During an update, public readers continue to see the published version while authorized maintainers can preview the pending version.
+`SCAN_FAILED` means the scan could not complete, not that the package was proven unsafe. A completed scan can still contain findings. A successful upload, HTTP response, or CLI exit is not on its own evidence that the version is publicly distributable. A direct publish replaces the public version immediately; only the internal review queues (GitHub sync, Suite Bundle) produce a pending version, and while one exists public readers keep seeing the published version while authorized maintainers can preview the pending one.
 
 ### Authoring drafts: create, edit, and validate structure
 

@@ -371,7 +371,7 @@ skillhub publish ./my-skill --namespace myspace --visibility private
 - `namespace-only` — 仅 namespace 成员可见
 - `private` — 仅自己可见
 
-提交被服务端接受后会输出当前状态和技能详情页 URL。`SCANNING`、`PENDING_REVIEW` 表示异步处理尚未完成；请在详情页确认最终发布状态。
+提交被服务端接受后会输出当前状态和技能详情页 URL。首期变更后，普通 `public` / `namespace-only` 提交直接返回 `PUBLISHED`，立即可被搜索、查看和下载；`private` 返回 `UPLOADED`（启用安全扫描时可能在扫描期间返回 `SCANNING`，结束后回到 `UPLOADED`），仍需在详情页确认发布。响应里的 `status` 是**版本生命周期状态**，不是可见性：可见性由请求的 `visibility` 决定，`private` 提交返回时容器已经是私有。`SCANNING` 只表示扫描仍在进行，不会阻塞已发布的版本。
 
 ## 自更新
 

@@ -233,7 +233,7 @@ describe('publish command — P1', () => {
     expect(result.exitCode).toBe(0)
     const json = JSON.parse(result.stdout)
     expect(json.ok).toBe(true)
-    expect(json.action).toBe('submitted')
+    expect(json.action).toBe('uploaded')
     expect(json.namespace).toBe('global')
     expect(typeof json.slug).toBe('string')
     expect(typeof json.version).toBe('string')
@@ -259,16 +259,15 @@ describe('publish command — P1', () => {
 
       expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe('')
-      expect(JSON.parse(result.stdout)).toMatchObject({
-        ok: true,
-        action: 'submitted',
-        status
-      })
+      const json = JSON.parse(result.stdout)
+      expect(json).toMatchObject({ ok: true, status })
+      // A direct publish reports "published"; everything else is an upload awaiting confirmation.
+      expect(json.action).toBe(status === 'PUBLISHED' ? 'published' : 'uploaded')
     }
   )
 
   test.each(['PUBLISHED', 'PENDING_REVIEW', 'SCANNING', 'UPLOADED'])(
-    'uses submitted semantics for server status %s in human output',
+    'reports the real publication state for server status %s in human output',
     async status => {
       const env = await createTempHome()
       registry = await startFakeRegistry({ token: 'sk_ok', publishStatus: status })
@@ -281,10 +280,11 @@ describe('publish command — P1', () => {
       })
 
       expect(result.exitCode).toBe(0)
-      expect(result.stdout).toContain('Submitted successfully:')
+      expect(result.stdout).toContain(status === 'PUBLISHED' ? 'Published: ' : 'Uploaded: ')
       expect(result.stdout).toContain(`Status: ${status}`)
-      expect(result.stdout).not.toContain('Published successfully')
-      expect(result.stdout).toContain('Check the Web page')
+      // No review-era copy and no undefined status may reach the user.
+      expect(result.stdout).not.toContain('review status')
+      expect(result.stdout).not.toContain('undefined')
     }
   )
 

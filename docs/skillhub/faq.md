@@ -109,9 +109,9 @@ A: 登录入口是配置驱动的：`/api/v1/auth/methods` 只返回配置了真
 
 ## Q: 关闭扫描后，还能上传和发布技能吗？
 
-A: `runtime.sh --no-scanner` 会关闭注册中心扫描开关，并不启动扫描容器。对**普通的新上传**，关闭扫描后使用 `PUBLIC`（公开）或 `NAMESPACE_ONLY`（空间成员可见）会被拒绝；`PRIVATE`（私有）可以上传，版本停在 `UPLOADED`，还需确认发布。上传成功不表示已发布，不要反复上传同一版本绕过扫描前置。
+A: `runtime.sh --no-scanner` 会关闭注册中心扫描开关，并不启动扫描容器。首期产品变更（GitHub issue #2）：关闭扫描不会阻止发布；新上传按所选可见性直接发布或留在待确认发布状态，与是否启用扫描无关，完整口径见[技能生命周期](https://github.com/iflytek/skillhub/blob/main/docs/14-skill-lifecycle.md)的权威表。扫描是可选的纵深防御，只记录结果，不再是发布前置。上传成功即表示版本已按所选范围落库，但“有扫描报告”仍不等于“已通过人工验收”。
 
-已经发布的私有技能扩大可见范围是另一条路径：最新版本若有可复用的合格扫描报告，即使当前扫描关闭，仍可能继续提交范围审核；没有可复用报告时必须先恢复扫描。报告条件和诊断命令见[安全扫描](./guide/scanner.html)，不能仅凭“扫描已关闭”推断已有版本的所有动作都不可用。
+已经发布的私有技能扩大可见范围是另一条路径：最新版本若有可复用的合格扫描报告会沿用它；没有可复用报告且扫描关闭时，申请照常提交并进入人工审核，不会因缺少扫描而失败。报告条件和诊断命令见[安全扫描](./guide/scanner.html)，不能仅凭“扫描已关闭”推断已有版本的所有动作都不可用。
 
 依据：[部署脚本](https://github.com/iflytek/skillhub/blob/main/scripts/runtime.sh)、[新上传规则](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)与[范围变更规则](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillVisibilityService.java)。
 

@@ -13,7 +13,7 @@
 
 团队命名空间的所有者及空间管理员可审核本人提交；超级管理员可自审。其他本人提交不能仅凭平台技能管理员身份自审；全局提升的本人申请仅超级管理员可审核。普通审核决定还要求命名空间为 `ACTIVE`。规则见[审核权限策略](https://github.com/iflytek/skillhub/blob/main/server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/ReviewPermissionChecker.java)。
 
-普通公开（PUBLIC）或空间成员可见（NAMESPACE_ONLY）上传进入扫描与审核流程；私有（PRIVATE）上传先保留，仍须确认发布或另行提审。新版审核期间，旧发布版可能继续可用。
+首期变更（GitHub issue #2）后，普通公开（PUBLIC）或空间成员可见（NAMESPACE_ONLY）的**交互式上传直接发布为 `PUBLISHED`**，不进入本页的审核队列；本页处理的是仍需人工决定的场景：GitHub 同步、Suite Bundle 成员、扩大可见范围申请与头像审核。私有（PRIVATE）上传先保留，仍须确认发布或另行提审。内部审核队列的新版待审期间，旧发布版可能继续可用。
 
 ## 核查内容并提交决定
 

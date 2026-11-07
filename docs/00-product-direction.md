@@ -95,7 +95,7 @@ ClawHub CLI 使用单一 slug 模型，slug 校验规则为 `[a-z0-9]([a-z0-9-]*
 ## 4. 一期 MVP 功能
 
 核心能力：
-- 技能发布（当前版本采用“提交 → 审核 → 上线”；`SUPER_ADMIN` 保留直发能力）
+- 技能发布（首期采用“包校验通过即直接公开”；GitHub 同步与 Suite Bundle 成员保留独立审核队列）
 - 技能版本管理（semver + 标签）
 - 技能浏览、详情、下载（公共技能匿名可访问）
 - 标签管理（`latest` 系统保留只读 + 自定义标签人工维护）
@@ -109,13 +109,14 @@ ClawHub CLI 使用单一 slug 模型，slug 校验规则为 `[a-z0-9]([a-z0-9-]*
 - 创建技能时选择归属空间
 
 审核流程：
-- 当前版本：普通用户发布后进入审核，审核通过后上线
-- `SUPER_ADMIN` 发布可直达 `PUBLISHED`
+- 首期产品变更（GitHub issue #2）：普通用户上传的 `PUBLIC` / `NAMESPACE_ONLY` 技能包校验通过即直接公开，不要求安全扫描器，也不再等待人工审核
+- 安全扫描退化为可选的纵深防御：启用时异步执行并留痕，不阻断、不回退已发布版本
+- 人工审核保留给 GitHub 同步与 Suite Bundle 成员的独立队列、扩大可见范围申请以及内容治理
 - 分级审核：团队空间由团队管理员审核，全局空间由平台管理员审核
 - 团队技能提升到全局需平台管理员二次审核
 - 平台管理员只负责全局空间审核与提升审核，不介入团队空间审核
-- 当前不引入自动审核；`PrePublishValidator` 仅作为未来扩展点保留，默认实现为 `NoOp`
-- 撤回审核语义统一为 `PENDING_REVIEW → DRAFT`，不再走删除版本记录
+- `PrePublishValidator` 仅作为扩展点保留，默认实现为 `NoOp`（凭据等基础检查仍在发布前执行）
+- 撤回审核语义统一为 `PENDING_REVIEW → UPLOADED`（`DRAFT` 为旧数据兼容状态）
 - skill 生命周期管理读模型统一为 `headlineVersion / publishedVersion / ownerPreviewVersion / resolutionMode`
 - `hidden` 是独立治理覆盖层，不属于 skill 容器状态机
 

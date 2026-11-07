@@ -12,7 +12,7 @@ Figure: the registry receives, governs and distributes packages. The target Agen
 
 | Operation | Registry responsibility | Consumer or author responsibility |
 | --- | --- | --- |
-| Submission and publication | Validate packages and advance scanning, review and publication according to configuration | Supply instructions, dependency requirements and verifiable content; resolve rejection or failure |
+| Submission and publication | Validate packages and publish directly by visibility or leave them awaiting confirmation; scanning is optional | Supply instructions, dependency requirements and verifiable content; resolve rejection or failure |
 | Discovery and download | Provide search, details and downloadable versions according to resource state and access permissions | Check purpose, source, version and target environment; visible details do not establish installability |
 | Installation and execution | The CLI downloads files and maintains local installation records | Confirm Agent discovery, configure runtime dependencies and assess execution results |
 | Updates and governance | Manage versions and governance states such as hiding or archiving | Inspect local changes and upgrade plans; remote governance does not automatically recall downloaded files |
@@ -42,7 +42,7 @@ The object definitions are grounded in the [Skill Suite member model](https://gi
 | Upload several local skills and assemble a suite | Suite Bundle | Import a definition, preview differences and create member versions; follow [Bundle import](./guide/suite-bundle.html) |
 | Manage visibility, membership and review | Namespace and governance workflows | Platform roles do not imply namespace roles; start with the prerequisites in [namespace management](./guide/namespace.html) |
 
-Installing and using skills does not require deploying a registry or preparing a Suite Bundle first. Publication follows the applicable preparation, submission, scanning, review and publication-confirmation path. Upload completion does not mean that the whole workflow has finished; the entry point is [publishing and version management](./guide/skill-publish.html).
+Installing and using skills does not require deploying a registry or preparing a Suite Bundle first. Publication follows the applicable preparation, submission and publication path: a Public or Namespace Only upload publishes directly, while a Private upload waits for publication confirmation, and scanning is optional defence in depth rather than a prerequisite. The [authoritative lifecycle table](https://github.com/iflytek/skillhub/blob/main/docs/14-skill-lifecycle.md) is the single reference for version states, container visibility and review ownership on each path; this page does not restate them. The entry point is [publishing and version management](./guide/skill-publish.html).
 
 ## Deployment forms and technical components
 

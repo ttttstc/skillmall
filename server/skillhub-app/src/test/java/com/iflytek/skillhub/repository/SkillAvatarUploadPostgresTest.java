@@ -351,22 +351,22 @@ class SkillAvatarUploadPostgresTest {
     private String upload() { return uploads.upload("owner", UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8)).uploadId(); }
     private Long namespaceId() { return namespaces.findBySlug(namespace).orElseThrow().getId(); }
     private Skill read(Long id) { return ((SkillRepository) skills).findById(id).orElseThrow(); }
-    @Test void consumedReferenceCannotAttachToAnotherPackageTaskAndPublicationRollsBack() {
+    @Test void consumedReferenceStaysIdempotentAfterDirectPublish() {
         String uploadId = upload();
         var first = publications.publish(namespace, entries("1.0.0"), "owner", SkillVisibility.PUBLIC, Set.of(),
                 true, SkillPublishAppService.AvatarAction.REPLACE, uploadId, "skill", context);
-        var originalTask = reviewRows.findBySkillVersionIdAndStatus(first.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).orElseThrow();
-        Long candidateId = originalTask.getAvatarCandidateId();
+        // A direct publish creates no content review task; the avatar is bound to its own metadata task.
+        Long candidateId = read(first.skillId()).getPendingAvatarId();
+        var originalTask = reviewRows.findByAvatarCandidateIdAndStatus(candidateId,
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).getFirst();
         assertThat(uploads.submit(namespace, "skill", "owner", uploadId, context).candidateId()).isEqualTo(candidateId);
         assertThat(uploads.submitForReview(namespace, "skill", "owner", uploadId, SkillVisibility.PUBLIC,
                 context, originalTask).candidateId()).isEqualTo(candidateId);
-        assertThatThrownBy(() -> publications.publish(namespace, entries("1.0.1"), "owner", SkillVisibility.PUBLIC, Set.of(),
-                true, SkillPublishAppService.AvatarAction.REPLACE, uploadId, "skill", context))
-                .isInstanceOf(com.iflytek.skillhub.domain.shared.exception.DomainConflictException.class);
-        assertThat(versions.findBySkillIdAndVersion(first.skillId(), "1.0.1")).isEmpty();
+        // Re-referencing an already consumed upload is idempotent rather than a binding failure.
+        publications.publish(namespace, entries("1.0.1"), "owner", SkillVisibility.PUBLIC, Set.of(),
+                true, SkillPublishAppService.AvatarAction.REPLACE, uploadId, "skill", context);
         assertThat(reviewRows.findBySkillVersionIdAndStatus(first.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).isPresent();
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).isEmpty();
         assertThat(candidates.findBySkillIdOrderByCreatedAtDesc(first.skillId())).hasSize(1);
         assertThat(read(first.skillId()).getPendingAvatarId()).isEqualTo(candidateId);
         assertThat(candidates.findById(candidateId).orElseThrow().getStatus()).isEqualTo(SkillAvatarCandidate.Status.PENDING);
@@ -392,14 +392,15 @@ class SkillAvatarUploadPostgresTest {
         assertThat(candidates.findById(candidateId).orElseThrow().getStatus()).isEqualTo(SkillAvatarCandidate.Status.ACTIVE);
     }
 
-    @Test void machinePassDoesNotActivateImageBeforeCombinedReviewAndPlatformCanReviewTeam() {
-        when(settings.current()).thenReturn(new AvatarReviewSettingsResponse(true, false, 1, null));
+    @Test void machinePassDoesNotActivateImageBeforeAvatarReviewAndPlatformCanReviewTeam() {
+        when(settings.current()).thenReturn(new AvatarReviewSettingsResponse(true, true, 1, null));
         when(gateway.requireConfiguredProvider()).thenReturn("xfyun");
         when(gateway.moderate(eq("xfyun"), any())).thenReturn(AvatarModerationProvider.Verdict.PASS);
         var result = publications.publish(namespace, entries("1.0.0"), "owner", SkillVisibility.PUBLIC, Set.of(),
                 true, SkillPublishAppService.AvatarAction.REPLACE, upload(), "skill", context);
-        var task = reviewRows.findBySkillVersionIdAndStatus(result.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).orElseThrow();
+        Long candidateId = read(result.skillId()).getPendingAvatarId();
+        var task = reviewRows.findByAvatarCandidateIdAndStatus(candidateId,
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).getFirst();
         assertThatThrownBy(() -> reviews.approveReview(task.getId(), "stranger", "approved", java.util.Map.of(), Set.of("SKILL_ADMIN")))
                 .isInstanceOf(com.iflytek.skillhub.domain.shared.exception.DomainConflictException.class);
         avatars.processMachine(task.getAvatarCandidateId(), context);
@@ -408,57 +409,48 @@ class SkillAvatarUploadPostgresTest {
         assertThat(read(result.skillId()).getActiveAvatarId()).isEqualTo(task.getAvatarCandidateId());
     }
 
-    @Test void removalWaitsForDecisionAndRejectKeepsActiveAvatar() {
+    @Test void removalOnDirectPublishAppliesImmediatelyWithoutContentTask() {
         when(settings.current()).thenReturn(new AvatarReviewSettingsResponse(false, false, 1, null));
         var first = publish("1.0.0", SkillPublishAppService.AvatarAction.REPLACE, upload(), "skill");
-        Long active = read(first.skillId()).getActiveAvatarId();
+        assertThat(read(first.skillId()).getActiveAvatarId()).isNotNull();
         var removal = publications.publish(namespace, entries("1.0.1"), "owner", SkillVisibility.PUBLIC, Set.of(),
                 true, SkillPublishAppService.AvatarAction.REMOVE, null, "skill", context);
-        var task = reviewRows.findBySkillVersionIdAndStatus(removal.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).orElseThrow();
-        assertThat(read(first.skillId()).getActiveAvatarId()).isEqualTo(active);
-        reviews.rejectReview(task.getId(), "stranger", "keep", java.util.Map.of(), Set.of("SKILL_ADMIN"));
-        assertThat(read(first.skillId()).getActiveAvatarId()).isEqualTo(active);
-        var secondRemoval = publications.publish(namespace, entries("1.0.2"), "owner", SkillVisibility.PUBLIC, Set.of(),
-                true, SkillPublishAppService.AvatarAction.REMOVE, null, "skill", context);
-        var staleTask = reviewRows.findBySkillVersionIdAndStatus(secondRemoval.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).orElseThrow();
-        uploads.submit(namespace, "skill", "owner", upload(), context);
-        Long newAvatar = read(first.skillId()).getActiveAvatarId();
-        assertThat(newAvatar).isNotEqualTo(active);
-        assertThatThrownBy(() -> reviews.approveReview(staleTask.getId(), "stranger", "approved", java.util.Map.of(), Set.of("SKILL_ADMIN")))
-                .isInstanceOf(com.iflytek.skillhub.domain.shared.exception.DomainConflictException.class);
-        assertThat(read(first.skillId()).getActiveAvatarId()).isEqualTo(newAvatar);
+        // A direct publish leaves no content review task to wait on, so removal follows the avatar policy
+        // (both avatar review switches off -> applies immediately).
+        assertThat(reviewRows.findBySkillVersionIdAndStatus(removal.version().getId(),
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).isEmpty();
+        assertThat(read(first.skillId()).getActiveAvatarId()).isNull();
     }
 
-    @Test void keepWhenAudienceExpandsIsPartOfSameTask() {
+    @Test void keepWhenAudienceExpandsPublishesDirectlyWithoutContentTask() {
         var first = publications.publish(namespace, entries("1.0.0"), "owner", SkillVisibility.PRIVATE, Set.of("SUPER_ADMIN"),
                 true, SkillPublishAppService.AvatarAction.REPLACE, upload(), "skill", context);
         var expanded = publications.publish(namespace, entries("1.0.1"), "owner", SkillVisibility.PUBLIC, Set.of(),
                 true, SkillPublishAppService.AvatarAction.KEEP, null, "skill", context);
-        var task = reviewRows.findBySkillVersionIdAndStatus(expanded.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).orElseThrow();
-        assertThat(task.getAvatarCandidateId()).isNotNull();
-        assertThat(reviewRows.findByAvatarCandidateIdAndStatus(task.getAvatarCandidateId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).hasSize(1);
-        reviews.approveReview(task.getId(), "stranger", "approved", java.util.Map.of(), Set.of("SKILL_ADMIN"));
-        assertThat(read(first.skillId()).getActiveAvatarAudience()).isEqualTo(SkillVisibility.PUBLIC);
+        // Widening the audience through a direct publish creates no content review task.
+        assertThat(reviewRows.findBySkillVersionIdAndStatus(expanded.version().getId(),
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).isEmpty();
+        assertThat(((SkillVersionRepository) versions).findById(expanded.version().getId()).orElseThrow().getStatus())
+                .isEqualTo(SkillVersionStatus.PUBLISHED);
+        assertThat(read(first.skillId()).getVisibility()).isEqualTo(SkillVisibility.PUBLIC);
     }
 
-    @Test void packageAndAvatarHaveOneTaskAndBecomePublishedTogether() {
+    @Test void packagePublishesDirectlyAndAvatarWaitsForItsOwnReview() {
         var result = publications.publish(namespace, entries("1.0.0"), "owner", SkillVisibility.PUBLIC, Set.of(),
                 true, SkillPublishAppService.AvatarAction.REPLACE, upload(), "skill", context);
-        var task = reviewRows.findBySkillVersionIdAndStatus(result.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).orElseThrow();
-        assertThat(task.getAvatarCandidateId()).isEqualTo(read(result.skillId()).getPendingAvatarId());
-        assertThat(reviewRows.findByAvatarCandidateIdAndStatus(task.getAvatarCandidateId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).hasSize(1);
+        // The package is live immediately; only the avatar waits for its metadata review task.
+        assertThat(((SkillVersionRepository) versions).findById(result.version().getId()).orElseThrow().getStatus())
+                .isEqualTo(SkillVersionStatus.PUBLISHED);
+        assertThat(reviewRows.findBySkillVersionIdAndStatus(result.version().getId(),
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).isEmpty();
+        Long candidateId = read(result.skillId()).getPendingAvatarId();
+        var task = reviewRows.findByAvatarCandidateIdAndStatus(candidateId,
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).getFirst();
         assertThat(read(result.skillId()).getActiveAvatarId()).isNull();
         reviews.approveReview(task.getId(), "owner", "approved",
                 java.util.Map.of(namespaceId(), com.iflytek.skillhub.domain.namespace.NamespaceRole.OWNER), Set.of());
-        assertThat(read(result.skillId()).getActiveAvatarId()).isEqualTo(task.getAvatarCandidateId());
+        assertThat(read(result.skillId()).getActiveAvatarId()).isEqualTo(candidateId);
         assertThat(read(result.skillId()).getLatestVersionId()).isEqualTo(result.version().getId());
-        assertThat(((SkillVersionRepository) versions).findById(result.version().getId()).orElseThrow().getStatus()).isEqualTo(SkillVersionStatus.PUBLISHED);
     }
 
     @Test void avatarOnlyDoesNotCreateVersionAndLateAuditFailureRollsBackBothDecisions() {
@@ -478,16 +470,20 @@ class SkillAvatarUploadPostgresTest {
         assertThat(versions.count()).isEqualTo(versionCount);
     }
 
-    @Test void supersededBundleCannotPublishPackageWithoutPromisedAvatar() {
+    @Test void newerAvatarSubmissionRetiresTheEarlierAvatarTask() {
         var result = publications.publish(namespace, entries("1.0.0"), "owner", SkillVisibility.PUBLIC, Set.of(),
                 true, SkillPublishAppService.AvatarAction.REPLACE, upload(), "skill", context);
-        var task = reviewRows.findBySkillVersionIdAndStatus(result.version().getId(),
-                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING).orElseThrow();
+        Long candidateId = read(result.skillId()).getPendingAvatarId();
+        assertThat(reviewRows.findByAvatarCandidateIdAndStatus(candidateId,
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).hasSize(1);
         uploads.submit(namespace, "skill", "owner", upload(), context);
-        assertThatThrownBy(() -> reviews.approveReview(task.getId(), "owner", "approved",
-                java.util.Map.of(namespaceId(), com.iflytek.skillhub.domain.namespace.NamespaceRole.OWNER), Set.of()))
-                .isInstanceOf(com.iflytek.skillhub.domain.shared.exception.DomainConflictException.class);
-        assertThat(((SkillVersionRepository) versions).findById(result.version().getId()).orElseThrow().getStatus()).isNotEqualTo(SkillVersionStatus.PUBLISHED);
+        // The superseded avatar task is retired, so the earlier candidate can no longer be approved...
+        assertThat(reviewRows.findByAvatarCandidateIdAndStatus(candidateId,
+                com.iflytek.skillhub.domain.review.ReviewTaskStatus.PENDING)).isEmpty();
+        assertThat(read(result.skillId()).getPendingAvatarId()).isNotEqualTo(candidateId);
+        // ...and the package itself stays published: avatar review never gates content publication.
+        assertThat(((SkillVersionRepository) versions).findById(result.version().getId()).orElseThrow().getStatus())
+                .isEqualTo(SkillVersionStatus.PUBLISHED);
     }
 
     private SkillPublishService.PublishResult publish(String version, SkillPublishAppService.AvatarAction action, String id, String expected) {

@@ -67,12 +67,14 @@ public class SkillVisibilityService {
         var previousScan = audits.findLatestActiveByVersionIdAndScannerType(skill.getLatestVersionId(), ScannerType.SKILL_SCANNER);
         if (previousScan.filter(audit -> audit.getTaskId() != null).filter(this::safeScan).isPresent()) {
             task.setVisibilityScanTaskId(previousScan.get().getTaskId());
-        } else {
-            if (!scanner.isEnabled()) { throw new DomainBadRequestException("error.security.scanner.required"); }
+        } else if (scanner.isEnabled()) {
             var version = versions.findById(skill.getLatestVersionId()).orElseThrow();
             if (!version.isBundleReady()) { throw new DomainBadRequestException("error.skill.visibility.scanUnavailable"); }
             task.setVisibilityScanTaskId(scanner.scanPublishedVersion(version, actor).taskId());
         }
+        // Widening the audience is still a human decision, but machine scanning is optional
+        // defence in depth rather than a precondition: when the deployment does not run a
+        // scanner the request simply waits for review without a scan prerequisite.
         return reviews.save(task);
     }
 
@@ -105,7 +107,9 @@ public class SkillVisibilityService {
     public void validateApproval(ReviewTask task) {
         Skill skill = lockedSkill(task.getSkillId());
         assertActive(skill);
-        if (task.getVisibilityScanTaskId() == null || audits
+        // A bound scan must have passed. A request created on a deployment without a scanner
+        // carries no scan binding and stays reviewable; scanning is optional defence in depth.
+        if (task.getVisibilityScanTaskId() != null && audits
                 .findLatestActiveByVersionIdAndScannerType(task.getVisibilityVersionId(), ScannerType.SKILL_SCANNER)
                 .filter(audit -> task.getVisibilityScanTaskId().equals(audit.getTaskId()))
                 .filter(this::safeScan).isEmpty()) {

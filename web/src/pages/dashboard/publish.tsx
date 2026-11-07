@@ -12,6 +12,7 @@ import {
   isVersionExistsMessage,
 } from '@/features/publish/publish-error-utils'
 import { normalizePublishPrefill } from '@/features/publish/publish-prefill'
+import { publishNoticeCopyKeys, publishResultCopyKeys } from '@/features/publish/publish-result'
 import { Button } from '@/shared/ui/button'
 import {
   Select,
@@ -153,17 +154,11 @@ export function PublishPage() {
       setWarningDialogOpen(false)
       const avatarNotice = avatarEdit.action === 'REPLACE' ? t('skillAvatar.submittedNotice') : avatarEdit.action === 'REMOVE' ? t('skillAvatar.removedNotice') : ''
       const skillLabel = `${result.namespace}/${result.slug}@${result.version}`
-      if (result.status === 'PUBLISHED') {
-        toast.success(
-          t('publish.publishedTitle'),
-          [t('publish.publishedDescription', { skill: skillLabel }), avatarNotice].filter(Boolean).join(' ')
-        )
-      } else {
-        toast.success(
-          t('publish.pendingReviewTitle'),
-          [t('publish.pendingReviewDescription', { skill: skillLabel }), avatarNotice].filter(Boolean).join(' ')
-        )
-      }
+      const resultCopy = publishResultCopyKeys(result.status)
+      toast.success(
+        t(resultCopy.title),
+        [t(resultCopy.description, { skill: skillLabel }), avatarNotice].filter(Boolean).join(' ')
+      )
       navigateAfterOverlays(() => {
         navigate({ to: '/dashboard/skills' })
       })
@@ -245,8 +240,8 @@ export function PublishPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="flex-1">
-            <h3 className="mb-1 text-sm font-semibold text-foreground">{t('publish.reviewNotice.title')}</h3>
-            <p className="text-sm text-muted-foreground">{t('publish.reviewNotice.description')}</p>
+            <h3 className="mb-1 text-sm font-semibold text-foreground">{t(publishNoticeCopyKeys(visibility).title)}</h3>
+            <p className="text-sm text-muted-foreground">{t(publishNoticeCopyKeys(visibility).description)}</p>
           </div>
         </div>
         <div className="space-y-3">

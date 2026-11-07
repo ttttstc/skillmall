@@ -20,7 +20,7 @@ Select the required task. [Quick Start](../quickstart.html) covers the first ins
 
 ## Author skills
 
-Prepare `SKILL.md` and its supporting files, then submit. An accepted submission still needs its scan, review, and final version state checked.
+Prepare `SKILL.md` and its supporting files, then submit. After the first-phase change a Public or Namespace Only upload is published directly, so check the returned version state; a scan result is optional defence in depth rather than a gate.
 
 - [Publish and update skills](./skill-publish.html): package structure, metadata, uploading, and version management.
 - [Import a bundle](./suite-bundle.html): upload content as an author, inspect member changes, and confirm. To install an existing suite, use the guide above.

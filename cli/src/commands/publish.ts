@@ -109,11 +109,12 @@ export async function publishCommand(path: string, options: PublishCommandOption
   const result = await client.publish(namespace, archiveBlob, toServerVisibility(visibility), archiveName)
 
   const detailUrl = `${registry}/space/${result.namespace}/${encodeURIComponent(result.slug)}`
+  const published = result.status === 'PUBLISHED'
 
   if (options.json) {
     return JSON.stringify({
       ok: true,
-      action: 'submitted',
+      action: published ? 'published' : 'uploaded',
       namespace: result.namespace,
       slug: result.slug,
       version: result.version,
@@ -124,10 +125,14 @@ export async function publishCommand(path: string, options: PublishCommandOption
     })
   }
   return [
-    `Submitted successfully: ${result.namespace}/${result.slug}@${result.version}`,
+    published
+      ? `Published: ${result.namespace}/${result.slug}@${result.version}`
+      : `Uploaded: ${result.namespace}/${result.slug}@${result.version}`,
     `Status: ${result.status}`,
     `Detail: ${detailUrl}`,
-    'Check the Web page for final publish or review status.',
+    published
+      ? 'Public and namespace-only skills go live immediately; scanning is optional and never blocks publication.'
+      : 'A private upload stays hidden until you confirm publication on the detail page.',
     ...(summary ? [summary] : []),
     ...examples.warnings.map(warning => `Warning: ${warning}`)
   ].join('\n')

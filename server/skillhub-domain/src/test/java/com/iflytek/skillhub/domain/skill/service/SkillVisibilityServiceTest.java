@@ -131,13 +131,17 @@ class SkillVisibilityServiceTest {
     }
 
     @Test
-    void missingScanWithDisabledScannerLeavesVisibilityUnchanged() {
+    void missingScanWithDisabledScannerStillCreatesHumanReviewableRequest() {
         skill.setVisibility(SkillVisibility.PRIVATE);
         when(audits.findLatestActiveByVersionIdAndScannerType(3L, ScannerType.SKILL_SCANNER)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.change(1L, SkillVisibility.PUBLIC, "owner", Map.of(), Set.of()))
-                .hasMessageContaining("error.security.scanner.required");
-        verify(reviews, never()).save(any());
+        // Scanning is optional defence in depth: without a scanner the request still reaches human review
+        // instead of failing on "scanner required" (product change, issue #2).
+        var task = service.change(1L, SkillVisibility.PUBLIC, "owner", Map.of(), Set.of());
+        assertThat(task.getVisibilityScanTaskId()).isNull();
+        verify(reviews).save(task);
         assertThat(skill.getVisibility()).isEqualTo(SkillVisibility.PRIVATE);
+        service.approve(task, "admin");
+        assertThat(skill.getVisibility()).isEqualTo(SkillVisibility.PUBLIC);
     }
 
     @Test

@@ -125,7 +125,8 @@ public class CliSkillController extends BaseApiController {
             @PathVariable String namespace,
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "visibility", required = false) String visibility,
-            @AuthenticationPrincipal PlatformPrincipal principal) throws IOException {
+            @AuthenticationPrincipal PlatformPrincipal principal,
+            HttpServletRequest request) throws IOException {
         List<PackageEntry> entries;
         try {
             entries = archiveExtractor.extract(file);
@@ -135,7 +136,12 @@ public class CliSkillController extends BaseApiController {
         var result = cliSkillAppService.publish(
                 namespace, entries, principal.userId(),
                 SkillVisibility.valueOf((visibility != null ? visibility : "PUBLIC").toUpperCase()),
-                principal.platformRoles());
-        return ok("response.success.published", result);
+                principal.platformRoles(), AuditRequestContext.from(request));
+        // A direct publish and a private upload are different outcomes; the envelope message must
+        // not claim "published" for a version that still waits for confirmation.
+        String messageKey = "PUBLISHED".equals(result.status())
+                ? "response.success.published"
+                : "response.success.uploaded";
+        return ok(messageKey, result);
     }
 }
