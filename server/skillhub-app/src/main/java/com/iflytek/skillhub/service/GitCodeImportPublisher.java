@@ -1,5 +1,6 @@
 package com.iflytek.skillhub.service;
 
+import com.iflytek.skillhub.controller.support.SkillPackageArchiveExtractor;
 import com.iflytek.skillhub.domain.audit.AuditDetail;
 import com.iflytek.skillhub.domain.audit.AuditLogService;
 import com.iflytek.skillhub.domain.skill.SkillImportSource;
@@ -55,7 +56,8 @@ public class GitCodeImportPublisher {
                                                 Set<String> roles,
                                                 AuditRequestContext context) {
         List<PackageEntry> entries = snapshot.files().stream()
-                .map(file -> new PackageEntry(file.path(), file.content(), file.size(), null))
+                .map(file -> new PackageEntry(file.path(), file.content(), file.size(),
+                        SkillPackageArchiveExtractor.determineContentType(file.path())))
                 .toList();
 
         SkillPublishService.PublishResult result = publishService.publish(
