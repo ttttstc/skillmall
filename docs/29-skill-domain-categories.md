@@ -40,7 +40,7 @@ Status: contract reference（实现与口径说明）
 
 | 路径 | 端点 | 说明 |
 |---|---|---|
-| 发布（新建或更新包）时选择 | `POST /api/{v1,web}/skills` 的 `domain` 表单字段 | 与版本在同一事务写入，不会出现"版本已发、分类没落"的中间态 |
+| 发布（新建或更新包）时选择 | `POST /api/{v1,web}/skills/{namespace}/publish` 的 `domain` 表单字段 | 与版本在同一事务写入，不会出现"版本已发、分类没落"的中间态 |
 | 仅改分类 | `POST /api/{v1,web}/skills/{namespace}/{slug}/domain` | 不重新上传安装包 |
 | 读取当前值 | `GET /api/{v1,web}/skills/{namespace}/{slug}/domain` | 供编辑表单回填 |
 
