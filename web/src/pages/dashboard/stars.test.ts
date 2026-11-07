@@ -1,21 +1,11 @@
 // @vitest-environment jsdom
 
 import { createElement } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, cleanup } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const navigate = vi.fn()
-const { useMyStarsPage } = vi.hoisted(() => ({
-  useMyStarsPage: vi.fn(() => ({
-    data: {
-      items: [{ id: 1, namespace: 'team-a', slug: 'demo skill' }],
-      total: 1,
-      page: 0,
-      size: 12,
-    },
-    isLoading: false,
-  })),
-}))
+const { useMyStarsPage } = vi.hoisted(() => ({ useMyStarsPage: vi.fn() }))
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigate,
@@ -59,8 +49,27 @@ vi.mock('@/shared/components/dashboard-page-header', () => ({
 
 import { MyStarsPage } from './stars'
 
+function starsPage(overrides: Record<string, unknown> = {}) {
+  return {
+    data: {
+      items: [{ id: 1, namespace: 'team-a', slug: 'demo skill' }],
+      total: 1,
+      page: 0,
+      size: 12,
+    },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+    ...overrides,
+  }
+}
+
 describe('MyStarsPage', () => {
-  beforeEach(() => navigate.mockClear())
+  beforeEach(() => {
+    navigate.mockClear()
+    useMyStarsPage.mockReturnValue(starsPage())
+  })
+  afterEach(() => cleanup())
 
   it('exports a named component function', () => {
     expect(typeof MyStarsPage).toBe('function')
@@ -81,5 +90,29 @@ describe('MyStarsPage', () => {
     render(createElement(MyStarsPage))
 
     expect(useMyStarsPage).toHaveBeenCalledWith({ page: 2, size: 12 })
+  })
+
+  it('reports a failed load instead of presenting it as an empty collection', () => {
+    const refetch = vi.fn()
+    useMyStarsPage.mockReturnValue(starsPage({ data: undefined, isError: true, refetch }))
+
+    render(createElement(MyStarsPage))
+
+    expect(screen.getByRole('alert')).toBeTruthy()
+    expect(screen.queryByText('stars.empty')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.retry' }))
+    expect(refetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the empty state when the collection is genuinely empty', () => {
+    useMyStarsPage.mockReturnValue(starsPage({
+      data: { items: [], total: 0, page: 0, size: 12 },
+    }))
+
+    render(createElement(MyStarsPage))
+
+    expect(screen.getByText('stars.empty')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })
