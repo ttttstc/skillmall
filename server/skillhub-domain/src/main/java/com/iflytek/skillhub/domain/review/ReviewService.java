@@ -280,6 +280,7 @@ public class ReviewService {
         skillVersionRepository.save(skillVersion);
 
         skill.setLatestVersionId(skillVersion.getId());
+        skill.markFirstPublished(skillVersion.getPublishedAt());
         if (skillVersion.getRequestedVisibility() != null) {
             skill.setVisibility(skillVersion.getRequestedVisibility());
         }

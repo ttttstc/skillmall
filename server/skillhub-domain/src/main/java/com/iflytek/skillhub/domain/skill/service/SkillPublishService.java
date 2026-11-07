@@ -797,6 +797,8 @@ public class SkillPublishService {
         if (autoPublish) {
             version.setStatus(SkillVersionStatus.PUBLISHED);
             version.setPublishedAt(currentTime());
+            // First-publication is recorded once per Skill; later versions must not move it.
+            skill.markFirstPublished(version.getPublishedAt());
         } else if (visibility == SkillVisibility.PRIVATE) {
             // PRIVATE skill goes to UPLOADED status, no review task created
             version.setStatus(SkillVersionStatus.UPLOADED);

@@ -329,6 +329,34 @@
     "latestTitle": "최신 릴리스",
     "latestDescription": "새로 게시된 스킬",
     "viewAll": "전체 보기 →",
+    "recommend": {
+      "title": "추천 스킬",
+      "description": "공개 스킬을 무작위로 보여 줍니다. 이용 기록과 무관합니다",
+      "shuffle": "새로고침",
+      "empty": "추천할 공개 스킬이 아직 없습니다",
+      "error": "추천을 불러오지 못했습니다"
+    },
+    "ranking": {
+      "recent": {
+        "title": "최근 인기",
+        "description": "최근 7일 다운로드 순",
+        "empty": "최근 7일 다운로드 기록이 없습니다"
+      },
+      "cumulative": {
+        "title": "누적 다운로드",
+        "description": "누적 다운로드 순",
+        "empty": "다운로드 기록이 없습니다"
+      },
+      "newest": {
+        "title": "최신 공개",
+        "description": "최초 공개 시각 순이며 새 버전을 배포해도 바뀌지 않습니다",
+        "empty": "공개된 스킬이 없습니다"
+      },
+      "error": "순위를 불러오지 못했습니다",
+      "windowDownloads": "7일간 {{value}}회",
+      "totalDownloads": "누적 {{value}}회",
+      "downloadsNote": "숫자는 다운로드 횟수이며 설치 성공 인원이 아닙니다. 최근 인기는 7일만 집계합니다."
+    },
     "quickStart": {
       "title": "빠른 시작",
       "subtitle": "빠른 시작",

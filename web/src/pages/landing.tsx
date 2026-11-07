@@ -1,4 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { normalizeSearchQuery } from '@/shared/lib/search-query'
 import {
@@ -19,9 +20,18 @@ import { LandingQuickStartSection } from '@/shared/components/landing-quick-star
 import { SkillCard } from '@/features/skill/skill-card'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
 import { LoadError } from '@/shared/components/load-error'
-import { useSearchSkills } from '@/shared/hooks/use-skill-queries'
+import { RankingList, type RankingRowView } from '@/features/home/ranking-list'
+import { useHomeRanking, useHomeRecommendations } from '@/shared/hooks/use-home-discovery'
 import { useInView } from '@/shared/hooks/use-in-view'
 import { Button } from '@/shared/ui/button'
+import { formatCompactCount } from '@/shared/lib/number-format'
+import { formatRelativeTime } from '@/shared/lib/format-relative-time'
+import type { HomeRankingItem } from '@/api/types'
+
+const RECOMMENDATION_SIZE = 6
+const RANKING_SIZE = 8
+
+type RankingKind = 'recent' | 'cumulative' | 'newest'
 
 function EnterpriseSection() {
   const { t } = useTranslation()
@@ -127,29 +137,56 @@ function EnterpriseSection() {
  * stay aligned with the current registry state.
  */
 export function LandingPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
 
-  const { data: popularSkills, isLoading: isLoadingPopular, isError: isErrorPopular, refetch: refetchPopular } = useSearchSkills({
-    sort: 'downloads',
-    size: 16,
-  })
+  // "换一换" rotates by excluding what is already on screen and bumping a nonce, so the next draw
+  // is a fresh random sample rather than a cached replay.
+  const [rotation, setRotation] = useState(0)
+  const [shownIds, setShownIds] = useState<number[]>([])
 
-  const { data: latestSkills, isLoading: isLoadingLatest, isError: isErrorLatest, refetch: refetchLatest } = useSearchSkills({
-    sort: 'newest',
-    size: 6,
-  })
+  const {
+    data: recommended,
+    isLoading: isLoadingRecommended,
+    isError: isErrorRecommended,
+    refetch: refetchRecommended,
+  } = useHomeRecommendations(RECOMMENDATION_SIZE, shownIds, rotation)
+
+  const recentPopular = useHomeRanking('recent-popular', RANKING_SIZE)
+  const mostDownloaded = useHomeRanking('most-downloaded', RANKING_SIZE)
+  const newest = useHomeRanking('newest', RANKING_SIZE)
 
   const handleSkillClick = (namespace: string, slug: string) => {
     navigate({ to: `/space/${namespace}/${encodeURIComponent(slug)}` })
   }
 
+  const handleShuffle = () => {
+    setShownIds((recommended ?? []).map(skill => skill.id))
+    setRotation(current => current + 1)
+  }
+
+  const formatRankingMeta = (item: HomeRankingItem, kind: RankingKind): string | null => {
+    if (kind === 'recent') {
+      // The windowed number only. Never the cumulative counter: they answer different questions.
+      return item.windowDownloadCount == null
+        ? null
+        : t('home.ranking.windowDownloads', { value: formatCompactCount(item.windowDownloadCount) })
+    }
+    if (kind === 'cumulative') {
+      return t('home.ranking.totalDownloads', { value: formatCompactCount(item.skill.downloadCount) })
+    }
+    return item.firstPublishedAt ? formatRelativeTime(item.firstPublishedAt, i18n.language) : null
+  }
+
+  const rankingRows = (items: HomeRankingItem[] | undefined, kind: RankingKind): RankingRowView[] =>
+    (items ?? []).map(item => ({ skill: item.skill, meta: formatRankingMeta(item, kind) }))
+
   const heroView = useInView()
   const featuresView = useInView()
   const quickStartView = useInView()
   const enterpriseView = useInView()
-  const popularView = useInView()
-  const latestView = useInView()
+  const discoverView = useInView()
+  const rankingsView = useInView()
 
   const handleSearch = (query: string) => {
     const normalized = normalizeSearchQuery(query)
@@ -192,12 +229,6 @@ export function LandingPage() {
     },
   ]
 
-  const popularTitle = t('home.popularTitle')
-  const popularDescription = t('home.popularDescription')
-  const latestTitle = t('home.latestTitle')
-  const latestDescription = t('home.latestDescription')
-  const viewAllText = t('home.viewAll')
-
   return (
     <>
       <main ref={heroView.ref} className={`relative z-10 w-full overflow-hidden px-6 pb-10 pt-20 text-center scroll-fade-up${heroView.inView ? ' in-view' : ''} md:pb-12 md:pt-28`}>
@@ -221,33 +252,81 @@ export function LandingPage() {
         </div>
       </main>
 
-      <section ref={popularView.ref} className={`relative z-10 w-full px-6 pb-16 pt-8 scroll-fade-up${popularView.inView ? ' in-view' : ''} md:pb-20 md:pt-12`}>
+      <section ref={discoverView.ref} className={`relative z-10 w-full px-6 pb-16 pt-8 scroll-fade-up${discoverView.inView ? ' in-view' : ''} md:pb-20 md:pt-12`}>
         <div className="mx-auto max-w-[1704px] space-y-6">
-          <div className="text-center">
-            <h2 className="mb-2 text-3xl font-semibold tracking-tight text-foreground">{popularTitle}</h2>
-            <p className="text-sm text-muted-foreground">{popularDescription}</p>
+          <div className="flex flex-col gap-4 text-center">
+            <div>
+              <h2 className="mb-2 text-3xl font-semibold tracking-tight text-foreground">{t('home.recommend.title')}</h2>
+              <p className="text-sm text-muted-foreground">{t('home.recommend.description')}</p>
+            </div>
+            <div>
+              <Button data-analytics-id="discovery.recommend.shuffle"
+                variant="ghost"
+                disabled={isLoadingRecommended}
+                onClick={handleShuffle}
+              >
+                {t('home.recommend.shuffle')}
+              </Button>
+            </div>
           </div>
-          {isLoadingPopular ? (
-            <SkeletonList count={6} />
-          ) : isErrorPopular ? (
-            <LoadError compact onRetry={() => { void refetchPopular() }} />
+          {isLoadingRecommended ? (
+            <SkeletonList count={RECOMMENDATION_SIZE} />
+          ) : isErrorRecommended ? (
+            <LoadError compact onRetry={() => { void refetchRecommended() }} />
+          ) : (recommended?.length ?? 0) === 0 ? (
+            <div data-analytics-id="discovery.recommend.empty" className="rounded-xl border border-border/60 bg-card px-6 py-12 text-center text-sm text-muted-foreground">
+              {t('home.recommend.empty')}
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {popularSkills?.items.map((skill, idx) => (
+              {recommended?.map((skill, idx) => (
                 <div key={skill.id} className={`animate-fade-up delay-${Math.min(idx + 1, 6)}`}>
                   <SkillCard analyticsId="skill.card.open" skill={skill} market onClick={() => handleSkillClick(skill.namespace, skill.slug)} />
                 </div>
               ))}
             </div>
           )}
-          <div className="text-center">
-            <Button data-analytics-id="discovery.popular.open"
-              variant="ghost"
-              onClick={() => navigate({ to: '/search', search: { q: '', sort: 'downloads', page: 0, starredOnly: false } })}
-            >
-              {viewAllText}
-            </Button>
+        </div>
+      </section>
+
+      <section ref={rankingsView.ref} className={`relative z-10 w-full px-6 pb-16 pt-4 scroll-fade-up${rankingsView.inView ? ' in-view' : ''} md:pb-20 md:pt-6`}>
+        <div className="mx-auto max-w-[1704px] space-y-4">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <RankingList
+              title={t('home.ranking.recent.title')}
+              description={t('home.ranking.recent.description')}
+              analyticsId="discovery.ranking.recent"
+              rows={rankingRows(recentPopular.data?.items, 'recent')}
+              isLoading={recentPopular.isLoading}
+              isError={recentPopular.isError}
+              errorLabel={t('home.ranking.error')}
+              emptyLabel={t('home.ranking.recent.empty')}
+              onSelect={skill => handleSkillClick(skill.namespace, skill.slug)}
+            />
+            <RankingList
+              title={t('home.ranking.cumulative.title')}
+              description={t('home.ranking.cumulative.description')}
+              analyticsId="discovery.ranking.cumulative"
+              rows={rankingRows(mostDownloaded.data?.items, 'cumulative')}
+              isLoading={mostDownloaded.isLoading}
+              isError={mostDownloaded.isError}
+              errorLabel={t('home.ranking.error')}
+              emptyLabel={t('home.ranking.cumulative.empty')}
+              onSelect={skill => handleSkillClick(skill.namespace, skill.slug)}
+            />
+            <RankingList
+              title={t('home.ranking.newest.title')}
+              description={t('home.ranking.newest.description')}
+              analyticsId="discovery.ranking.newest"
+              rows={rankingRows(newest.data?.items, 'newest')}
+              isLoading={newest.isLoading}
+              isError={newest.isError}
+              errorLabel={t('home.ranking.error')}
+              emptyLabel={t('home.ranking.newest.empty')}
+              onSelect={skill => handleSkillClick(skill.namespace, skill.slug)}
+            />
           </div>
+          <p className="text-center text-xs text-muted-foreground">{t('home.ranking.downloadsNote')}</p>
         </div>
       </section>
 
@@ -289,37 +368,6 @@ export function LandingPage() {
       <div ref={quickStartView.ref} className={`scroll-fade-up${quickStartView.inView ? ' in-view' : ''}`}>
         <LandingQuickStartSection />
       </div>
-
-      <section ref={latestView.ref} className={`relative z-10 w-full border-y border-border/70 bg-secondary/70 px-6 py-16 scroll-fade-up${latestView.inView ? ' in-view' : ''} md:py-20`}>
-        <div className="mx-auto max-w-6xl space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t('landing.experience.latest')}</p>
-              <h2 className="mb-2 text-3xl font-medium tracking-tight text-foreground">{latestTitle}</h2>
-              <p className="text-sm text-muted-foreground">{latestDescription}</p>
-            </div>
-            <Button data-analytics-id="discovery.latest.open"
-              variant="ghost"
-              onClick={() => navigate({ to: '/search', search: { q: '', sort: 'newest', page: 0, starredOnly: false } })}
-            >
-              {viewAllText}
-            </Button>
-          </div>
-          {isLoadingLatest ? (
-            <SkeletonList count={6} />
-          ) : isErrorLatest ? (
-            <LoadError compact onRetry={() => { void refetchLatest() }} />
-          ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {latestSkills?.items.map((skill, idx) => (
-                <div key={skill.id} className={`animate-fade-up delay-${Math.min(idx + 1, 6)}`}>
-                  <SkillCard analyticsId="skill.card.open" skill={skill} onClick={() => handleSkillClick(skill.namespace, skill.slug)} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
 
       <div ref={enterpriseView.ref} className={`scroll-fade-up${enterpriseView.inView ? ' in-view' : ''}`}>
         <EnterpriseSection />

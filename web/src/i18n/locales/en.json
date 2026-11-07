@@ -292,6 +292,34 @@
     "latestTitle": "Latest Releases",
     "latestDescription": "Freshly published skills",
     "viewAll": "View All →",
+    "recommend": {
+      "title": "Recommended skills",
+      "description": "A random pick of public skills, not based on your activity",
+      "shuffle": "Shuffle",
+      "empty": "No public skill is available to recommend yet",
+      "error": "Recommendations could not be loaded"
+    },
+    "ranking": {
+      "recent": {
+        "title": "Trending this week",
+        "description": "Most downloads in the last 7 days",
+        "empty": "No downloads recorded in the last 7 days"
+      },
+      "cumulative": {
+        "title": "Most downloaded",
+        "description": "Ranked by all-time downloads",
+        "empty": "No downloads recorded yet"
+      },
+      "newest": {
+        "title": "Newly online",
+        "description": "Ranked by first publication; new versions do not change it",
+        "empty": "No public skill yet"
+      },
+      "error": "This ranking could not be loaded",
+      "windowDownloads": "{{value}} in 7 days",
+      "totalDownloads": "{{value}} total",
+      "downloadsNote": "Counts are downloads, not successful installs. Trending covers the last 7 days only."
+    },
     "quickStart": {
       "title": "Quick Start",
       "subtitle": "快速开始",

@@ -72,6 +72,18 @@ Status: contract reference
 - 管理者的授权预览下载与公开分发不同：owner 或 namespace ADMIN/OWNER 可下载 `UPLOADED` / `PENDING_REVIEW`，当前 owner 另可受控下载自己的 `DRAFT` / `REJECTED`，仍须通过 Skill 可见性、文件就绪及其他安全检查；不因此放行 `SCANNING` / `SCAN_FAILED` / `YANKED` 或公开分发未发布版本。常规 `downloadLatest` 读取原始指针后也使用相同版本授权判断，因此在上述 PRIVATE 指针语义下，默认下载不一定是已发布版本；该行为不授予公众访问权。
 - 已发布版本可安装还要求 `downloadReady=true`、`yankedAt=null`；下载要求容器为 `ACTIVE`，元数据可读不等于可下载
 
+### 3.3 First Published At
+
+`skill.first_published_at` 记录**该 Skill 第一个版本进入 `PUBLISHED` 状态的时刻**，是本仓库“首次上线”的唯一字段。
+
+- 只在 `first_published_at` 为空时写入，即 `Skill.markFirstPublished`；一旦有值，任何后续写入都是空操作。
+- 发布新版本、重发已发布版本、审核通过、提升、yank 后回退指针、归档后取消归档，都**不重置**该值。这保证“最新上线”排序描述的是“这个 Skill 什么时候第一次出现在市场”，而不是“它最近一次被改动是什么时候”。
+- 写入点为发布路径的四个 chokepoint：[SkillPublishService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java)（直发）、[SkillReviewSubmitService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillReviewSubmitService.java)（PRIVATE 确认发布）、[ReviewService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/ReviewService.java)（审核通过）、[PromotionService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/review/PromotionService.java)（提升）。
+- 语义边界：本字段记录的是“首个 PUBLISHED 版本”，不是“首个对匿名访客可见的版本”。`PRIVATE` 技能先发布、之后扩大可见范围到 `PUBLIC` 时不重置该值；扩范围本身不是发布新版本，见 §4.9。
+- 与 `skill_version.published_at` 的区别：`published_at` 属于**版本**，每个版本各自记录且随新版本更新；`first_published_at` 属于 **Skill 容器**，只记录一次。禁止用“最新版本的 `published_at`”推断首次上线时间。
+- 历史数据由迁移 `V120__skill_first_published_and_daily_downloads.sql` 回填为 `MIN(skill_version.published_at)`；该回填只能得到“现存版本中最早的一次发布”，对已物理删除历史版本的 Skill 不具备重建能力，因此回填值应视为“已知最早发布”而不是绝对首次。
+- 空值语义：`NULL` 表示尚无任何已记录发布。公开列表本身要求最新版本 `PUBLISHED`，因此空值在实践中只出现在异常数据上；排序按 `NULLS LAST` 处理，不隐藏该 Skill，也不伪造时间。
+
 ## 4. 代码实际链路
 
 ### 4.1 发布路径、可见性与审核归属

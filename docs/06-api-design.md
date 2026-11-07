@@ -85,6 +85,8 @@
 | GET | `/api/v1/skills/{skillId}/reviews` | 公开评价分页列表；仅返回可见评价，管理员可见隐藏项 |
 | GET | `/api/v1/namespaces` | 公开命名空间列表 |
 | GET | `/api/v1/namespaces/{slug}` | 命名空间详情 |
+| GET | `/api/web/home/recommendations` | 通用推荐（随机取样，非个性化）。`size`、`exclude`（已展示的 skill id，逗号分隔）；不足时返回真实子集或空数组 |
+| GET | `/api/web/home/rankings` | 单个榜单。`type`：`recent-popular`（最近 7 天下载量）/ `most-downloaded`（累计下载量）/ `newest`（首次公开时间倒序）；`size` |
 
 版本列表支持 `page`（从 0 开始）、`size` 和可选 `downloadableOnly`（缺省 `false`）。`true` 仅返回已发布、下载就绪且未撤回的版本，先过滤和排序后分页，`total` 为过滤后的数量。公开列表按发布时间倒序、空时间靠后，再按创建时间和 ID 倒序稳定排序。管理者缺省读取保留生命周期分组和未发布历史。过滤不探测对象存储，实际下载仍可能因文件缺失或网络错误失败。
 
@@ -94,6 +96,16 @@ Public API 的可见性规则：
 - `PRIVATE` 技能：owner 本人 + 该 namespace 的 ADMIN 以上可访问（需登录）
 - 若 `latest_version_id = null`，即使 `visibility=PUBLIC`，skill 也不会对外公开，只有 owner 可访问
 - `hidden=true` 时，普通访客不可访问；仅 owner 或该 namespace 的 `ADMIN` / `OWNER` 可访问
+
+### 首页发现接口
+
+`/api/web/home/*` 只读、匿名可用，且只返回可公开分发的 Skill：容器 `ACTIVE`、未 `hidden`、namespace 未归档、最新版本 `PUBLISHED` 且 `download_ready`、未 yank；匿名请求不包含 `PRIVATE` 与 `NAMESPACE_ONLY`。
+
+- `type=recent-popular` 只统计 `skill_download_daily` 中最近 7 个 UTC 自然日的下载；窗口内无记录时返回空 `items`，不回退为累计量。每项的 `windowDownloadCount` 是该窗口内的次数。
+- `type=most-downloaded` 使用 `skill.download_count` 排序，`windowDownloadCount` 为 `null`，客户端不得把它当 7 天数值展示。
+- `type=newest` 使用 `skill.first_published_at` 倒序；发布新版本不改变该值，见[生命周期 §3.3](./14-skill-lifecycle.md#33-first-published-at)。
+- 推荐是随机排序取样，`exclude` 传入当前已展示的 id 以实现“换一换”；池子不足时只返回真实存在的 Skill，不补造条目。
+- 口径与实现细节见[首页推荐与三类榜单](./28-home-rankings-and-download-metrics.md)。
 
 ### 技能详情的公共页面地址
 

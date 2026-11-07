@@ -55,6 +55,14 @@ public class Skill {
     @Column(name = "pending_avatar_id")
     private Long pendingAvatarId;
 
+    /**
+     * When this Skill first had a PUBLISHED version. Written once and never moved by a later
+     * version, so "newest online" ordering survives republishing. Null means no version of this
+     * Skill has ever been published.
+     */
+    @Column(name = "first_published_at")
+    private Instant firstPublishedAt;
+
     @Column(name = "download_count", nullable = false)
     private Long downloadCount = 0L;
 
@@ -175,6 +183,23 @@ public class Skill {
 
     public Long getDownloadCount() {
         return downloadCount;
+    }
+
+    public Instant getFirstPublishedAt() {
+        return firstPublishedAt;
+    }
+
+    /**
+     * Records the first time any version of this Skill became PUBLISHED.
+     *
+     * <p>The write is idempotent on purpose: publishing a newer version, re-releasing an existing
+     * one, or restoring a Skill after a yank must keep the original first-publication moment.
+     * Only the transition from "never published" to "published" may set it.
+     */
+    public void markFirstPublished(Instant publishedAt) {
+        if (publishedAt != null && firstPublishedAt == null) {
+            firstPublishedAt = publishedAt;
+        }
     }
 
     public boolean isHidden() {
