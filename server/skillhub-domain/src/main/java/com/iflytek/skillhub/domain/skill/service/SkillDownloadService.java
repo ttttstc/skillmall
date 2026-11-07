@@ -39,10 +39,8 @@ public class SkillDownloadService {
     private static final Logger log = LoggerFactory.getLogger(SkillDownloadService.class);
 
     private final NamespaceRepository namespaceRepository;
-    private final SkillRepository skillRepository;
     private final SkillVersionRepository skillVersionRepository;
-    private final SkillVersionStatsRepository skillVersionStatsRepository;
-    private final SkillDownloadDailyRepository skillDownloadDailyRepository;
+    private final SkillDownloadMetricsService skillDownloadMetricsService;
     private final SkillFileRepository skillFileRepository;
     private final SkillTagRepository skillTagRepository;
     private final ObjectStorageService objectStorageService;
@@ -53,10 +51,8 @@ public class SkillDownloadService {
 
     public SkillDownloadService(
             NamespaceRepository namespaceRepository,
-            SkillRepository skillRepository,
             SkillVersionRepository skillVersionRepository,
-            SkillVersionStatsRepository skillVersionStatsRepository,
-            SkillDownloadDailyRepository skillDownloadDailyRepository,
+            SkillDownloadMetricsService skillDownloadMetricsService,
             SkillFileRepository skillFileRepository,
             SkillTagRepository skillTagRepository,
             ObjectStorageService objectStorageService,
@@ -65,10 +61,8 @@ public class SkillDownloadService {
             SkillSlugResolutionService skillSlugResolutionService,
             Clock clock) {
         this.namespaceRepository = namespaceRepository;
-        this.skillRepository = skillRepository;
         this.skillVersionRepository = skillVersionRepository;
-        this.skillVersionStatsRepository = skillVersionStatsRepository;
-        this.skillDownloadDailyRepository = skillDownloadDailyRepository;
+        this.skillDownloadMetricsService = skillDownloadMetricsService;
         this.skillFileRepository = skillFileRepository;
         this.skillTagRepository = skillTagRepository;
         this.objectStorageService = objectStorageService;
@@ -186,11 +180,13 @@ public class SkillDownloadService {
     }
 
     private void recordPublishedDownload(Skill skill, SkillVersion version) {
-        skillRepository.incrementDownloadCount(skill.getId());
-        skillVersionStatsRepository.incrementDownloadCount(version.getId(), skill.getId());
-        // Cumulative and per-day counters are both incremented from the same event so the
-        // 7-day window can never be reconstructed from, or drift behind, the cumulative total.
-        skillDownloadDailyRepository.incrementDownloadCount(skill.getId(), LocalDate.now(clock));
+        // Cumulative, per-version and per-day counters are one event: the metrics service commits
+        // them in a single transaction, so a failure on any of them leaves none of them advanced.
+        // The 7-day window therefore can never drift behind the cumulative total.
+        skillDownloadMetricsService.recordPublishedDownload(
+                skill.getId(), version.getId(), LocalDate.now(clock));
+        // Published after the counters commit: this event has no consumer that could undo a
+        // real download, and a listener failure must not silently keep the counters out of date.
         eventPublisher.publishEvent(new SkillDownloadedEvent(skill.getId(), version.getId()));
     }
 

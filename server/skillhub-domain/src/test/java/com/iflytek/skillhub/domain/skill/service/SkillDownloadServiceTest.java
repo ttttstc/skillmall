@@ -41,14 +41,13 @@ class SkillDownloadServiceTest {
 
     @Mock
     private NamespaceRepository namespaceRepository;
+    /** Only used to build the real {@link SkillSlugResolutionService} under test. */
     @Mock
     private SkillRepository skillRepository;
     @Mock
     private SkillVersionRepository skillVersionRepository;
     @Mock
-    private SkillVersionStatsRepository skillVersionStatsRepository;
-    @Mock
-    private SkillDownloadDailyRepository skillDownloadDailyRepository;
+    private SkillDownloadMetricsService skillDownloadMetricsService;
     @Mock
     private SkillFileRepository skillFileRepository;
     @Mock
@@ -69,10 +68,8 @@ class SkillDownloadServiceTest {
         skillSlugResolutionService = new SkillSlugResolutionService(skillRepository);
         service = new SkillDownloadService(
                 namespaceRepository,
-                skillRepository,
                 skillVersionRepository,
-                skillVersionStatsRepository,
-                skillDownloadDailyRepository,
+                skillDownloadMetricsService,
                 skillFileRepository,
                 skillTagRepository,
                 objectStorageService,
@@ -153,10 +150,9 @@ class SkillDownloadServiceTest {
         assertEquals("Test Skill-1.0.0.zip", result.filename());
         assertEquals(1000L, result.contentLength());
         assertNotNull(result.openContent());
-        verify(skillRepository).incrementDownloadCount(1L);
-        verify(skillVersionStatsRepository).incrementDownloadCount(10L, 1L);
-        // The 7-day window reads this bucket, so a published download must land on the UTC day.
-        verify(skillDownloadDailyRepository).incrementDownloadCount(1L, LocalDate.of(2026, 11, 7));
+        // All three counters go through one call, so they cannot be committed separately, and the
+        // 7-day window reads the UTC day this call carries.
+        verify(skillDownloadMetricsService).recordPublishedDownload(1L, 10L, LocalDate.of(2026, 11, 7));
         verify(eventPublisher).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -179,8 +175,7 @@ class SkillDownloadServiceTest {
 
         assertEquals("error.skill.notFound", ex.messageCode());
         assertArrayEquals(new Object[]{skillSlug}, ex.messageArgs());
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -212,8 +207,7 @@ class SkillDownloadServiceTest {
 
         assertEquals("error.skill.version.notDownloadable", ex.messageCode());
         assertArrayEquals(new Object[]{"1.0.0"}, ex.messageArgs());
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -250,8 +244,7 @@ class SkillDownloadServiceTest {
 
         assertThrows(com.iflytek.skillhub.domain.shared.exception.DomainForbiddenException.class, () ->
                 service.downloadLatest(namespaceSlug, skillSlug, null, Map.of()));
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -269,8 +262,7 @@ class SkillDownloadServiceTest {
         assertThrows(com.iflytek.skillhub.domain.shared.exception.DomainForbiddenException.class, () ->
                 service.downloadLatest("global", "archived-skill", "viewer", Map.of()));
 
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -305,8 +297,7 @@ class SkillDownloadServiceTest {
                 service.downloadLatest("global", "private", null, Map.of()));
         assertThrows(DomainBadRequestException.class, () ->
                 service.downloadLatest("global", "unpublished", null, Map.of()));
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -351,8 +342,7 @@ class SkillDownloadServiceTest {
         assertNotNull(result);
         assertEquals("Test Skill-1.0.0.zip", result.filename());
         assertNotNull(result.openContent());
-        verify(skillRepository).incrementDownloadCount(1L);
-        verify(skillVersionStatsRepository).incrementDownloadCount(10L, 1L);
+        verify(skillDownloadMetricsService).recordPublishedDownload(1L, 10L, LocalDate.of(2026, 11, 7));
         verify(eventPublisher).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -392,8 +382,7 @@ class SkillDownloadServiceTest {
 
         assertEquals("http://minio.local/presigned", result.presignedUrl());
         assertNotNull(result.openContent());
-        verify(skillRepository).incrementDownloadCount(1L);
-        verify(skillVersionStatsRepository).incrementDownloadCount(10L, 1L);
+        verify(skillDownloadMetricsService).recordPublishedDownload(1L, 10L, LocalDate.of(2026, 11, 7));
         verify(eventPublisher).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -422,8 +411,7 @@ class SkillDownloadServiceTest {
 
         assertThrows(DomainForbiddenException.class, () ->
                 service.downloadVersion(namespaceSlug, skillSlug, versionStr, "another-user", userNsRoles));
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -455,8 +443,7 @@ class SkillDownloadServiceTest {
 
         assertEquals("error.skill.version.notDownloadable", ex.messageCode());
         assertArrayEquals(new Object[]{versionStr}, ex.messageArgs());
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -489,8 +476,7 @@ class SkillDownloadServiceTest {
 
         assertEquals("error.skill.version.notDownloadable", ex.messageCode());
         assertArrayEquals(new Object[]{versionStr}, ex.messageArgs());
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -540,8 +526,7 @@ class SkillDownloadServiceTest {
             assertEquals("test", output.toString());
         }
 
-        verify(skillRepository).incrementDownloadCount(1L);
-        verify(skillVersionStatsRepository).incrementDownloadCount(10L, 1L);
+        verify(skillDownloadMetricsService).recordPublishedDownload(1L, 10L, LocalDate.of(2026, 11, 7));
         verify(eventPublisher).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -576,8 +561,7 @@ class SkillDownloadServiceTest {
 
         assertNotNull(result);
         assertEquals("Demo Skill-1.0.0.zip", result.filename());
-        verify(skillRepository).incrementDownloadCount(1L);
-        verify(skillVersionStatsRepository).incrementDownloadCount(10L, 1L);
+        verify(skillDownloadMetricsService).recordPublishedDownload(1L, 10L, LocalDate.of(2026, 11, 7));
         verify(eventPublisher).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -612,8 +596,7 @@ class SkillDownloadServiceTest {
 
         assertNotNull(result);
         assertEquals("Demo Skill-1.0.0.zip", result.filename());
-        verify(skillRepository).incrementDownloadCount(1L);
-        verify(skillVersionStatsRepository).incrementDownloadCount(10L, 1L);
+        verify(skillDownloadMetricsService).recordPublishedDownload(1L, 10L, LocalDate.of(2026, 11, 7));
         verify(eventPublisher).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -639,16 +622,15 @@ class SkillDownloadServiceTest {
 
         assertThrows(DomainForbiddenException.class, () ->
                 service.downloadVersion("global", "demo-skill", "1.1.0", null, Map.of()));
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verify(eventPublisher, never()).publishEvent(any(SkillDownloadedEvent.class));
     }
 
     @ParameterizedTest
     @EnumSource(value = SkillVersionStatus.class, names = {"DRAFT", "REJECTED", "PENDING_REVIEW", "UPLOADED"})
     void removedCurrentOwnerCanDownloadInternalVersionsWithoutPublishingOrCounting(SkillVersionStatus status) throws Exception {
-        service = new SkillDownloadService(namespaceRepository, skillRepository, skillVersionRepository,
-                skillVersionStatsRepository, skillDownloadDailyRepository, skillFileRepository,
+        service = new SkillDownloadService(namespaceRepository, skillVersionRepository,
+                skillDownloadMetricsService, skillFileRepository,
                 skillTagRepository, objectStorageService,
                 new VisibilityChecker(), eventPublisher, skillSlugResolutionService, clock);
         Namespace namespace = new Namespace("team", "Team", "admin");
@@ -671,8 +653,7 @@ class SkillDownloadServiceTest {
         var result = service.downloadVersion("team", "owned", "1.0.0", "removed-owner", Map.of());
         assertArrayEquals("safe".getBytes(), result.openContent().readAllBytes());
         assertEquals(status, version.getStatus());
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
-        verify(skillVersionStatsRepository, never()).incrementDownloadCount(anyLong(), anyLong());
+        verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
         verifyNoInteractions(eventPublisher);
     }
 
@@ -692,8 +673,7 @@ class SkillDownloadServiceTest {
         when(skillVersionRepository.findBySkillIdAndVersion(9L, "1.0.0")).thenReturn(Optional.of(version));
         assertThrows(DomainBadRequestException.class,
                 () -> service.downloadVersion("team", "owned", "1.0.0", "owner", Map.of()));
-        verifyNoInteractions(objectStorageService, eventPublisher);
-        verify(skillRepository, never()).incrementDownloadCount(anyLong());
+        verifyNoInteractions(objectStorageService, eventPublisher, skillDownloadMetricsService);
     }
 
     private void setId(Object entity, Long id) throws Exception {

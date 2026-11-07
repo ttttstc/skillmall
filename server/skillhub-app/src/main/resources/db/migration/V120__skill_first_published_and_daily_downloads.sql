@@ -10,13 +10,16 @@ ALTER TABLE skill ADD COLUMN first_published_at TIMESTAMP;
 
 -- Backfill from the earliest recorded publication of any version. Yanked versions keep their
 -- published_at, so the earliest publication survives later yanks and newer versions.
+-- The guard keeps the backfill from touching a Skill that already has a first publication: this
+-- column is set once and never moves, so an existing value must win over any recomputation.
 UPDATE skill s
 SET first_published_at = (
     SELECT MIN(v.published_at)
     FROM skill_version v
     WHERE v.skill_id = s.id
       AND v.published_at IS NOT NULL
-);
+)
+WHERE s.first_published_at IS NULL;
 
 CREATE INDEX idx_skill_first_published_at ON skill(first_published_at);
 
@@ -27,4 +30,5 @@ CREATE TABLE skill_download_daily (
     PRIMARY KEY (skill_id, download_date)
 );
 
-CREATE INDEX idx_skill_download_daily_date ON skill_download_daily(download_date);
+-- No separate index on download_date: every read is the window subquery of the home rankings,
+-- which is correlated by skill_id and therefore served by the leading column of the primary key.

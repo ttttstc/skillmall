@@ -170,10 +170,12 @@ CREATE INDEX idx_search_vector ON skill_search_document USING GIN (search_vector
 
 `SearchQuery.sortBy=newest` 当前按 `skill.updated_at` 倒序，语义是“最近更新”；首页“最新上线”按 `skill.first_published_at` 倒序，语义是“首次公开”，见[生命周期 §3.3](./14-skill-lifecycle.md#33-first-published-at)。
 
+这个差异的范围不止搜索页：`/skills` 页（`web/src/pages/home.tsx`）的“最新发布”区块走的是同一个 `useSearchSkills({ sort: 'newest' })`，因此同样按 `updated_at` 排序，也同样是“最近更新”而不是“首次公开”。
+
 两者回答不同问题，不能互相替换：
 
 - 发布新版本会更新 `updated_at`，但不会改变 `first_published_at`
 - 首页榜单不走搜索 SPI，直接使用首页查询仓储，因此不受本文的索引与可见性投影影响；其可见性过滤单独实现并单独测试
-- 本次未改动搜索 `newest` 的存量排序语义。若将来要把搜索的 `newest` 也收敛为首次公开口径，属于独立的搜索语义变更，需要单独评审并同步本文
+- 本次未改动搜索 `newest` 的存量排序语义，也没有改动 `/skills` 页的“最新发布”。若将来要把搜索的 `newest` 也收敛为首次公开口径，属于独立的搜索语义变更，需要单独评审并同步本文；`/skills` 页的“最新发布”需一并评估
 
 首页口径详见[首页推荐与三类榜单](./28-home-rankings-and-download-metrics.md)。

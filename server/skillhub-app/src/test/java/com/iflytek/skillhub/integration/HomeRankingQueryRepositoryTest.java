@@ -246,6 +246,57 @@ class HomeRankingQueryRepositoryTest {
         assertThat(picked).hasSize(2).containsExactlyInAnyOrder(first.getId(), second.getId());
     }
 
+    @Test
+    void skillWithoutALatestVersionAppearsInNoRanking() {
+        // The strongest possible counters: only the missing version pointer can keep it out.
+        Skill versionless = bareSkill("team", "versionless");
+        bucket(versionless, TODAY, 99);
+        nativeUpdate("UPDATE skill SET download_count = 99 WHERE id = " + versionless.getId());
+
+        assertThat(repository.findRecentlyPopular(Set.of(), WINDOW_START, WINDOW_END_EXCLUSIVE, 10)).isEmpty();
+        assertThat(repository.findMostDownloaded(Set.of(), 10)).isEmpty();
+        assertThat(repository.findNewestPublished(Set.of(), 10)).isEmpty();
+        assertThat(repository.findRandomRecommendations(Set.of(), List.of(), 10)).isEmpty();
+    }
+
+    @Test
+    void skillWhoseLatestVersionIsNotPublishedAppearsInNoRanking() {
+        // download_ready is TRUE on purpose: the review state alone must exclude it, so the case
+        // would fail if the public-distribution filter only checked download readiness.
+        Skill pending = bareSkill("team", "pending-review");
+        SkillVersion pendingVersion = new SkillVersion(pending.getId(), "1.0.0", "owner");
+        pendingVersion.setStatus(SkillVersionStatus.PENDING_REVIEW);
+        pendingVersion.setDownloadReady(true);
+        pendingVersion = entityManager.persistFlushFind(pendingVersion);
+        pending.setLatestVersionId(pendingVersion.getId());
+        entityManager.persistAndFlush(pending);
+
+        bucket(pending, TODAY, 99);
+        nativeUpdate("UPDATE skill SET download_count = 99 WHERE id = " + pending.getId());
+
+        assertThat(repository.findRecentlyPopular(Set.of(), WINDOW_START, WINDOW_END_EXCLUSIVE, 10)).isEmpty();
+        assertThat(repository.findMostDownloaded(Set.of(), 10)).isEmpty();
+        assertThat(repository.findNewestPublished(Set.of(), 10)).isEmpty();
+        assertThat(repository.findRandomRecommendations(Set.of(), List.of(), 10)).isEmpty();
+    }
+
+    @Test
+    void newestSortsSkillsWithoutAKnownFirstPublicationAfterEveryDatedSkill() {
+        // PostgreSQL sorts NULL first for DESC by default. An unknown first publication must never
+        // be presented as the most recent launch, so the ranking has to state NULLS LAST.
+        Skill undated = bareSkill("team", "undated");
+        publishVersionLeavingFirstPublicationUnset(undated, "1.0.0", DEFAULT_PUBLISHED_AT);
+
+        Skill dated = bareSkill("team", "dated");
+        setFirstPublishedAt(dated, Instant.parse("2026-03-01T08:00:00Z"));
+        publishVersion(dated, "1.0.0", Instant.parse("2026-03-01T08:00:00Z"));
+
+        List<RankedSkill> newest = repository.findNewestPublished(Set.of(), 10);
+
+        assertThat(ids(newest)).containsExactly(dated.getId(), undated.getId());
+        assertThat(newest.get(1).firstPublishedAt()).isNull();
+    }
+
     private static List<Long> ids(List<RankedSkill> rows) {
         return rows.stream().map(RankedSkill::skillId).toList();
     }
@@ -288,6 +339,17 @@ class HomeRankingQueryRepositoryTest {
         skillVersion = entityManager.persistFlushFind(skillVersion);
         skill.setLatestVersionId(skillVersion.getId());
         skill.markFirstPublished(publishedAt);
+        entityManager.persistAndFlush(skill);
+    }
+
+    /** Publishes a version while leaving {@code first_published_at} unset, i.e. "unknown". */
+    private void publishVersionLeavingFirstPublicationUnset(Skill skill, String version, Instant publishedAt) {
+        SkillVersion skillVersion = new SkillVersion(skill.getId(), version, "owner");
+        skillVersion.setStatus(SkillVersionStatus.PUBLISHED);
+        skillVersion.setDownloadReady(true);
+        skillVersion.setPublishedAt(publishedAt);
+        skillVersion = entityManager.persistFlushFind(skillVersion);
+        skill.setLatestVersionId(skillVersion.getId());
         entityManager.persistAndFlush(skill);
     }
 

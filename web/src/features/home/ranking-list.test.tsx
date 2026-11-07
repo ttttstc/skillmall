@@ -80,4 +80,25 @@ describe('RankingList', () => {
     expect(html).not.toContain('Alpha')
     expect(html).not.toContain('no downloads in the last 7 days')
   })
+
+  it('renders no meta label for a row whose windowed count is unknown', () => {
+    // The 7-day number can legitimately be unknown (no bucket for the window). Such a row must
+    // render nothing on the right rather than an empty badge or a borrowed cumulative total.
+    const html = render({
+      rows: [
+        { skill: skill(1, 'Alpha'), meta: null },
+        { skill: skill(2, 'Beta'), meta: '12 in 7 days' },
+      ],
+    })
+
+    expect(html).toContain('Alpha')
+    expect(html).toContain('Beta')
+    expect(html).toContain('12 in 7 days')
+    expect(occurrences(html, 'shrink-0 text-xs tabular-nums')).toBe(1)
+    expect(html).not.toContain('undefined')
+  })
 })
+
+function occurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1
+}

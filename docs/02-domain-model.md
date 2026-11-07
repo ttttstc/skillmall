@@ -108,7 +108,7 @@
 | download_count | bigint | 当日下载次数 |
 
 - 主键 `(skill_id, download_date)`；只在实际发生下载的日期建行，因此“没有行”表示“该窗口内没有下载记录”，不是“数据未知”
-- 与 `skill.download_count`、`skill_version_stats.download_count` 在同一次已发布版本下载中同步累加
+- 与 `skill.download_count`、`skill_version_stats.download_count` 在同一次已发布版本下载中、同一个事务内一起累加，三者要么都加、要么都不加
 - 计数表示下载结果构建成功，不等于安装成功人数；口径详见[首页推荐与三类榜单](./28-home-rankings-and-download-metrics.md)
 
 ### skill_version

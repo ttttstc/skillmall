@@ -20,6 +20,7 @@ Status: contract reference（实现与口径说明）
 
 - **累计**：`skill.download_count` 与 `skill_version_stats.download_count`，由已发布版本下载同步累加。
 - **按日**：`skill_download_daily(skill_id, download_date, download_count)`，同一事件同步累加，`download_date` 取 UTC 自然日。
+- **原子性**：累计、按版本、按日三笔写入在同一个事务里提交（`SkillDownloadMetricsService`），要么都加、要么都不加。任何一步失败都不能让累计值先落地，否则窗口值会永久落后于累计值，且后续下载补不回来。
 - **计的是什么**：授权通过并成功构建下载结果的次数。它不是安装成功人数，也不代表客户端完整接收；页面与接口文档不得把下载量表述为安装量。
 - 审核绑定下载、授权的未发布版本下载不计入公开下载量，见[业务流 §3](./05-business-flows.md)。
 
@@ -69,6 +70,8 @@ Status: contract reference（实现与口径说明）
 
 ## 8 已知边界
 
-- 搜索页 `sort=newest` 仍按 `updated_at`，与首页“最新上线”语义不同，差异与迁移条件见[搜索架构 §8](./04-search-architecture.md)。
+- 搜索页 `sort=newest` 仍按 `updated_at`，与首页“最新上线”语义不同，差异与迁移条件见[搜索架构 §8](./04-search-architecture.md)。`/skills` 页（`web/src/pages/home.tsx`）的“最新发布”走的是同一条 `sort=newest`，所以这个差异的范围不止搜索页。
 - 历史数据回填取 `MIN(skill_version.published_at)`，只能得到“现存版本中最早的一次发布”；已物理删除历史版本的 Skill 无法重建绝对首次时间。
+- 回填只对 `first_published_at IS NULL` 的行执行，已有值不会被重新计算覆盖，因此“首次公开只写一次”的约束对历史数据同样成立。
+- **回填可能偏早**：PRIVATE 上传也会写 `skill_version.published_at`（版本状态仍是 `UPLOADED`，见 [SkillPublishService](../server/skillhub-domain/src/main/java/com/iflytek/skillhub/domain/skill/service/SkillPublishService.java) 的 PRIVATE 分支），所以“上传过但从没确认发布”的 Skill 会被回填出一个早于真实首次公开的时间。又因为 `first_published_at` 只写一次，之后确认发布时 `markFirstPublished` 是 no-op，这个偏早的值会永久保留。这类 Skill 在“最新上线”中的位置因此可能偏靠后（时间更早）。
 - 窗口按 UTC 自然日切分，不做本地时区换算；跨时区用户看到的“今天”边界是 UTC 日界。

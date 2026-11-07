@@ -33,10 +33,4 @@ public interface SkillDownloadDailyJpaRepository
             nativeQuery = true
     )
     void incrementDownloadCount(@Param("skillId") Long skillId, @Param("downloadDate") LocalDate downloadDate);
-
-    @Override
-    @Modifying
-    @Transactional
-    @Query("DELETE FROM SkillDownloadDaily d WHERE d.skillId = :skillId")
-    void deleteBySkillId(@Param("skillId") Long skillId);
 }
