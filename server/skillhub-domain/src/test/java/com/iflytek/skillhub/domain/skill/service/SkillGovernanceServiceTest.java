@@ -139,6 +139,51 @@ class SkillGovernanceServiceTest {
     }
 
     @Test
+    void hideSkill_persistsTrimmedReasonAndUnhideClearsIt() {
+        Skill skill = new Skill(1L, "demo", "owner", com.iflytek.skillhub.domain.skill.SkillVisibility.PUBLIC);
+        given(skillRepository.findById(10L)).willReturn(Optional.of(skill));
+        given(skillRepository.save(skill)).willReturn(skill);
+
+        Skill hidden = service.hideSkill(10L, "admin", "127.0.0.1", "JUnit", "  policy violation  ");
+        assertThat(hidden.getHiddenReason()).isEqualTo("policy violation");
+
+        Skill restored = service.unhideSkill(10L, "admin", "127.0.0.1", "JUnit");
+        assertThat(restored.isHidden()).isFalse();
+        assertThat(restored.getHiddenReason()).isNull();
+    }
+
+    @Test
+    void markOfficial_recordsAdministratorGrantAndAuditsIt() {
+        Skill skill = new Skill(1L, "demo", "owner", com.iflytek.skillhub.domain.skill.SkillVisibility.PUBLIC);
+        given(skillRepository.findById(10L)).willReturn(Optional.of(skill));
+        given(skillRepository.save(skill)).willReturn(skill);
+
+        Skill result = service.markOfficial(10L, "admin", "127.0.0.1", "JUnit", "verified upstream owner");
+
+        assertThat(result.isOfficial()).isTrue();
+        assertThat(result.getOfficialBy()).isEqualTo("admin");
+        assertThat(result.getOfficialAt()).isEqualTo(Instant.now(CLOCK));
+        verify(auditLogService).record("admin", "MARK_SKILL_OFFICIAL", "SKILL", 10L, null, "127.0.0.1", "JUnit", "{\"reason\":\"verified upstream owner\"}");
+    }
+
+    @Test
+    void unmarkOfficial_clearsGrantAndAuditsIt() {
+        Skill skill = new Skill(1L, "demo", "owner", com.iflytek.skillhub.domain.skill.SkillVisibility.PUBLIC);
+        skill.setOfficial(true);
+        skill.setOfficialAt(Instant.now(CLOCK));
+        skill.setOfficialBy("earlier-admin");
+        given(skillRepository.findById(10L)).willReturn(Optional.of(skill));
+        given(skillRepository.save(skill)).willReturn(skill);
+
+        Skill result = service.unmarkOfficial(10L, "admin", "127.0.0.1", "JUnit", "attestation withdrawn");
+
+        assertThat(result.isOfficial()).isFalse();
+        assertThat(result.getOfficialAt()).isNull();
+        assertThat(result.getOfficialBy()).isNull();
+        verify(auditLogService).record("admin", "UNMARK_SKILL_OFFICIAL", "SKILL", 10L, null, "127.0.0.1", "JUnit", "{\"reason\":\"attestation withdrawn\"}");
+    }
+
+    @Test
     void archiveSkill_marksSkillArchived() {
         Skill skill = new Skill(1L, "demo", "owner", com.iflytek.skillhub.domain.skill.SkillVisibility.PUBLIC);
         setField(skill, "id", 10L);

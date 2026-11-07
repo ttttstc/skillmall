@@ -148,8 +148,9 @@ Status: contract reference
 
 ### 4.7 隐藏 / 恢复 / 归档 / 撤回已发布版本
 
-- 隐藏：设置 `hidden=true` 并记录治理信息，不改变版本状态；不抹除 owner / namespace 管理者的访问权限
-- 恢复：设置 `hidden=false` 并更新治理信息
+- 隐藏（下架）：设置 `hidden=true`，记录 `hidden_by`、`hidden_at` 与 `hidden_reason`，并写审计 `HIDE_SKILL`（含操作者、时间、原因）；不改变版本状态，不抹除 owner / namespace 管理者的访问权限。平台治理入口要求原因非空，缺少原因的请求在改动任何状态之前被拒绝（400）
+- 恢复：设置 `hidden=false` 并清空 `hidden_by` / `hidden_at` / `hidden_reason`；审计 `UNHIDE_SKILL` 另记一条，原 `HIDE_SKILL` 记录不删除
+- 撤回范围（诚实边界）：下架只影响**服务端后续分发**——匿名搜索、详情、文件树与文件内容、resolve/解析、下载一致停止提供。**已经下载到本地的副本、以及尚未过期的短期直链不在撤回范围**；文档与界面不得声称已收回
 - 归档：`Skill.status = ARCHIVED`，保留记录并禁止下载；公开元数据仍可能可读
 - 取消归档：`Skill.status = ACTIVE`
 - yank：`PUBLISHED -> YANKED`，记录撤回人、时间和原因，设置 `downloadReady=false`；没有对应的恢复发布操作
@@ -184,7 +185,17 @@ Status: contract reference
 - 移除时先删除搜索文档（`SearchIndexService.remove`），再删除数据库记录，对象存储在事务提交后清理并在失败时走补偿；因此公开列表、搜索、详情、版本、resolve 与下载都不再返回该技能
 - 审计保留：动作 `DELETE_SKILL_HARD`，目标类型 `SKILL`，目标 ID 为被移除的技能 ID；详情记录操作人、客户端信息与 `namespaceId`（数字）加 `slug` 的键值对——不是门户 URL 里 `namespace/slug` 那种文本坐标，`namespaceId` 需要使用方自行解析成空间。审计记录不随业务记录删除
 
+### 4.12 管理员官方标识
+
+`skill.official` 是本地平台管理员作出的官方性声明，与容器状态、可见性和复核标签相互独立。
+
+- 授予 / 撤销：`POST` / `DELETE /api/v1/admin/skills/{skillId}/official`，仅平台 `SUPER_ADMIN`。namespace 的 ADMIN/OWNER、技能所有者与普通用户一律 403；`/api/v1/admin/**` 同时要求已认证会话，API 令牌不能调用该入口
+- 记录：`official_by` / `official_at` 保存在 `skill` 上；审计动作 `MARK_SKILL_OFFICIAL` / `UNMARK_SKILL_OFFICIAL` 保留操作者、时间与可选原因。撤销后历史授予仍留在审计中，不随字段清空而消失
+- 来源边界：交互式上传、GitHub 同步、Suite Bundle 导入、提升与发现都不会写入该字段。从某个仓库导入只说明包从哪里来，既不证明原作者是官方，也不证明内容安全
+- 展示：技能详情页展示官方徽章并给出下架提示；列表与搜索投影目前不包含该字段（搜索侧新增该投影属于独立改动，本文件不预先声称已实现）
+
 ## 5. 对外协议约束
+
 
 ### 5.1 Public / Search / Compat
 
@@ -232,7 +243,8 @@ Status: contract reference
 - 删除版本：owner 或 namespace ADMIN/OWNER，仅限 `DRAFT` / `REJECTED` / `SCAN_FAILED` / `UPLOADED`，禁止删除最后一个版本。数据库删除提交后清理对象存储，失败调用补偿入口；不是跨存储原子删除，补偿持久化的验证限制见[对象存储写入策略](./05-business-flows.md#对象存储写入策略)
 - 归档 / 取消归档：owner 或 namespace ADMIN/OWNER
 - 作者移除整个技能（硬删除）：门户、CLI 入口均要求当前所有者本人或平台 `SUPER_ADMIN`，只有管理入口（`/api/v1/skills/...`）以 `SUPER_ADMIN` 角色为门槛；`skill:delete` scope 只是 CLI 入口门槛，语义与审计见 §4.11；与管理员下架（`hidden`）分别授权和记录
-- 隐藏 / 恢复技能：平台技能治理权限
+- 隐藏 / 恢复技能：平台技能治理权限；下架必须给出原因（见 §4.7）
+- 官方标识：平台 `SUPER_ADMIN`，namespace 管理角色与所有者均不可授予或撤销（见 §4.12）
 - yank：owner 或 namespace ADMIN/OWNER 可走普通治理入口；平台治理入口另校验平台权限
 - 提交审核：owner 或 namespace ADMIN/OWNER；PRIVATE 确认发布还支持传入平台角色的 SUPER_ADMIN 路径
 - 读取：可见性检查区分 PUBLIC、NAMESPACE_ONLY、PRIVATE 和 hidden；没有 latest 指针且未隐藏时，普通 namespace 管理角色不自动获得读取权限，owner 可读。接受平台角色的检查入口另支持 SUPER_ADMIN，不等于每个服务调用均传递该角色

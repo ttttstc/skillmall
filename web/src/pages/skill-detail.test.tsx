@@ -11,6 +11,14 @@ const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
 }))
 
+const adminApiMocks = vi.hoisted(() => ({
+  hideSkill: vi.fn(),
+  unhideSkill: vi.fn(),
+  markSkillOfficial: vi.fn(),
+  unmarkSkillOfficial: vi.fn(),
+  yankVersion: vi.fn(),
+}))
+
 const navigateMock = vi.fn()
 const hasRoleMock = vi.fn<(role: string) => boolean>((role: string) => role === 'USER')
 const useSkillDetailMock = vi.fn()
@@ -94,9 +102,11 @@ vi.mock('@/shared/lib/toast', () => ({
 
 vi.mock('@/api/client', () => ({
   adminApi: {
-    hideSkill: vi.fn(),
-    unhideSkill: vi.fn(),
-    yankVersion: vi.fn(),
+    hideSkill: adminApiMocks.hideSkill,
+    unhideSkill: adminApiMocks.unhideSkill,
+    markSkillOfficial: adminApiMocks.markSkillOfficial,
+    unmarkSkillOfficial: adminApiMocks.unmarkSkillOfficial,
+    yankVersion: adminApiMocks.yankVersion,
   },
   ApiError: class ApiError extends Error {
     serverMessageKey?: string
@@ -545,6 +555,48 @@ describe('SkillDetailPage', () => {
     const dialog = screen.getByRole('dialog', { name: 'skillDetail.revocationConfirmTitle' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'skillDetail.directRevocation' }))
     await waitFor(() => expect(directRevocationMock).toHaveBeenCalledWith({ sourceSkillId: 1, reason: '' }))
+  })
+
+  it('shows the official badge only when an administrator granted the mark', () => {
+    useSkillDetailMock.mockReturnValue({ data: createSkill({ official: true }), isLoading: false, isFetching: false, error: null })
+
+    render(<SkillDetailPage />)
+
+    expect(screen.getByText('skillDetail.officialBadge')).toBeTruthy()
+  })
+
+  it('keeps the takedown confirm disabled until a reason is entered', () => {
+    hasRoleMock.mockImplementation((role: string) => role === 'SUPER_ADMIN')
+    useSkillDetailMock.mockReturnValue({ data: createSkill(), isLoading: false, isFetching: false, error: null })
+
+    render(<SkillDetailPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'skillDetail.hideSkill' }))
+    const dialog = screen.getByRole('dialog', { name: 'skillDetail.takedownDialogTitle' })
+    const confirm = within(dialog).getByRole('button', { name: 'skillDetail.submitTakedown' }) as HTMLButtonElement
+    // A takedown without a reason would leave no explanation behind, so the UI refuses it up front.
+    expect(confirm.disabled).toBe(true)
+    expect(dialog.textContent).toContain('skillDetail.takedownReasonRequired')
+
+    fireEvent.change(within(dialog).getByPlaceholderText('skillDetail.takedownReasonPlaceholder'), { target: { value: '  policy violation  ' } })
+
+    expect(confirm.disabled).toBe(false)
+    expect(dialog.textContent).not.toContain('skillDetail.takedownReasonRequired')
+  })
+
+  it('states the limits of a takedown instead of claiming the content was recovered', () => {
+    hasRoleMock.mockImplementation((role: string) => role === 'SUPER_ADMIN')
+    useSkillDetailMock.mockReturnValue({
+      data: createSkill({ hidden: true, hiddenReason: 'policy violation' }),
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    })
+
+    render(<SkillDetailPage />)
+
+    expect(screen.getByText('skillDetail.hiddenNoticeTitle')).toBeTruthy()
+    expect(screen.getByText('skillDetail.hiddenNoticeDescription')).toBeTruthy()
   })
 
   it('loads the exact version requested by a Suite member link', () => {

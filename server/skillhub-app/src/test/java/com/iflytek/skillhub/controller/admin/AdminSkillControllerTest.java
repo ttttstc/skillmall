@@ -1,8 +1,12 @@
 package com.iflytek.skillhub.controller.admin;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -113,5 +117,102 @@ class AdminSkillControllerTest {
                 .content("{\"reason\":\"policy\"}"))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void hideSkill_withNamespaceOwnerRole_returns403() throws Exception {
+        // A namespace OWNER holds no platform role, so the namespace-level management role cannot
+        // take a skill down even though it may archive or yank versions.
+        PlatformPrincipal principal = new PlatformPrincipal("ns-owner", "ns-owner", "o@example.com", "", "github", Set.of("USER"));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
+        mockMvc.perform(post("/api/v1/admin/skills/10/hide")
+                .with(authentication(auth))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"policy\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void hideSkill_withoutReason_isRejectedBeforeAnyChange() throws Exception {
+        PlatformPrincipal principal = new PlatformPrincipal("admin", "admin", "a@example.com", "", "github", Set.of("SUPER_ADMIN"));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+
+        mockMvc.perform(post("/api/v1/admin/skills/10/hide")
+                .with(authentication(auth))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"   \"}"))
+            .andExpect(status().isBadRequest());
+
+        verify(skillGovernanceService, times(0)).hideSkill(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void markOfficial_grantsMarkForPlatformAdministrator() throws Exception {
+        Skill skill = new Skill(1L, "demo", "owner", SkillVisibility.PUBLIC);
+        given(skillGovernanceService.markOfficial(org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.eq("admin"), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("verified owner")))
+            .willReturn(skill);
+
+        PlatformPrincipal principal = new PlatformPrincipal("admin", "admin", "a@example.com", "", "github", Set.of("SUPER_ADMIN"));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+
+        mockMvc.perform(post("/api/v1/admin/skills/10/official")
+                .with(authentication(auth))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"verified owner\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.action").value("MARK_OFFICIAL"));
+    }
+
+    @Test
+    void markOfficial_withNamespaceOwnerRole_returns403() throws Exception {
+        PlatformPrincipal principal = new PlatformPrincipal("ns-owner", "ns-owner", "o@example.com", "", "github", Set.of("USER"));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
+        mockMvc.perform(post("/api/v1/admin/skills/10/official")
+                .with(authentication(auth))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"self attested\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value(403));
+
+        verify(skillGovernanceService, times(0)).markOfficial(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void markOfficial_withSkillAdminRole_returns403() throws Exception {
+        PlatformPrincipal principal = new PlatformPrincipal("admin", "admin", "a@example.com", "", "github", Set.of("SKILL_ADMIN"));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("ROLE_SKILL_ADMIN")));
+
+        mockMvc.perform(post("/api/v1/admin/skills/10/official")
+                .with(authentication(auth))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"self attested\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void unmarkOfficial_revokesMarkForPlatformAdministrator() throws Exception {
+        Skill skill = new Skill(1L, "demo", "owner", SkillVisibility.PUBLIC);
+        given(skillGovernanceService.unmarkOfficial(org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.eq("admin"), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("withdrawn")))
+            .willReturn(skill);
+
+        PlatformPrincipal principal = new PlatformPrincipal("admin", "admin", "a@example.com", "", "github", Set.of("SUPER_ADMIN"));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+
+        mockMvc.perform(delete("/api/v1/admin/skills/10/official")
+                .with(authentication(auth))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"withdrawn\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.action").value("UNMARK_OFFICIAL"));
     }
 }
