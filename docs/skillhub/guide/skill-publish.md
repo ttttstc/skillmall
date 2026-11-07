@@ -126,7 +126,7 @@ visibility: PUBLIC
 
 ![公开与私有技能的普通发布路径](/diagrams/skill-publish-lifecycle-sketch.png)
 
-图示仅覆盖普通上传。
+图示为**旧的审核流程示意**。首期变更（GitHub issue #2）后，公开与空间成员可见的普通上传通过校验即直接发布，不再经过图中的扫描前置与审批步骤；PRIVATE 仍停留在 `UPLOADED` 待确认发布。
 
 ## 提交成功不等于发布成功
 

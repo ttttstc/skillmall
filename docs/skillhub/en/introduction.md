@@ -12,7 +12,7 @@ Figure: the registry receives, governs and distributes packages. The target Agen
 
 | Operation | Registry responsibility | Consumer or author responsibility |
 | --- | --- | --- |
-| Submission and publication | Validate packages and advance scanning, review and publication according to configuration | Supply instructions, dependency requirements and verifiable content; resolve rejection or failure |
+| Submission and publication | Validate packages and publish directly by visibility or leave them awaiting confirmation; scanning is optional | Supply instructions, dependency requirements and verifiable content; resolve rejection or failure |
 | Discovery and download | Provide search, details and downloadable versions according to resource state and access permissions | Check purpose, source, version and target environment; visible details do not establish installability |
 | Installation and execution | The CLI downloads files and maintains local installation records | Confirm Agent discovery, configure runtime dependencies and assess execution results |
 | Updates and governance | Manage versions and governance states such as hiding or archiving | Inspect local changes and upgrade plans; remote governance does not automatically recall downloaded files |

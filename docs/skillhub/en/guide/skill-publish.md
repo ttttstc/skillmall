@@ -122,7 +122,7 @@ visibility: PUBLIC
 
 ![Ordinary public and private publication paths](/diagrams/skill-publish-lifecycle-sketch.png)
 
-The diagram covers ordinary uploads; scan failures, review rejection and privileged publishing are described below.
+The diagram shows the **former review flow**. After the first-phase change (GitHub issue #2) an ordinary public or namespace-only upload is published directly once validation passes, without the scanner prerequisite and approval step shown there; private uploads still stop at `UPLOADED` until you confirm publication.
 
 ## Submission is not publication
 
