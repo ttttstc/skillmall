@@ -299,10 +299,11 @@ Public API 的可见性规则：
 发布状态约束：
 
 - 普通用户上传 PRIVATE 技能：启用扫描时先进入 `SCANNING`，扫描完成后进入 `UPLOADED`；关闭扫描时直接进入 `UPLOADED`。
-- 普通用户上传 PUBLIC / NAMESPACE_ONLY 技能必须启用扫描，先进入 `SCANNING`，扫描完成后进入 `PENDING_REVIEW`。扫描执行失败与扫描发现风险是不同结果，不能把进入待审等同于通过安全验收。
-- `SUPER_ADMIN` 可免人工审核、免 namespace 成员校验而直接创建 `PUBLISHED` 版本，但不绕过 PUBLIC / NAMESPACE_ONLY 的扫描启用要求，也不表示扫描和安装门禁已通过。
+- 普通用户上传 PUBLIC / NAMESPACE_ONLY 技能直接进入 `PUBLISHED`，**不要求扫描器启用**（首期产品变更，见[生命周期文档](./14-skill-lifecycle.md)）。启用扫描时后续扫描只记录结果，不改变发布状态。
+- `SUPER_ADMIN` 额外跳过目标 namespace 成员校验；由于公开发布本身已免审核，它不再改变可见性分支。
+- GitHub 同步与 Suite Bundle 成员的发布仍创建待审版本，进入各自独立的审核队列。
 - 撤回审核保留版本记录，将 `PENDING_REVIEW → UPLOADED`；`DRAFT` 是兼容状态，不是当前撤回目标。
-- 确认私有发布、提交审核、扫描重试及安装门禁见 [生命周期文档](./14-skill-lifecycle.md)，不要只根据发布响应的 `status` 判断可安装性。
+- 确认私有发布、提审、扫描重试及安装门禁见 [生命周期文档](./14-skill-lifecycle.md)，不要只根据发布响应的 `status` 判断可安装性。
 
 ## 7.4 Token API（需登录）
 

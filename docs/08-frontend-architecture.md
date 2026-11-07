@@ -42,7 +42,7 @@
 |------|------|------|
 | 我的技能 | `/dashboard/skills` | 我发布的技能 + 统一生命周期状态 |
 | 我的技能套件 | `/dashboard/suites` | 创建和管理我维护的技能套件 |
-| 发布技能 | `/dashboard/publish` | zip 上传 + 预览 + 提交审核 |
+| 发布技能 | `/dashboard/publish` | zip 上传 + 预览 + 直接发布 |
 | 我的收藏 | `/dashboard/stars` | 收藏列表 |
 | Token 管理 | `/dashboard/tokens` | 创建/查看/吊销 |
 | 我的命名空间 | `/dashboard/namespaces` | 参与的命名空间 |
@@ -184,7 +184,7 @@ window.location.href = "/oauth2/authorization/github"
 
 ## 6 文件上传
 
-一期 Web 端：zip 上传 → 后端解压校验 → 返回预览 → 用户确认 → 提交审核。
+一期 Web 端：zip 上传 → 后端解压校验 → 返回预览 → 用户确认 → 直接发布（`PUBLIC` / `NAMESPACE_ONLY` 立即公开；`PRIVATE` 上传后需显式确认发布）。
 支持 drag-and-drop + 进度条。
 
 ## 7 关键交互
