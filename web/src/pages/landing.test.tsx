@@ -51,6 +51,24 @@ vi.mock('@/shared/hooks/use-skill-queries', () => ({
   }),
 }))
 
+vi.mock('@/shared/hooks/use-home-discovery', () => ({
+  useHomeRecommendations: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useHomeRanking: () => ({
+    data: { type: 'recent-popular', items: [] },
+    isLoading: false,
+    isError: false,
+  }),
+}))
+
+vi.mock('@/shared/lib/format-relative-time', () => ({
+  formatRelativeTime: () => 'recently',
+}))
+
 vi.mock('@/shared/hooks/use-in-view', () => ({
   useInView: () => ({ ref: vi.fn(), inView: true }),
 }))

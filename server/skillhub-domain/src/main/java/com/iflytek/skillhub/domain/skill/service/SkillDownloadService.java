@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.List;
@@ -40,34 +42,40 @@ public class SkillDownloadService {
     private final SkillRepository skillRepository;
     private final SkillVersionRepository skillVersionRepository;
     private final SkillVersionStatsRepository skillVersionStatsRepository;
+    private final SkillDownloadDailyRepository skillDownloadDailyRepository;
     private final SkillFileRepository skillFileRepository;
     private final SkillTagRepository skillTagRepository;
     private final ObjectStorageService objectStorageService;
     private final VisibilityChecker visibilityChecker;
     private final ApplicationEventPublisher eventPublisher;
     private final SkillSlugResolutionService skillSlugResolutionService;
+    private final Clock clock;
 
     public SkillDownloadService(
             NamespaceRepository namespaceRepository,
             SkillRepository skillRepository,
             SkillVersionRepository skillVersionRepository,
             SkillVersionStatsRepository skillVersionStatsRepository,
+            SkillDownloadDailyRepository skillDownloadDailyRepository,
             SkillFileRepository skillFileRepository,
             SkillTagRepository skillTagRepository,
             ObjectStorageService objectStorageService,
             VisibilityChecker visibilityChecker,
             ApplicationEventPublisher eventPublisher,
-            SkillSlugResolutionService skillSlugResolutionService) {
+            SkillSlugResolutionService skillSlugResolutionService,
+            Clock clock) {
         this.namespaceRepository = namespaceRepository;
         this.skillRepository = skillRepository;
         this.skillVersionRepository = skillVersionRepository;
         this.skillVersionStatsRepository = skillVersionStatsRepository;
+        this.skillDownloadDailyRepository = skillDownloadDailyRepository;
         this.skillFileRepository = skillFileRepository;
         this.skillTagRepository = skillTagRepository;
         this.objectStorageService = objectStorageService;
         this.visibilityChecker = visibilityChecker;
         this.eventPublisher = eventPublisher;
         this.skillSlugResolutionService = skillSlugResolutionService;
+        this.clock = clock;
     }
 
     public record DownloadResult(
@@ -180,6 +188,9 @@ public class SkillDownloadService {
     private void recordPublishedDownload(Skill skill, SkillVersion version) {
         skillRepository.incrementDownloadCount(skill.getId());
         skillVersionStatsRepository.incrementDownloadCount(version.getId(), skill.getId());
+        // Cumulative and per-day counters are both incremented from the same event so the
+        // 7-day window can never be reconstructed from, or drift behind, the cumulative total.
+        skillDownloadDailyRepository.incrementDownloadCount(skill.getId(), LocalDate.now(clock));
         eventPublisher.publishEvent(new SkillDownloadedEvent(skill.getId(), version.getId()));
     }
 

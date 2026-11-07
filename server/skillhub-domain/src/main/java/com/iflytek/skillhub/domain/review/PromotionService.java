@@ -277,6 +277,7 @@ public class PromotionService {
 
         // Update skill's latest version
         targetSkill.setLatestVersionId(newVersion.getId());
+        targetSkill.markFirstPublished(newVersion.getPublishedAt());
         skillRepository.save(targetSkill);
 
         // Copy file records (reuse storageKey)

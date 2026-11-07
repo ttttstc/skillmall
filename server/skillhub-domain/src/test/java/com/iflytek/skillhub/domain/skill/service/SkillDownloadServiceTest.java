@@ -23,7 +23,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,6 +48,8 @@ class SkillDownloadServiceTest {
     @Mock
     private SkillVersionStatsRepository skillVersionStatsRepository;
     @Mock
+    private SkillDownloadDailyRepository skillDownloadDailyRepository;
+    @Mock
     private SkillFileRepository skillFileRepository;
     @Mock
     private SkillTagRepository skillTagRepository;
@@ -57,6 +62,7 @@ class SkillDownloadServiceTest {
 
     private SkillDownloadService service;
     private SkillSlugResolutionService skillSlugResolutionService;
+    private final Clock clock = Clock.fixed(Instant.parse("2026-11-07T12:00:00Z"), ZoneOffset.UTC);
 
     @BeforeEach
     void setUp() {
@@ -66,12 +72,14 @@ class SkillDownloadServiceTest {
                 skillRepository,
                 skillVersionRepository,
                 skillVersionStatsRepository,
+                skillDownloadDailyRepository,
                 skillFileRepository,
                 skillTagRepository,
                 objectStorageService,
                 visibilityChecker,
                 eventPublisher,
-                skillSlugResolutionService
+                skillSlugResolutionService,
+                clock
         );
     }
 
@@ -147,6 +155,8 @@ class SkillDownloadServiceTest {
         assertNotNull(result.openContent());
         verify(skillRepository).incrementDownloadCount(1L);
         verify(skillVersionStatsRepository).incrementDownloadCount(10L, 1L);
+        // The 7-day window reads this bucket, so a published download must land on the UTC day.
+        verify(skillDownloadDailyRepository).incrementDownloadCount(1L, LocalDate.of(2026, 11, 7));
         verify(eventPublisher).publishEvent(any(SkillDownloadedEvent.class));
     }
 
@@ -638,8 +648,9 @@ class SkillDownloadServiceTest {
     @EnumSource(value = SkillVersionStatus.class, names = {"DRAFT", "REJECTED", "PENDING_REVIEW", "UPLOADED"})
     void removedCurrentOwnerCanDownloadInternalVersionsWithoutPublishingOrCounting(SkillVersionStatus status) throws Exception {
         service = new SkillDownloadService(namespaceRepository, skillRepository, skillVersionRepository,
-                skillVersionStatsRepository, skillFileRepository, skillTagRepository, objectStorageService,
-                new VisibilityChecker(), eventPublisher, skillSlugResolutionService);
+                skillVersionStatsRepository, skillDownloadDailyRepository, skillFileRepository,
+                skillTagRepository, objectStorageService,
+                new VisibilityChecker(), eventPublisher, skillSlugResolutionService, clock);
         Namespace namespace = new Namespace("team", "Team", "admin");
         setId(namespace, 1L);
         Skill skill = new Skill(1L, "owned", "removed-owner", SkillVisibility.NAMESPACE_ONLY);

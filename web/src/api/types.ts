@@ -523,6 +523,26 @@ export interface PagedResponse<T> {
   size: number
 }
 
+// Home discovery: one generic recommendation row plus three distinct rankings.
+export type HomeRankingType = 'recent-popular' | 'most-downloaded' | 'newest'
+
+export interface HomeSkillList {
+  items: SkillSummary[]
+}
+
+export interface HomeRankingItem {
+  skill: SkillSummary
+  /** Only the windowed ranking reports this; null means "not a 7-day figure". */
+  windowDownloadCount?: number | null
+  /** First publication of the Skill; unchanged by later versions. */
+  firstPublishedAt?: string | null
+}
+
+export interface HomeRanking {
+  type: HomeRankingType | string
+  items: HomeRankingItem[]
+}
+
 export type ResourceType = 'SKILL' | 'SUITE'
 
 type RequiredGenerated<T, Optional extends keyof T = never> =
