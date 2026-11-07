@@ -222,6 +222,16 @@ public class SkillSearchAppService {
                 .toList();
     }
 
+    /**
+     * Resolves ordered skill ids into API summaries, preserving the given order.
+     *
+     * <p>Shared with home discovery so ranking rows and search rows use one projection contract
+     * instead of two subtly different ones.
+     */
+    public List<SkillSummaryResponse> toSummaries(List<Long> skillIds, String userId) {
+        return mapVisibleSkillSummaries(skillIds, userId);
+    }
+
     private List<SkillSummaryResponse> mapVisibleSkillSummaries(List<Long> skillIds, String userId) {
         if (skillIds.isEmpty()) {
             return List.of();

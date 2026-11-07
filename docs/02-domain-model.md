@@ -68,7 +68,8 @@
 | visibility | enum | `PUBLIC` / `NAMESPACE_ONLY` / `PRIVATE` |
 | status | enum | `ACTIVE` / `ARCHIVED` |
 | latest_version_id | bigint | 内部生命周期指针；PRIVATE 上传可指向未发布版本。对外最新发布版本由 `publishedVersion` 解析，不直接以此字段授权 |
-| download_count | bigint | |
+| download_count | bigint | 累计下载次数；只用于累计口径，不用于任何窗口口径 |
+| first_published_at | datetime | 该 Skill 第一个版本进入 `PUBLISHED` 的时刻；只写一次，发布新版本不重置。语义见[生命周期 §3.3](./14-skill-lifecycle.md#33-first-published-at) |
 | star_count | int | |
 | rating_avg | decimal(3,2) | 平均评分 |
 | rating_count | int | 评分人数 |
@@ -95,6 +96,20 @@
 - `slug`：面向用户的 URL 标识，来自 SKILL.md 的 `name` 字段，首次发布后不可变更。slug 格式校验规则与 namespace slug 相同：`[a-z0-9]([a-z0-9-]*[a-z0-9])?`，同样适用保留词限制，且不得包含连续两个以上的连字符 `--`（为兼容层坐标映射保留）。全局空间（`@global`）下的 skill slug 额外禁止包含 `--`，以避免与兼容层 canonical slug 产生歧义
 - `source_skill_id`：仅在"团队技能提升到全局"场景下填充，记录原始团队空间的 skill ID，用于追溯来源
 - 提升关系的唯一事实来源是 `promotion_request` 表。当前有效全局目标由 `request_kind='INITIAL' AND status='APPROVED' AND target_skill_id IS NOT NULL` 的首次提升记录确定；后续更新记录指向同一目标，撤销时解除目标引用并保留快照。
+
+### skill_download_daily
+
+按 UTC 自然日记录的下载计数桶，只服务于“最近 7 天”窗口口径。累计口径仍读 `skill.download_count`，两者不可互相替代。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| skill_id | bigint | 关联 `skill(id)`，`ON DELETE CASCADE` |
+| download_date | date | UTC 自然日 |
+| download_count | bigint | 当日下载次数 |
+
+- 主键 `(skill_id, download_date)`；只在实际发生下载的日期建行，因此“没有行”表示“该窗口内没有下载记录”，不是“数据未知”
+- 与 `skill.download_count`、`skill_version_stats.download_count` 在同一次已发布版本下载中、同一个事务内一起累加，三者要么都加、要么都不加
+- 计数表示下载结果构建成功，不等于安装成功人数；口径详见[首页推荐与三类榜单](./28-home-rankings-and-download-metrics.md)
 
 ### skill_version
 

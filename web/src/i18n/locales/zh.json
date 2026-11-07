@@ -292,6 +292,34 @@
     "latestTitle": "最新发布",
     "latestDescription": "刚刚发布的新技能",
     "viewAll": "查看全部 →",
+    "recommend": {
+      "title": "推荐 Skills",
+      "description": "随机挑选的公开 Skill，与你的浏览偏好无关",
+      "shuffle": "换一换",
+      "empty": "暂时没有可推荐的公开 Skill",
+      "error": "推荐加载失败，请稍后重试"
+    },
+    "ranking": {
+      "recent": {
+        "title": "近期热门",
+        "description": "最近 7 天下载次数最多",
+        "empty": "最近 7 天还没有下载记录"
+      },
+      "cumulative": {
+        "title": "累计热榜",
+        "description": "按累计下载次数排序",
+        "empty": "还没有下载记录"
+      },
+      "newest": {
+        "title": "最新上线",
+        "description": "按首次公开时间排序，发布新版本不会改变",
+        "empty": "还没有公开的 Skill"
+      },
+      "error": "榜单加载失败，请稍后重试",
+      "windowDownloads": "近 7 天 {{value}} 次",
+      "totalDownloads": "累计 {{value}} 次",
+      "downloadsNote": "统计的是下载次数，不等于安装成功人数；近期热门只统计最近 7 天。"
+    },
     "quickStart": {
       "title": "快速开始",
       "subtitle": "Quick Start",

@@ -44,11 +44,46 @@ vi.mock('@/shared/components/skeleton-loader', () => ({
   SkeletonList: () => null,
 }))
 
-vi.mock('@/shared/hooks/use-skill-queries', () => ({
-  useSearchSkills: () => ({
-    data: { items: [] },
+vi.mock('@/shared/hooks/use-home-discovery', () => ({
+  useHomeRecommendations: () => ({
+    data: [],
     isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   }),
+  // The windowed ranking returns one row whose windowed count is unknown, so the page has to
+  // decide what to show for it: nothing, rather than a borrowed cumulative total.
+  useHomeRanking: (type: string) => ({
+    data: {
+      type,
+      items:
+        type === 'recent-popular'
+          ? [
+              {
+                skill: {
+                  id: 1,
+                  slug: 'slug-1',
+                  displayName: 'Alpha',
+                  namespace: 'team',
+                  downloadCount: 4200,
+                  starCount: 0,
+                  ratingCount: 0,
+                  updatedAt: '2026-11-01T00:00:00Z',
+                  canSubmitPromotion: false,
+                },
+                windowDownloadCount: null,
+                firstPublishedAt: null,
+              },
+            ]
+          : [],
+    },
+    isLoading: false,
+    isError: false,
+  }),
+}))
+
+vi.mock('@/shared/lib/format-relative-time', () => ({
+  formatRelativeTime: () => 'recently',
 }))
 
 vi.mock('@/shared/hooks/use-in-view', () => ({
@@ -77,5 +112,30 @@ describe('LandingPage', () => {
     expect(html).toContain('SkillHub')
     expect(html).toContain('landing.hero.mallSubtitle')
     expect(html).toContain('landing.hero.searchPlaceholder')
+  })
+
+  it('shows the three rankings instead of the old popular and latest grids', () => {
+    const html = renderToStaticMarkup(<LandingPage />)
+
+    // The page used to spend this space on two grids titled "热门下载" / "最新发布".
+    expect(html).not.toContain('home.popularTitle')
+    expect(html).not.toContain('home.latestTitle')
+    expect(html).not.toContain('discovery.popular.open')
+    expect(html).not.toContain('discovery.latest.open')
+
+    expect(html).toContain('home.ranking.recent.title')
+    expect(html).toContain('home.ranking.cumulative.title')
+    expect(html).toContain('home.ranking.newest.title')
+    expect(html).toContain('discovery.ranking.recent')
+    expect(html).toContain('discovery.ranking.cumulative')
+    expect(html).toContain('discovery.ranking.newest')
+  })
+
+  it('renders no window figure for a row whose windowed count is unknown', () => {
+    const html = renderToStaticMarkup(<LandingPage />)
+
+    // The row has 4200 cumulative downloads; the 7-day number is unknown, so nothing is shown.
+    expect(html).toContain('Alpha')
+    expect(html).not.toContain('home.ranking.windowDownloads')
   })
 })
