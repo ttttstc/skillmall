@@ -41,6 +41,33 @@ class GitCodeRepoUrlTest {
     }
 
     @Test
+    void rejectsTraversalInsideANestedGroup() {
+        for (String source : new String[]{
+                "https://gitcode.com/a/b/../c",
+                "https://gitcode.com/a/../c",
+                "https://gitcode.com/a/b/..",
+                "https://gitcode.com/../a/b/c"}) {
+            assertThatThrownBy(() -> GitCodeRepoUrl.parse(source))
+                    .as(source)
+                    .isInstanceOfSatisfying(DomainBadRequestException.class, exception ->
+                            assertThat(exception.messageCode()).isEqualTo("error.skill.import.url.invalid"));
+        }
+    }
+
+    @Test
+    void rejectsPercentEncodedSeparatorsThatPretendToBeANestedGroup() {
+        for (String source : new String[]{
+                "https://gitcode.com/a%2Fb/c",
+                "https://gitcode.com/a%2fb/c",
+                "https://gitcode.com/a%5Cb/c"}) {
+            assertThatThrownBy(() -> GitCodeRepoUrl.parse(source))
+                    .as(source)
+                    .isInstanceOfSatisfying(DomainBadRequestException.class, exception ->
+                            assertThat(exception.messageCode()).isEqualTo("error.skill.import.url.invalid"));
+        }
+    }
+
+    @Test
     void normalizesGitSuffixAndTrailingSlash() {
         assertThat(GitCodeRepoUrl.parse("https://gitcode.com/openharmony/docs.git").repo())
                 .isEqualTo("docs");

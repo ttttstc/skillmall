@@ -88,6 +88,12 @@ public record GitCodeRepoUrl(String owner, String repo) {
         }
 
         String path = uri.getPath() == null ? "" : uri.getPath();
+        // A percent-encoded separator must not be able to pretend to be a nested group: the raw
+        // path is checked before decoding so "%2F" or "%5C" is refused rather than silently split.
+        String rawPath = uri.getRawPath() == null ? "" : uri.getRawPath().toLowerCase(Locale.ROOT);
+        if (rawPath.contains("%2f") || rawPath.contains("%5c")) {
+            throw new DomainBadRequestException("error.skill.import.url.invalid");
+        }
         List<String> segments = new ArrayList<>();
         for (String segment : path.split("/")) {
             if (!segment.isEmpty()) {
