@@ -15,6 +15,7 @@ import type { SkillFile } from '@/api/types'
 import { getVersionPresentation } from '@/shared/lib/version-presentation'
 import { CopyButton } from '@/shared/components/copy-button'
 import { InstallCommand } from '@/features/skill/install-command'
+import { InstallGuide } from '@/features/skill/install-guide'
 import { ShareButton } from '@/features/skill/share-button'
 import { InstallForAgentButton } from '@/features/skill/install-for-agent-button'
 import { SkillLabelPanel } from '@/features/skill/skill-label-panel'
@@ -262,6 +263,11 @@ export function SkillDetailPage() {
     : selectedVersionEntry
   const isVersionDownloadable = selectedVersionEntry?.downloadAvailable ?? false
   const isVersionInstallable = selectedVersionEntry?.status === 'PUBLISHED' && isVersionDownloadable
+  // Mirrors the guard inside handleDownload so the manual-install action never promises a
+  // package the visitor is not allowed to fetch (anonymous downloads are public-global only).
+  const canDownloadSelectedVersion = isVersionDownloadable
+    && skill?.status !== 'ARCHIVED'
+    && (Boolean(user) || (namespace === 'global' && skill?.visibility === 'PUBLIC'))
   const suiteMemberships = skill?.memberOfSuites?.items ?? skill?.entryForSuites ?? []
   const suiteMembershipTotal = skill?.memberOfSuites?.total ?? suiteMemberships.length
 
@@ -1129,8 +1135,15 @@ export function SkillDetailPage() {
           </TabsContent>
 
           <TabsContent value="install" className="mt-6">
-            <Card className="p-8 text-center text-sm text-muted-foreground">
-              {t('skillDetail.installUnavailable')}
+            <Card className="p-6">
+              <InstallGuide
+                namespace={namespace}
+                slug={slug}
+                version={selectedVersionEntry?.version}
+                installable={isVersionInstallable}
+                canDownload={canDownloadSelectedVersion}
+                onDownload={handleDownload}
+              />
             </Card>
           </TabsContent>
 
@@ -1469,14 +1482,15 @@ export function SkillDetailPage() {
             {skill.status === 'ARCHIVED' && (
               <p className="text-sm text-muted-foreground">{t('skillDetail.archivedInstallHint')}</p>
             )}
-            <p className="text-sm text-muted-foreground">{t('skillDetail.installUnavailable')}</p>
-            <fieldset disabled className="opacity-50" aria-label={t('skillDetail.installUnavailable')}>
+            {isVersionInstallable ? (
               <InstallCommand analyticsId="skill.command.copy"
                 namespace={namespace}
                 slug={slug}
-                version={publishedVersion.version} skillhubAnalyticsId="skill.command.skillhub.select" clawhubAnalyticsId="skill.command.clawhub.select"
+                version={selectedVersionEntry?.version} skillhubAnalyticsId="skill.command.skillhub.select" clawhubAnalyticsId="skill.command.clawhub.select"
               />
-            </fieldset>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('skillDetail.installNotDistributable')}</p>
+            )}
           </Card>
         )}
 

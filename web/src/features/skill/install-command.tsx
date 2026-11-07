@@ -104,7 +104,6 @@ function CommandBlock({ command, analyticsId }: CommandBlockProps) {
 export function InstallCommand({ namespace, slug, version, analyticsId, skillhubAnalyticsId, clawhubAnalyticsId }: InstallCommandProps) {
   const { t } = useTranslation()
   const baseUrl = useMemo(() => getBaseUrl(), [])
-  const clawhubCommand = useMemo(() => buildInstallCommand(namespace, slug, baseUrl), [baseUrl, namespace, slug])
   const skillhubCommand = useMemo(
     () => buildSkillhubInstallCommand(namespace, slug, baseUrl, version),
     [baseUrl, namespace, slug, version],
@@ -126,7 +125,9 @@ export function InstallCommand({ namespace, slug, version, analyticsId, skillhub
           : <p role="alert" className="text-sm text-destructive">{t('skillDetail.installCommandUnsafeVersion')}</p>}
       </TabsContent>
       <TabsContent value="clawhub">
-        <CommandBlock analyticsId={analyticsId} command={clawhubCommand} />
+        {/* ClawHub CLI reaches this market through the compatibility layer, which is authenticated:
+            an anonymous install answers 401. It is therefore not offered as a copyable command. */}
+        <p className="text-sm leading-6 text-muted-foreground">{t('skillDetail.installClawhubUnavailable')}</p>
       </TabsContent>
     </Tabs>
   )
