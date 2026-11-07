@@ -42,6 +42,15 @@ public class Skill {
     @Column(nullable = false, length = 20)
     private SkillStatus status;
 
+    /**
+     * First-level marketplace category. Defaults to {@link SkillDomain#OTHER} so a Skill created
+     * by a path that does not ask for a category (GitHub sync, bundle member, promotion) is still
+     * discoverable by an explicit category filter instead of dropping out of every bucket.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "domain", length = 32)
+    private SkillDomain domain = SkillDomain.DEFAULT;
+
     @Column(name = "latest_version_id")
     private Long latestVersionId;
 
@@ -171,6 +180,10 @@ public class Skill {
         return status;
     }
 
+    public SkillDomain getDomain() {
+        return domain == null ? SkillDomain.DEFAULT : domain;
+    }
+
     public Long getLatestVersionId() {
         return latestVersionId;
     }
@@ -269,6 +282,11 @@ public class Skill {
 
     public void setStatus(SkillStatus status) {
         this.status = status;
+    }
+
+    /** Null is normalized to the documented default rather than stored as "uncategorised". */
+    public void setDomain(SkillDomain domain) {
+        this.domain = domain == null ? SkillDomain.DEFAULT : domain;
     }
 
     public void setLatestVersionId(Long latestVersionId) {

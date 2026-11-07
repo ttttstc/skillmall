@@ -74,6 +74,13 @@ public class RouteSecurityPolicyRegistry {
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/v1/skills/*/*/tags/*/file"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/v1/labels"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skills"),
+            // Category read/write is owner/manager scoped: the service re-checks ownership, the
+            // route only requires a signed-in caller. The filter itself is a query parameter on
+            // the already-public discovery routes, so filtering stays anonymous-readable.
+            RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/v1/skills/*/*/domain"),
+            RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/v1/skills/*/*/domain"),
+            RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/skills/*/*/domain"),
+            RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/*/*/domain"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/avatar-uploads"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.POST, "/api/web/skills/package-preview"),
             RouteAuthorizationPolicy.authenticated(HttpMethod.GET, "/api/web/skills/avatar-uploads/*/image"),
@@ -270,6 +277,10 @@ public class RouteSecurityPolicyRegistry {
             ApiTokenPolicy.require(HttpMethod.DELETE, "/api/web/skills/*/*/versions/*", "skill:delete"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/v1/skills/*/*/visibility", "skill:publish"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/*/*/visibility", "skill:publish"),
+            // Category writes need a token that may publish; reads fall through to the GET
+            // allow-rule for /api/{v1,web}/skills/** registered above.
+            ApiTokenPolicy.require(HttpMethod.POST, "/api/v1/skills/*/*/domain", "skill:publish"),
+            ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/*/*/domain", "skill:publish"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/v1/skills/*/*/archive", "skill:publish"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/v1/skills/*/*/unarchive", "skill:publish"),
             ApiTokenPolicy.require(HttpMethod.POST, "/api/web/skills/*/*/archive", "skill:publish"),

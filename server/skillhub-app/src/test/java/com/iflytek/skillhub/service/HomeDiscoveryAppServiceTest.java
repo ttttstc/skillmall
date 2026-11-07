@@ -61,7 +61,7 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void recentPopularUsesSevenCalendarDaysEndingToday() {
-        when(rankingQueryRepository.findRecentlyPopular(Set.of(), WINDOW_START, WINDOW_END_EXCLUSIVE, 10))
+        when(rankingQueryRepository.findRecentlyPopular(Set.of(), WINDOW_START, WINDOW_END_EXCLUSIVE, null, 10))
                 .thenReturn(List.of(row(4L), row(2L)));
 
         service.ranking("recent-popular", 10, null, null);
@@ -72,7 +72,7 @@ class HomeDiscoveryAppServiceTest {
     @Test
     void recentPopularCarriesTheWindowedCountAndFirstPublishedTime() {
         Instant firstPublished = Instant.parse("2026-01-05T08:00:00Z");
-        when(rankingQueryRepository.findRecentlyPopular(any(), any(), any(), any(Integer.class)))
+        when(rankingQueryRepository.findRecentlyPopular(any(), any(), any(), any(), any(Integer.class)))
                 .thenReturn(List.of(new RankedSkill(4L, 12L, firstPublished)));
 
         HomeRankingResponse response = service.ranking("recent-popular", 10, null, null);
@@ -86,19 +86,19 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void emptyWindowStaysEmptyInsteadOfFallingBackToCumulativeTotals() {
-        when(rankingQueryRepository.findRecentlyPopular(any(), any(), any(), any(Integer.class)))
+        when(rankingQueryRepository.findRecentlyPopular(any(), any(), any(), any(), any(Integer.class)))
                 .thenReturn(List.of());
 
         HomeRankingResponse response = service.ranking("recent-popular", 10, null, null);
 
         assertThat(response.items()).isEmpty();
         // A windowed figure must never be borrowed from the cumulative counter.
-        verify(rankingQueryRepository, never()).findMostDownloaded(any(), any(Integer.class));
+        verify(rankingQueryRepository, never()).findMostDownloaded(any(), any(), any(Integer.class));
     }
 
     @Test
     void cumulativeRankingReadsTheCumulativeCounter() {
-        when(rankingQueryRepository.findMostDownloaded(Set.of(), 10)).thenReturn(List.of(row(9L), row(3L)));
+        when(rankingQueryRepository.findMostDownloaded(Set.of(), null, 10)).thenReturn(List.of(row(9L), row(3L)));
 
         service.ranking("most-downloaded", 10, null, null);
 
@@ -107,7 +107,7 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void cumulativeRankingDoesNotReportAWindowedCount() {
-        when(rankingQueryRepository.findMostDownloaded(any(), any(Integer.class)))
+        when(rankingQueryRepository.findMostDownloaded(any(), any(), any(Integer.class)))
                 .thenReturn(List.of(new RankedSkill(9L, null, Instant.parse("2026-01-05T08:00:00Z"))));
 
         HomeRankingResponse response = service.ranking("most-downloaded", 10, null, null);
@@ -118,7 +118,7 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void newestRankingReadsFirstPublishedOrder() {
-        when(rankingQueryRepository.findNewestPublished(Set.of(), 10)).thenReturn(List.of(row(7L)));
+        when(rankingQueryRepository.findNewestPublished(Set.of(), null, 10)).thenReturn(List.of(row(7L)));
 
         service.ranking("newest", 10, null, null);
 
@@ -127,7 +127,7 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void rankingTypeAcceptsKebabAndUppercaseSpellings() {
-        when(rankingQueryRepository.findMostDownloaded(Set.of(), 10)).thenReturn(List.of(row(5L)));
+        when(rankingQueryRepository.findMostDownloaded(Set.of(), null, 10)).thenReturn(List.of(row(5L)));
 
         service.ranking("MOST-DOWNLOADED", 10, null, null);
 
@@ -136,51 +136,51 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void unknownRankingTypeFallsBackToRecentPopular() {
-        when(rankingQueryRepository.findRecentlyPopular(any(), any(), any(), any(Integer.class)))
+        when(rankingQueryRepository.findRecentlyPopular(any(), any(), any(), any(), any(Integer.class)))
                 .thenReturn(List.of());
 
         service.ranking("something-else", 10, null, null);
 
         ArgumentCaptor<LocalDate> start = ArgumentCaptor.forClass(LocalDate.class);
-        verify(rankingQueryRepository).findRecentlyPopular(eq(Set.of()), start.capture(), any(), any(Integer.class));
+        verify(rankingQueryRepository).findRecentlyPopular(eq(Set.of()), start.capture(), any(), any(), any(Integer.class));
         assertThat(start.getValue()).isEqualTo(WINDOW_START);
     }
 
     @Test
     void anonymousCallerHasNoMemberNamespaces() {
-        when(rankingQueryRepository.findMostDownloaded(Set.of(), 10)).thenReturn(List.of());
+        when(rankingQueryRepository.findMostDownloaded(Set.of(), null, 10)).thenReturn(List.of());
 
         service.ranking("most-downloaded", 10, null, null);
 
         // An empty member set is what excludes NAMESPACE_ONLY skills from an anonymous response.
-        verify(rankingQueryRepository).findMostDownloaded(Set.of(), 10);
+        verify(rankingQueryRepository).findMostDownloaded(Set.of(), null, 10);
     }
 
     @Test
     void signedInCallerForwardsItsMemberNamespaces() {
-        when(rankingQueryRepository.findMostDownloaded(Set.of(5L), 10)).thenReturn(List.of());
+        when(rankingQueryRepository.findMostDownloaded(Set.of(5L), null, 10)).thenReturn(List.of());
 
         service.ranking("most-downloaded", 10, "user-1", Map.of(5L, NamespaceRole.MEMBER));
 
-        verify(rankingQueryRepository).findMostDownloaded(Set.of(5L), 10);
+        verify(rankingQueryRepository).findMostDownloaded(Set.of(5L), null, 10);
     }
 
     @Test
     void recommendationsSkipSkillsAlreadyOnScreen() {
-        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(11L, 12L), 6))
+        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(11L, 12L), null, 6))
                 .thenReturn(List.of(row(1L), row(2L), row(3L), row(4L), row(5L), row(6L)));
 
         service.recommendations(6, List.of(11L, 12L), null, null);
 
         assertThat(capturedSummaryIds()).containsExactly(1L, 2L, 3L, 4L, 5L, 6L);
-        verify(rankingQueryRepository, never()).findRandomRecommendations(Set.of(), List.of(), 8);
+        verify(rankingQueryRepository, never()).findRandomRecommendations(Set.of(), List.of(), null, 8);
     }
 
     @Test
     void recommendationsFillFromTheRealPoolWhenTheExcludedPoolIsShort() {
-        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(11L, 12L), 6))
+        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(11L, 12L), null, 6))
                 .thenReturn(List.of(row(1L), row(2L)));
-        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(), 8))
+        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(), null, 8))
                 .thenReturn(List.of(row(1L), row(2L), row(3L), row(4L), row(5L), row(6L)));
 
         service.recommendations(6, List.of(11L, 12L), null, null);
@@ -191,7 +191,7 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void recommendationsNeverReturnMoreThanThePoolHolds() {
-        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(), 6))
+        when(rankingQueryRepository.findRandomRecommendations(Set.of(), List.of(), null, 6))
                 .thenReturn(List.of(row(1L)));
 
         HomeSkillListResponse response = service.recommendations(6, List.of(), null, null);
@@ -201,12 +201,12 @@ class HomeDiscoveryAppServiceTest {
 
     @Test
     void recommendationsSizeIsClampedToTheMaximum() {
-        when(rankingQueryRepository.findRandomRecommendations(any(), anyList(), any(Integer.class)))
+        when(rankingQueryRepository.findRandomRecommendations(any(), anyList(), any(), any(Integer.class)))
                 .thenReturn(List.of());
 
         service.recommendations(999, List.of(), null, null);
 
-        verify(rankingQueryRepository).findRandomRecommendations(Set.of(), List.of(), 24);
+        verify(rankingQueryRepository).findRandomRecommendations(Set.of(), List.of(), null, 24);
     }
 
     private RankedSkill row(Long skillId) {

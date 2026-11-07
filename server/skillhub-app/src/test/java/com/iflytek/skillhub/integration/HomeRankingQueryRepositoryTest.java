@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.iflytek.skillhub.domain.namespace.Namespace;
 import com.iflytek.skillhub.domain.skill.Skill;
+import com.iflytek.skillhub.domain.skill.SkillDomain;
 import com.iflytek.skillhub.domain.skill.SkillVersion;
 import com.iflytek.skillhub.domain.skill.SkillVersionStatus;
 import com.iflytek.skillhub.domain.skill.SkillVisibility;
@@ -295,6 +296,80 @@ class HomeRankingQueryRepositoryTest {
 
         assertThat(ids(newest)).containsExactly(dated.getId(), undated.getId());
         assertThat(newest.get(1).firstPublishedAt()).isNull();
+    }
+
+    @Test
+    void domainFilterNarrowsEveryRankingToThatCategoryOnly() {
+        Skill design = publicSkill("team", "design-skill");
+        setDomain(design, SkillDomain.DESIGN);
+        Skill development = publicSkill("team", "development-skill");
+        setDomain(development, SkillDomain.DEVELOPMENT);
+
+        bucket(design, TODAY, 7);
+        bucket(development, TODAY, 3);
+        nativeUpdate("UPDATE skill SET download_count = 7 WHERE id = " + design.getId());
+        nativeUpdate("UPDATE skill SET download_count = 3 WHERE id = " + development.getId());
+
+        assertThat(ids(repository.findRecentlyPopular(
+                Set.of(), WINDOW_START, WINDOW_END_EXCLUSIVE, SkillDomain.DESIGN, 10)))
+                .containsExactly(design.getId());
+        assertThat(ids(repository.findMostDownloaded(Set.of(), SkillDomain.DESIGN, 10)))
+                .containsExactly(design.getId());
+        assertThat(ids(repository.findNewestPublished(Set.of(), SkillDomain.DESIGN, 10)))
+                .containsExactly(design.getId());
+        assertThat(ids(repository.findRandomRecommendations(Set.of(), List.of(), SkillDomain.DESIGN, 10)))
+                .containsExactly(design.getId());
+    }
+
+    @Test
+    void domainFilterCannotRevealHiddenArchivedOrUnpublishedSkills() {
+        Skill visible = publicSkill("team", "visible-design");
+        setDomain(visible, SkillDomain.DESIGN);
+
+        Skill hidden = publicSkill("team", "hidden-design");
+        setDomain(hidden, SkillDomain.DESIGN);
+        nativeUpdate("UPDATE skill SET hidden = TRUE WHERE id = " + hidden.getId());
+
+        Skill archived = publicSkill("team", "archived-design");
+        setDomain(archived, SkillDomain.DESIGN);
+        nativeUpdate("UPDATE skill SET status = 'ARCHIVED' WHERE id = " + archived.getId());
+
+        Skill unpublished = bareSkill("team", "unpublished-design");
+        setDomain(unpublished, SkillDomain.DESIGN);
+        SkillVersion pendingVersion = new SkillVersion(unpublished.getId(), "1.0.0", "owner");
+        pendingVersion.setStatus(SkillVersionStatus.PENDING_REVIEW);
+        pendingVersion.setDownloadReady(true);
+        pendingVersion = entityManager.persistFlushFind(pendingVersion);
+        unpublished.setLatestVersionId(pendingVersion.getId());
+        entityManager.persistAndFlush(unpublished);
+
+        // Asking for the category must not widen the result beyond the public-distribution filter.
+        assertThat(ids(repository.findNewestPublished(Set.of(), SkillDomain.DESIGN, 10)))
+                .containsExactly(visible.getId());
+        assertThat(ids(repository.findRandomRecommendations(Set.of(), List.of(), SkillDomain.DESIGN, 10)))
+                .containsExactly(visible.getId());
+        assertThat(repository.findMostDownloaded(Set.of(), SkillDomain.DESIGN, 10)).hasSize(1);
+    }
+
+    @Test
+    void anEmptyDomainReturnsEmptyListsRatherThanTheWholeCatalogue() {
+        Skill designOnly = publicSkill("team", "only-design");
+        setDomain(designOnly, SkillDomain.DESIGN);
+
+        assertThat(repository.findNewestPublished(Set.of(), SkillDomain.TESTING, 10)).isEmpty();
+        assertThat(repository.findMostDownloaded(Set.of(), SkillDomain.TESTING, 10)).isEmpty();
+        assertThat(repository.findRecentlyPopular(
+                Set.of(), WINDOW_START, WINDOW_END_EXCLUSIVE, SkillDomain.TESTING, 10)).isEmpty();
+        assertThat(repository.findRandomRecommendations(Set.of(), List.of(), SkillDomain.TESTING, 10))
+                .isEmpty();
+        // The same skill is still reachable through its own category, so "empty" means empty.
+        assertThat(ids(repository.findNewestPublished(Set.of(), SkillDomain.DESIGN, 10)))
+                .containsExactly(designOnly.getId());
+    }
+
+    private void setDomain(Skill skill, SkillDomain domain) {
+        skill.setDomain(domain);
+        entityManager.persistAndFlush(skill);
     }
 
     private static List<Long> ids(List<RankedSkill> rows) {

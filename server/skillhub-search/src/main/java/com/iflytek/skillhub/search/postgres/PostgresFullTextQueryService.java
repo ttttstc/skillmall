@@ -139,6 +139,13 @@ public class PostgresFullTextQueryService implements SearchQueryService {
             sql.append("AND d.namespace_id = :namespaceId ");
         }
 
+        // First-level category filter. It narrows the same public-distribution predicate above
+        // instead of introducing a second visibility path, so a category filter can never reveal
+        // a hidden, archived or private skill.
+        if (query.domain() != null) {
+            sql.append("AND s.domain = :domain ");
+        }
+
         if (query.labelSlugs() != null && !query.labelSlugs().isEmpty()) {
             sql.append("AND d.skill_id IN (");
             sql.append("SELECT sl.skill_id FROM skill_label sl ");
@@ -204,6 +211,10 @@ public class PostgresFullTextQueryService implements SearchQueryService {
             nativeQuery.setParameter("labelSlugs", query.labelSlugs());
         }
 
+        if (query.domain() != null) {
+            nativeQuery.setParameter("domain", query.domain().name());
+        }
+
         if (hasKeyword) {
             if (hasTsQuery) {
                 nativeQuery.setParameter("tsQuery", tsQuery);
@@ -246,6 +257,10 @@ public class PostgresFullTextQueryService implements SearchQueryService {
 
         if (query.labelSlugs() != null && !query.labelSlugs().isEmpty()) {
             countQuery.setParameter("labelSlugs", query.labelSlugs());
+        }
+
+        if (query.domain() != null) {
+            countQuery.setParameter("domain", query.domain().name());
         }
 
         if (hasKeyword) {

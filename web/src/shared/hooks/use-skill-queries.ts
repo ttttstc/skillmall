@@ -45,7 +45,7 @@ async function getSkillDocumentation(namespace: string, slug: string, version: s
   return fetchText(`${WEB_API_PREFIX}/skills/${cleanNamespace}/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version)}/file?path=${encodeURIComponent(path)}`)
 }
 
-async function publishSkill(params: { namespace: string; file: File; visibility: string; confirmWarnings?: boolean; avatarAction?: 'KEEP' | 'REPLACE' | 'REMOVE'; avatarUploadId?: string; expectedSlug?: string; displayName?: string; changelog?: string }): Promise<PublishResult> {
+async function publishSkill(params: { namespace: string; file: File; visibility: string; confirmWarnings?: boolean; avatarAction?: 'KEEP' | 'REPLACE' | 'REMOVE'; avatarUploadId?: string; expectedSlug?: string; displayName?: string; changelog?: string; domain?: string }): Promise<PublishResult> {
   const cleanNamespace = params.namespace.startsWith('@') ? params.namespace.slice(1) : params.namespace
   const formData = new FormData()
   formData.append('file', params.file)
@@ -55,6 +55,8 @@ async function publishSkill(params: { namespace: string; file: File; visibility:
   if (params.avatarUploadId) formData.append('avatarUploadId', params.avatarUploadId)
   if (params.expectedSlug) formData.append('expectedSlug', params.expectedSlug)
   if (params.displayName?.trim()) formData.append('displayName', params.displayName.trim())
+  // The category is stored on the Skill container in the same transaction as the version.
+  if (params.domain) formData.append('domain', params.domain)
   // The change note is optional; omitting the field keeps the version's note empty.
   if (params.changelog?.trim()) formData.append('changelog', params.changelog.trim())
 
@@ -85,6 +87,41 @@ export function useSearchSkills(params: SearchParams, enabled = true) {
     // Keep prior results while typing/debouncing so the grid is not swapped for
     // skeletons (unmount churn that races header portals under React 19).
     placeholderData: keepPreviousData,
+  })
+}
+
+/** Current first-level category of a Skill, read for the owner's edit form. */
+export function useSkillDomain(namespace: string, slug: string, enabled = true) {
+  return useQuery({
+    queryKey: ['skill-domain', namespace, slug],
+    queryFn: () => fetchJson<{ domain: string }>(
+      `${WEB_API_PREFIX}/skills/${namespace}/${encodeURIComponent(slug)}/domain`),
+    enabled: enabled && !!namespace && !!slug,
+  })
+}
+
+/**
+ * Moves a Skill to another category without publishing a package.
+ *
+ * Kept separate from the publish mutation on purpose: the category belongs to the Skill, so an
+ * owner must be able to correct it without re-uploading a version.
+ */
+export function useChangeSkillDomain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (params: { namespace: string; slug: string; domain: string }) =>
+      fetchJson<{ domain: string }>(
+        `${WEB_API_PREFIX}/skills/${params.namespace}/${encodeURIComponent(params.slug)}/domain`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+          body: JSON.stringify({ domain: params.domain }),
+        }),
+    onSuccess: (_result, params) => {
+      void queryClient.invalidateQueries({ queryKey: ['skill-domain', params.namespace, params.slug] })
+      void queryClient.invalidateQueries({ queryKey: ['skills'] })
+      void queryClient.invalidateQueries({ queryKey: ['home'] })
+    },
   })
 }
 

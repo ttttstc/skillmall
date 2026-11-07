@@ -1,30 +1,39 @@
 import { useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchBar } from '@/features/search/search-bar'
 import { SkillCard } from '@/features/skill/skill-card'
+import { DomainFilter } from '@/features/skill/domain-filter'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
 import { QuickStartSection } from '@/shared/components/quick-start'
 import { useSearchSkills } from '@/shared/hooks/use-skill-queries'
 import { normalizeSearchQuery } from '@/shared/lib/search-query'
 import { BrandMark } from '@/shared/components/brand-mark'
 import { Button } from '@/shared/ui/button'
+import type { SkillDomain } from '@/shared/lib/skill-domains'
 
 export function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
+  // Same single category control as the landing page: both discovery lists answer the same
+  // question, so they must not disagree about which category is being shown.
+  const [domain, setDomain] = useState<SkillDomain | undefined>(undefined)
+
   const { data: popularSkills, isLoading: isLoadingPopular } = useSearchSkills({
     sort: 'downloads',
     size: 6,
+    domain,
   })
 
   const { data: latestSkills, isLoading: isLoadingLatest } = useSearchSkills({
     sort: 'newest',
     size: 6,
+    domain,
   })
 
   const handleSearch = (query: string) => {
-    navigate({ to: '/search', search: { q: normalizeSearchQuery(query), sort: 'relevance', page: 0, starredOnly: false } })
+    navigate({ to: '/search', search: { q: normalizeSearchQuery(query), sort: 'relevance', page: 0, starredOnly: false, domain } })
   }
 
   const handleSkillClick = (namespace: string, slug: string) => {
@@ -55,7 +64,7 @@ export function HomePage() {
         <div className="flex items-center justify-center gap-4 animate-fade-up delay-2">
           <button data-analytics-id="navigation.skills.open"
             className="px-8 py-3.5 rounded-xl text-base font-medium text-white bg-[#202020] shadow-sm hover:bg-[#111] transition-colors"
-            onClick={() => navigate({ to: '/search', search: { q: '', sort: 'relevance', page: 0, starredOnly: false } })}
+            onClick={() => navigate({ to: '/search', search: { q: '', sort: 'relevance', page: 0, starredOnly: false, domain } })}
           >
             {t('home.browseSkills')}
           </button>
@@ -69,6 +78,11 @@ export function HomePage() {
         </div>
       </div>
 
+      {/* Domain filter: one control for both lists so the page never mixes categories. */}
+      <section className="space-y-3 animate-fade-up">
+        <DomainFilter value={domain} onChange={setDomain} />
+      </section>
+
       {/* Popular Downloads Section */}
       <section className="space-y-6 animate-fade-up">
         <div className="flex items-center justify-between">
@@ -80,13 +94,17 @@ export function HomePage() {
           </div>
           <Button data-analytics-id="discovery.popular.open"
             variant="ghost"
-            onClick={() => navigate({ to: '/search', search: { q: '', sort: 'downloads', page: 0, starredOnly: false } })}
+            onClick={() => navigate({ to: '/search', search: { q: '', sort: 'downloads', page: 0, starredOnly: false, domain } })}
           >
             {t('home.viewAll')}
           </Button>
         </div>
         {isLoadingPopular ? (
           <SkeletonList count={6} />
+        ) : (popularSkills?.items.length ?? 0) === 0 ? (
+          <div className="rounded-xl border border-border/60 bg-card px-6 py-12 text-center text-sm text-muted-foreground">
+            {domain ? t('home.domainEmpty') : t('home.recommend.empty')}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {popularSkills?.items.map((skill, idx) => (
@@ -112,13 +130,17 @@ export function HomePage() {
           </div>
           <Button data-analytics-id="discovery.latest.open"
             variant="ghost"
-            onClick={() => navigate({ to: '/search', search: { q: '', sort: 'newest', page: 0, starredOnly: false } })}
+            onClick={() => navigate({ to: '/search', search: { q: '', sort: 'newest', page: 0, starredOnly: false, domain } })}
           >
             {t('home.viewAll')}
           </Button>
         </div>
         {isLoadingLatest ? (
           <SkeletonList count={6} />
+        ) : (latestSkills?.items.length ?? 0) === 0 ? (
+          <div className="rounded-xl border border-border/60 bg-card px-6 py-12 text-center text-sm text-muted-foreground">
+            {domain ? t('home.domainEmpty') : t('home.recommend.empty')}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {latestSkills?.items.map((skill, idx) => (

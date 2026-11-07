@@ -282,7 +282,17 @@
   },
   "home": {
     "domainTitle": "Skills by domain",
-    "domainUnavailable": "Domain categories are not available yet",
+    "domainAll": "All domains",
+    "domainFilterLabel": "Filter by domain",
+    "domainEmpty": "No public skills in this domain yet",
+    "domain": {
+      "DESIGN": "Design",
+      "DEVELOPMENT": "Development",
+      "TESTING": "Testing",
+      "ENGINEERING": "Engineering",
+      "PROJECT_MANAGEMENT": "Project management",
+      "OTHER": "Other"
+    },
     "subtitle": "Skill Registry",
     "description": "Efficient skill management, distribution, and collaboration platform for developers",
     "browseSkills": "Browse Skills",
@@ -2276,6 +2286,12 @@
     "copyright": "© 2026 SkillHub. Apache-2.0."
   },
   "publish": {
+    "domain": "Category",
+    "domainPlaceholder": "Choose a category",
+    "domainHelp": "Pick the first-level category this skill belongs to. It defaults to Other.",
+    "domainHelpUpdate": "Change the category and save; no new package is needed for a category-only edit.",
+    "domainSaved": "Category saved",
+    "saveDomain": "Save category",
     "retryPackagePreview": "Retry",
     "packageName": "Package name",
     "displayName": "Display name",
@@ -3354,3 +3370,6 @@
     }
   }
 }
+
+
+

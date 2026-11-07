@@ -28,7 +28,8 @@ import { Textarea } from '@/shared/ui/textarea'
 import { Card } from '@/shared/ui/card'
 import { SkillAvatarEditor, KEEP_AVATAR, type AvatarEdit } from '@/features/skill/skill-avatar-editor'
 import { SkillAvatarManager } from '@/features/skill/skill-avatar-manager'
-import { previewSkillPackage, usePublishSkill, useSkillDetail } from '@/shared/hooks/use-skill-queries'
+import { previewSkillPackage, useChangeSkillDomain, usePublishSkill, useSkillDetail, useSkillDomain } from '@/shared/hooks/use-skill-queries'
+import { SKILL_DOMAINS, type SkillDomain } from '@/shared/lib/skill-domains'
 import { getSkillDetailQueryKey } from '@/shared/hooks/query-keys'
 import { useMyNamespaces } from '@/shared/hooks/use-namespace-queries'
 import { ConfirmDialog } from '@/shared/components/confirm-dialog'
@@ -59,6 +60,9 @@ export function PublishPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [namespaceSlug, setNamespaceSlug] = useState<string>(prefill.namespace)
   const [visibility, setVisibility] = useState<string>(prefill.visibility)
+  // Category is container metadata: it is written together with a published package, and it can
+  // also be corrected on its own from the update screen without re-uploading anything.
+  const [domain, setDomain] = useState<SkillDomain | undefined>(undefined)
   const [warningDialogOpen, setWarningDialogOpen] = useState(false)
   const [precheckWarnings, setPrecheckWarnings] = useState<string[]>([])
   const [isPackaging, setIsPackaging] = useState(false)
@@ -80,10 +84,16 @@ export function PublishPage() {
     }
   }, [packagePreview.data])
   const avatarTarget = useQuery({ queryKey: ['skill-avatar', namespaceSlug, updateSlug], queryFn: () => skillAvatarApi.status(namespaceSlug, updateSlug), enabled: !!namespaceSlug && !!updateSlug })
+  const { data: domainTarget } = useSkillDomain(namespaceSlug, updateSlug ?? '', !!namespaceSlug && !!updateSlug)
+  const changeDomain = useChangeSkillDomain()
+  const isSavingDomain = changeDomain.isPending
+  const savedDomain = domainTarget?.domain as SkillDomain | undefined
+  /** True when the owner picked a category that differs from the one stored on the Skill. */
+  const domainChanged = !!isUpdate && !!domain && !!savedDomain && domain !== savedDomain
   const avatarUnavailable = !!updateSlug && (avatarTarget.isLoading || avatarTarget.isError)
-  const isBusy = publishMutation.isPending || isSavingAvatar
+  const isBusy = publishMutation.isPending || isSavingAvatar || isSavingDomain
   const avatarOnly = isUpdate && !selectedFile
-  const canSubmit = !ownerReadOnly && (!selectedFile || packagePreview.isSuccess) && displayName.trim().length <= 200 && !!namespaceSlug && avatarEdit.ready && !avatarUnavailable && !isBusy && (selectedFile !== null || (isUpdate && avatarEdit.action !== 'KEEP'))
+  const canSubmit = !ownerReadOnly && (!selectedFile || packagePreview.isSuccess) && displayName.trim().length <= 200 && !!namespaceSlug && avatarEdit.ready && !avatarUnavailable && !isBusy && (selectedFile !== null || (isUpdate && (avatarEdit.action !== 'KEEP' || domainChanged)))
   const selectedNamespace = namespaces?.find((ns) => ns.slug === namespaceSlug)
   const namespaceOnlyLabel = selectedNamespace?.type === 'GLOBAL'
     ? t('publish.visibilityOptions.loggedInUsersOnly')
@@ -95,6 +105,14 @@ export function PublishPage() {
     setAvatarEdit(KEEP_AVATAR)
     setChangelog('')
   }, [prefill.namespace, prefill.visibility, updateSlug])
+
+  // Seed the control from the stored category once, so the select shows reality rather than a
+  // guess, while still letting the owner change it before saving.
+  useEffect(() => {
+    if (savedDomain) {
+      setDomain(current => current ?? savedDomain)
+    }
+  }, [savedDomain])
 
   const handleRemoveSelectedFile = () => {
     setSelectedFile(null)
@@ -133,13 +151,21 @@ export function PublishPage() {
       if (avatarOnly) {
         setIsSavingAvatar(true)
         if (avatarEdit.action === 'REMOVE') await skillAvatarApi.delete(namespaceSlug, updateSlug)
-        else await skillAvatarApi.submit(namespaceSlug, updateSlug, avatarEdit.uploadId!)
+        else if (avatarEdit.action === 'REPLACE') await skillAvatarApi.submit(namespaceSlug, updateSlug, avatarEdit.uploadId!)
+        // A category-only edit must not require a new package: the category belongs to the Skill.
+        if (domainChanged && domain) {
+          await changeDomain.mutateAsync({ namespace: namespaceSlug, slug: updateSlug, domain })
+        }
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['skills'], refetchType: avatarEdit.action === 'REMOVE' ? 'all' : 'active' }),
           queryClient.invalidateQueries({ queryKey: ['skill-avatar', namespaceSlug, updateSlug] }),
           queryClient.invalidateQueries({ queryKey: ['reviews'] }),
         ])
-        toast.success(t('publish.avatarSaved'), t(avatarEdit.action === 'REMOVE' ? 'skillAvatar.removedNotice' : 'skillAvatar.submittedNotice'))
+        if (domainChanged) {
+          toast.success(t('publish.domainSaved'))
+        } else {
+          toast.success(t('publish.avatarSaved'), t(avatarEdit.action === 'REMOVE' ? 'skillAvatar.removedNotice' : 'skillAvatar.submittedNotice'))
+        }
         navigateAfterOverlays(() => { navigate({ to: '/dashboard/skills' }) })
         return
       }
@@ -153,6 +179,7 @@ export function PublishPage() {
         expectedSlug: updateSlug || undefined,
         displayName,
         changelog,
+        domain,
       })
       setPrecheckWarnings([])
       setWarningDialogOpen(false)
@@ -323,6 +350,43 @@ export function PublishPage() {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="skill-domain" className="text-sm font-semibold font-heading">{t('publish.domain')}</Label>
+          <Select
+            value={domain ?? savedDomain ?? ''}
+            disabled={ownerReadOnly || isBusy}
+            onValueChange={value => setDomain(value as SkillDomain)}
+          >
+            <SelectTrigger id="skill-domain" data-analytics-id="skill.publish.domain.select" aria-describedby="skill-domain-help">
+              <SelectValue placeholder={t('publish.domainPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {SKILL_DOMAINS.map(option => (
+                // Analytics ids must be literals: the manifest generator rejects template strings,
+                // so the six categories are spelled out as a conditional chain (same shape as the
+                // budget picker in github-deep-discovery-config.tsx).
+                <SelectItem
+                  key={option}
+                  data-analytics-id={
+                    option === 'DESIGN' ? 'skill.publish.domain.design'
+                    : option === 'DEVELOPMENT' ? 'skill.publish.domain.development'
+                    : option === 'TESTING' ? 'skill.publish.domain.testing'
+                    : option === 'ENGINEERING' ? 'skill.publish.domain.engineering'
+                    : option === 'PROJECT_MANAGEMENT' ? 'skill.publish.domain.project.management'
+                    : 'skill.publish.domain.other'
+                  }
+                  value={option}
+                >
+                  {t(`home.domain.${option}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p id="skill-domain-help" className="text-sm text-muted-foreground">
+            {t(isUpdate ? 'publish.domainHelpUpdate' : 'publish.domainHelp')}
+          </p>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="skill-display-name">{t('publish.displayName')}</Label>
           <Input
             id="skill-display-name"
@@ -374,7 +438,7 @@ export function PublishPage() {
           onClick={handlePublish}
           disabled={!canSubmit}
         >
-          {isBusy ? t('publish.publishing') : t(avatarOnly ? 'publish.saveAvatar' : 'publish.confirm')}
+          {isBusy ? t('publish.publishing') : t(avatarOnly ? (domainChanged && avatarEdit.action === 'KEEP' ? 'publish.saveDomain' : 'publish.saveAvatar') : 'publish.confirm')}
         </Button>
       </Card>
 

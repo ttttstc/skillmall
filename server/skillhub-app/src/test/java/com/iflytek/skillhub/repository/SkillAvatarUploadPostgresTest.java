@@ -58,6 +58,11 @@ import static org.mockito.Mockito.*;
 @ActiveProfiles("test")
 @Testcontainers
 @Import({com.iflytek.skillhub.auth.rbac.RbacService.class, com.iflytek.skillhub.domain.skill.SkillOwnerAccessPolicy.class, com.iflytek.skillhub.domain.review.ReviewService.class, com.iflytek.skillhub.domain.review.ReviewPermissionChecker.class, SkillAvatarAppService.class, SkillAvatarUploadService.class, SkillPublishAppService.class,
+        // SkillPublishAppService requires SkillDomainService (Issue #5: the category chosen in the
+        // publish form is written in the same transaction as the version). This shard whitelists its
+        // beans explicitly, so a new mandatory collaborator has to be listed here or the context
+        // cannot start — that failure mode is deterministic, not infrastructure noise.
+        com.iflytek.skillhub.domain.skill.service.SkillDomainService.class,
         SkillPublishService.class, SkillStorageDeletionCompensationService.class, JpaSkillStorageDeletionCompensationRepositoryAdapter.class, SkillAvatarCleanupTask.class,
         SkillAvatarUploadPostgresTest.Configuration.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
