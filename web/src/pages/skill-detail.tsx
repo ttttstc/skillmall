@@ -155,6 +155,9 @@ export function SkillDetailPage() {
   const [promotionVersionId, setPromotionVersionId] = useState<string | null>(null)
   const [revocationMode, setRevocationMode] = useState<'request' | 'direct' | null>(null)
   const [revocationReason, setRevocationReason] = useState('')
+  const [takedownDialogOpen, setTakedownDialogOpen] = useState(false)
+  const [takedownReason, setTakedownReason] = useState('')
+  const [officialConfirmOpen, setOfficialConfirmOpen] = useState(false)
   const [deleteSkillConfirmOpen, setDeleteSkillConfirmOpen] = useState(false)
   const [deleteSkillInputOpen, setDeleteSkillInputOpen] = useState(false)
   const [deleteSkillInput, setDeleteSkillInput] = useState('')
@@ -344,13 +347,27 @@ export function SkillDetailPage() {
   }
 
   const hideMutation = useMutation({
-    mutationFn: () => adminApi.hideSkill(skill!.id),
-    onSuccess: refreshSkill,
+    mutationFn: (reason: string) => adminApi.hideSkill(skill!.id, reason),
+    onSuccess: () => {
+      setTakedownDialogOpen(false)
+      setTakedownReason('')
+      refreshSkill()
+    },
   })
 
   const unhideMutation = useMutation({
     mutationFn: () => adminApi.unhideSkill(skill!.id),
     onSuccess: refreshSkill,
+  })
+
+  const officialMutation = useMutation({
+    mutationFn: (nextOfficial: boolean) => (nextOfficial
+      ? adminApi.markSkillOfficial(skill!.id)
+      : adminApi.unmarkSkillOfficial(skill!.id)),
+    onSuccess: () => {
+      setOfficialConfirmOpen(false)
+      refreshSkill()
+    },
   })
 
   const yankMutation = useMutation({
@@ -947,6 +964,12 @@ export function SkillDetailPage() {
                 {skill.visibility === 'NAMESPACE_ONLY' && t('publish.visibilityOptions.namespaceOnly')}
               </span>
             )}
+            {skill.official && (
+              <span className="badge-soft inline-flex items-center gap-1 bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
+                <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                {t('skillDetail.officialBadge')}
+              </span>
+            )}
             {isReviewFlowPending && (
               <span className="badge-soft bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
                 {t('skillDetail.versionStatusPendingReview')}
@@ -958,6 +981,15 @@ export function SkillDetailPage() {
               </span>
             )}
           </div>
+          {skill.hidden && (
+            <Card className="border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">{t('skillDetail.hiddenNoticeTitle')}</div>
+              <p className="mt-1">{t('skillDetail.hiddenNoticeDescription')}</p>
+              {skill.hiddenReason && (
+                <p className="mt-2 text-xs">{t('skillDetail.hiddenReasonLabel', { reason: skill.hiddenReason })}</p>
+              )}
+            </Card>
+          )}
           {skill.avatarUrl && user?.userId !== skill.ownerId && (namespace === 'global'
             ? isPromotionAdmin
             : myNamespaces?.some((item) => item.slug === namespace && (item.currentUserRole === 'OWNER' || item.currentUserRole === 'ADMIN')))
@@ -1663,15 +1695,26 @@ export function SkillDetailPage() {
             </div>
             <div className="flex flex-col gap-3">
               {canHideSkill ? (
-                !skill.hidden ? (
-                  <Button data-analytics-id="skill.hide.request" variant="outline" onClick={() => hideMutation.mutate()} disabled={hideMutation.isPending}>
-                    {hideMutation.isPending ? t('skillDetail.processing') : t('skillDetail.hideSkill')}
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setOfficialConfirmOpen(true)}
+                    disabled={officialMutation.isPending}
+                  >
+                    {officialMutation.isPending
+                      ? t('skillDetail.processing')
+                      : skill.official ? t('skillDetail.unmarkOfficial') : t('skillDetail.markOfficial')}
                   </Button>
-                ) : (
-                  <Button data-analytics-id="skill.unhide.request" variant="outline" onClick={() => unhideMutation.mutate()} disabled={unhideMutation.isPending}>
-                    {unhideMutation.isPending ? t('skillDetail.processing') : t('skillDetail.unhideSkill')}
-                  </Button>
-                )
+                  {!skill.hidden ? (
+                    <Button data-analytics-id="skill.hide.request" variant="outline" onClick={() => setTakedownDialogOpen(true)}>
+                      {t('skillDetail.hideSkill')}
+                    </Button>
+                  ) : (
+                    <Button data-analytics-id="skill.unhide.request" variant="outline" onClick={() => unhideMutation.mutate()} disabled={unhideMutation.isPending}>
+                      {unhideMutation.isPending ? t('skillDetail.processing') : t('skillDetail.unhideSkill')}
+                    </Button>
+                  )}
+                </>
               ) : null}
               {selectedVersionEntry && (
                 <Button data-analytics-id="skill.version.yank" variant="destructive" onClick={() => yankMutation.mutate()} disabled={yankMutation.isPending}>
@@ -1753,6 +1796,50 @@ export function SkillDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={takedownDialogOpen} onOpenChange={(open) => {
+        setTakedownDialogOpen(open)
+        if (!open) setTakedownReason('')
+      }}>
+        <DialogContent aria-label={t('skillDetail.takedownDialogTitle')}>
+          <DialogHeader>
+            <DialogTitle>{t('skillDetail.takedownDialogTitle')}</DialogTitle>
+            <DialogDescription>{t('skillDetail.takedownDialogDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Textarea
+              aria-label={t('skillDetail.takedownReasonPlaceholder')}
+              placeholder={t('skillDetail.takedownReasonPlaceholder')}
+              value={takedownReason}
+              onChange={(event) => setTakedownReason(event.target.value)}
+              maxLength={500}
+              rows={3}
+            />
+            {takedownReason.trim().length === 0 && (
+              <p className="text-xs text-muted-foreground">{t('skillDetail.takedownReasonRequired')}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTakedownDialogOpen(false)}>{t('dialog.cancel')}</Button>
+            <Button
+              variant="destructive"
+              onClick={() => hideMutation.mutate(takedownReason.trim())}
+              disabled={hideMutation.isPending || takedownReason.trim().length === 0}
+            >
+              {hideMutation.isPending ? t('skillDetail.processing') : t('skillDetail.submitTakedown')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={officialConfirmOpen}
+        onOpenChange={setOfficialConfirmOpen}
+        title={t(skill.official ? 'skillDetail.unmarkOfficialConfirmTitle' : 'skillDetail.markOfficialConfirmTitle')}
+        description={t(skill.official ? 'skillDetail.unmarkOfficialConfirmDescription' : 'skillDetail.markOfficialConfirmDescription', { skill: skill.displayName })}
+        confirmText={t(skill.official ? 'skillDetail.unmarkOfficial' : 'skillDetail.markOfficial')}
+        onConfirm={() => officialMutation.mutate(!skill.official)}
+      />
 
       <ConfirmDialog confirmAnalyticsId="skill.archive.confirm" cancelAnalyticsId="skill.archive.cancel"
         open={archiveConfirmOpen}

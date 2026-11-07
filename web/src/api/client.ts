@@ -2160,7 +2160,7 @@ export const adminApi = {
     )
   },
 
-  async hideSkill(skillId: number, reason?: string): Promise<void> {
+  async hideSkill(skillId: number, reason: string): Promise<void> {
     await fetchJson<void>(`/api/v1/admin/skills/${skillId}/hide`, {
       method: 'POST',
       headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
@@ -2172,6 +2172,26 @@ export const adminApi = {
     await fetchJson<void>(`/api/v1/admin/skills/${skillId}/unhide`, {
       method: 'POST',
       headers: getCsrfHeaders(),
+    })
+  },
+
+  /**
+   * Grants the administrator-granted official mark. The reason is optional because the
+   * attestation itself is the record; when supplied it is copied into the audit entry.
+   */
+  async markSkillOfficial(skillId: number, reason?: string): Promise<void> {
+    await fetchJson<void>(`/api/v1/admin/skills/${skillId}/official`, {
+      method: 'POST',
+      headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    })
+  },
+
+  async unmarkSkillOfficial(skillId: number, reason?: string): Promise<void> {
+    await fetchJson<void>(`/api/v1/admin/skills/${skillId}/official`, {
+      method: 'DELETE',
+      headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
     })
   },
 

@@ -3331,6 +3331,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/skills/{skillId}/official": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["markOfficial"];
+        delete: operations["unmarkOfficial"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/skills/{skillId}/hide": {
         parameters: {
             query?: never;
@@ -8783,6 +8799,9 @@ export interface components {
             timestamp?: string;
             requestId?: string;
         };
+        AdminSkillTakedownRequest: {
+            reason: string;
+        };
         ApiResponseSkillReviewResponse: {
             /** Format: int32 */
             code?: number;
@@ -9559,6 +9578,8 @@ export interface components {
             /** Format: int32 */
             ratingCount?: number;
             hidden?: boolean;
+            hiddenReason?: string;
+            official?: boolean;
             namespace?: string;
             labels?: components["schemas"]["SkillLabelDto"][];
             canManageLifecycle?: boolean;
@@ -18385,7 +18406,7 @@ export interface operations {
             };
         };
     };
-    hideSkill: {
+    markOfficial: {
         parameters: {
             query?: never;
             header?: never;
@@ -18397,6 +18418,58 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["AdminSkillActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminSkillMutationResponse"];
+                };
+            };
+        };
+    };
+    unmarkOfficial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skillId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AdminSkillActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminSkillMutationResponse"];
+                };
+            };
+        };
+    };
+    hideSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skillId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminSkillTakedownRequest"];
             };
         };
         responses: {

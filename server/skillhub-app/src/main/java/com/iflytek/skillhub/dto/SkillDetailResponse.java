@@ -18,6 +18,8 @@ public record SkillDetailResponse(
         BigDecimal ratingAvg,
         Integer ratingCount,
         boolean hidden,
+        String hiddenReason,
+        boolean official,
         String namespace,
         List<SkillLabelDto> labels,
         boolean canManageLifecycle,
@@ -69,7 +71,7 @@ public record SkillDetailResponse(
         boolean ownerReadOnly,
         GithubSkillSourceResponse githubSource
     ) {
-        this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, namespace, labels, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, entryForSuites, memberOfSuites, avatarUrl, ownerReadOnly, githubSource, null);
+        this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, null, false, namespace, labels, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, entryForSuites, memberOfSuites, avatarUrl, ownerReadOnly, githubSource, null);
     }
 
     public SkillDetailResponse(Long id,

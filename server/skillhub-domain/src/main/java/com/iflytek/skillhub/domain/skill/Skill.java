@@ -84,6 +84,26 @@ public class Skill {
     @Column(name = "hidden_by", length = 128)
     private String hiddenBy;
 
+    /**
+     * Durable reason of the current {@code hidden} overlay, or null when the skill was hidden
+     * without one. Restoring the skill clears it; the audit entry keeps its own copy.
+     */
+    @Column(name = "hidden_reason", length = 500)
+    private String hiddenReason;
+
+    /**
+     * Administrator-granted official mark. Only platform administrators write it, and no upload,
+     * sync, import or promotion path may set it: provenance is not an official attestation.
+     */
+    @Column(nullable = false)
+    private boolean official = false;
+
+    @Column(name = "official_at")
+    private Instant officialAt;
+
+    @Column(name = "official_by", length = 128)
+    private String officialBy;
+
     @Column(name = "star_count", nullable = false)
     private Integer starCount = 0;
 
@@ -227,6 +247,22 @@ public class Skill {
         return hiddenBy;
     }
 
+    public String getHiddenReason() {
+        return hiddenReason;
+    }
+
+    public boolean isOfficial() {
+        return official;
+    }
+
+    public Instant getOfficialAt() {
+        return officialAt;
+    }
+
+    public String getOfficialBy() {
+        return officialBy;
+    }
+
     public Integer getStarCount() {
         return starCount;
     }
@@ -323,5 +359,21 @@ public class Skill {
 
     public void setHiddenBy(String hiddenBy) {
         this.hiddenBy = hiddenBy;
+    }
+
+    public void setHiddenReason(String hiddenReason) {
+        this.hiddenReason = hiddenReason;
+    }
+
+    public void setOfficial(boolean official) {
+        this.official = official;
+    }
+
+    public void setOfficialAt(Instant officialAt) {
+        this.officialAt = officialAt;
+    }
+
+    public void setOfficialBy(String officialBy) {
+        this.officialBy = officialBy;
     }
 }
