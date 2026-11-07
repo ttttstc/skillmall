@@ -244,7 +244,7 @@ export function LandingPage() {
     <>
       <main ref={heroView.ref} className={`relative z-10 w-full overflow-hidden px-6 pb-10 pt-20 text-center scroll-fade-up${heroView.inView ? ' in-view' : ''} md:pb-12 md:pt-28`}>
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_75%_55%,rgba(194,218,255,0.28),transparent_45%),radial-gradient(ellipse_at_25%_80%,rgba(255,225,225,0.22),transparent_45%)]" />
-        <h1 className="text-5xl font-bold tracking-tight text-foreground md:text-7xl">SkillHub</h1>
+        <h1 className="text-5xl font-bold tracking-tight text-foreground md:text-7xl">SkillMall</h1>
         <p className="mt-3 text-base text-muted-foreground md:text-lg">{t('landing.hero.mallSubtitle')}</p>
         <div className="mx-auto mt-10 flex max-w-6xl flex-col items-stretch gap-3 lg:flex-row lg:items-center">
           <form className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-border bg-background px-5 text-left focus-within:border-ring" onSubmit={(event) => {

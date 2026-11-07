@@ -129,6 +129,19 @@ describe('LoginPage', () => {
     expect(html).toContain('login.register')
   })
 
+  // The login page is a market-brand surface: the localized page must name SkillMall, and must not
+  // still call the market SkillHub (issue #10). Korean is used because this suite drives real
+  // translations through a real i18next instance rather than returning keys.
+  it('names the market SkillMall on the localized login page', async () => {
+    await koreanI18n.init({ lng: 'ko', resources: { ko: { translation: ko } } })
+    authMethodsFixture.localize = true
+    render(<I18nextProvider i18n={koreanI18n}><LoginPage /></I18nextProvider>)
+
+    expect(screen.getByText(ko.login.title)).toBeTruthy()
+    expect(ko.login.title).toContain('SkillMall')
+    expect(document.body.textContent).not.toContain('SkillHub')
+  })
+
   it('renders a complete Korean agreement with working policy links', async () => {
     await koreanI18n.init({ lng: 'ko', resources: { ko: { translation: ko } } })
     authMethodsFixture.localize = true

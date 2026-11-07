@@ -17,4 +17,12 @@ describe('AuthShell', () => {
     expect(html).toContain('pt-20')
     expect(html).toContain('Login form')
   })
+
+  // Login and registration share this shell, so its brand wordmark is the brand both pages show.
+  it('presents the market as SkillMall, not SkillHub', () => {
+    const html = renderToStaticMarkup(<AuthShell><div>Login form</div></AuthShell>)
+
+    expect(html).toContain('SkillMall')
+    expect(html).not.toContain('SkillHub')
+  })
 })

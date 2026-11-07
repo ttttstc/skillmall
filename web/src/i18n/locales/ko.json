@@ -31,7 +31,7 @@
   "githubCatalog": {
     "title": "오픈소스 스킬",
     "sourceLabel": "공개 GitHub 저장소",
-    "description": "SkillHub에서 검토하고 게시한 공개 GitHub 저장소의 스킬을 탐색하세요. 각 스킬 페이지에서 출처, 경로, 고정된 커밋, 라이선스 정보를 확인할 수 있습니다.",
+    "description": "SkillMall에서 검토하고 게시한 공개 GitHub 저장소의 스킬을 탐색하세요. 각 스킬 페이지에서 출처, 경로, 고정된 커밋, 라이선스 정보를 확인할 수 있습니다.",
     "explore": "오픈소스 스킬 둘러보기",
     "allSkills": "모든 스킬 보기",
     "publishedCount": "게시된 GitHub 스킬",
@@ -91,7 +91,7 @@
       "teams": "팀"
     },
     "whySkillHub": {
-      "title": "SkillHub를 선택하는 이유",
+      "title": "SkillMall를 선택하는 이유",
       "subtitle": "기업 팀을 위해 설계된 비공개 에이전트 스킬 플랫폼"
     },
     "badge": "기업용 스킬 레지스트리",
@@ -133,7 +133,7 @@
     "ctaTitle": "시작할 준비가 되셨나요?",
     "ctaDescription": "명령어 하나로 로컬 개발 환경을 시작하고 전체 스킬 관리 워크플로를 경험하세요",
     "ctaButton": "지금 시작하기",
-    "footerLicense": "© 2026 SkillHub. Apache License 2.0.",
+    "footerLicense": "© 2026 SkillMall. Apache License 2.0.",
     "footerDocs": "문서",
     "footerGithub": "GitHub",
     "footerCommunity": "커뮤니티",
@@ -164,7 +164,7 @@
       "steps": {
         "configureEnv": {
           "title": "1. 환경변수 설정",
-          "description": "ClawHub CLI가 SkillHub에 연결되도록 설정하세요"
+          "description": "ClawHub CLI가 SkillMall에 연결되도록 설정하세요"
         },
         "installSkills": {
           "title": "2. 스킬 설치",
@@ -370,12 +370,12 @@
     "quickStart": {
       "title": "빠른 시작",
       "subtitle": "빠른 시작",
-      "description": "몇 가지 간단한 단계로 SkillHub를 시작하세요",
+      "description": "몇 가지 간단한 단계로 SkillMall를 시작하세요",
       "tip": "💡 팁: 스킬 상세 페이지에서 환경변수가 포함된 설치 명령어를 한 번에 복사할 수 있습니다",
       "steps": {
         "configureEnv": {
           "title": "1. 환경변수 설정",
-          "description": "ClawHub CLI가 SkillHub에 연결되도록 설정하세요"
+          "description": "ClawHub CLI가 SkillMall에 연결되도록 설정하세요"
         },
         "installSkills": {
           "title": "2. 스킬 설치",
@@ -427,7 +427,7 @@
     "clear": "검색어 지우기"
   },
   "login": {
-    "title": "SkillHub 로그인",
+    "title": "SkillMall 로그인",
     "subtitle": "하나의 계정으로 더 나은 스킬 협업을 시작하세요",
     "eyebrow": "다시 오신 것을 환영합니다",
     "tabEnterprise": "조직 로그인",
@@ -438,7 +438,7 @@
     "enterpriseConfigHint": "업무용 로그인 항목은 관리자가 활성화합니다.",
     "noEnterpriseMethods": "아직 업무용 계정 로그인을 사용할 수 없습니다. 개인 계정을 사용하거나 관리자에게 문의하세요.",
     "personalTitle": "비밀번호 로그인",
-    "personalHint": "SkillHub 사용자 이름과 비밀번호를 사용하세요.",
+    "personalHint": "SkillMall 사용자 이름과 비밀번호를 사용하세요.",
     "otherMethods": "또는 다음으로 계속하기",
     "orgLoginHint": "통합 로그인이 설정된 조직용",
     "externalIdentityMethods": "외부 인증 제공자",
@@ -460,7 +460,7 @@
     "register": "회원가입",
     "oauthHint": "OAuth 인증 후 이 사이트로 자동으로 돌아옵니다.",
     "enterpriseSsoTitle": "기업 SSO",
-    "enterpriseSsoHint": "이 배포 환경에서는 호환 계층이 활성화되어 있습니다. 브라우저에 {{name}} 세션이 있다면 SkillHub 세션을 바로 생성해 볼 수 있습니다.",
+    "enterpriseSsoHint": "이 배포 환경에서는 호환 계층이 활성화되어 있습니다. 브라우저에 {{name}} 세션이 있다면 SkillMall 세션을 바로 생성해 볼 수 있습니다.",
     "enterpriseSsoAutoHint": "이 배포 환경에서는 {{name}} 자동 감지가 활성화되어 있습니다. 실패하면 일반 로그인 방식을 사용할 수 있습니다.",
     "enterpriseSsoAction": "{{name}}으로 시도",
     "enterpriseSsoSubmitting": "{{name}}으로 시도하는 중...",
@@ -2365,13 +2365,13 @@
     "loginWith": "{{name}}으로 로그인"
   },
   "authShell": {
-    "eyebrow": "SkillHub",
+    "eyebrow": "SkillMall",
     "backHome": "홈으로 돌아가기",
     "heroTitle": "팀의 스킬을 발견하고\n보존하고 재사용하세요",
     "heroSubtitle": "SKILL.md로 시작하세요.\n경험을 팀이 공유할 수 있는 역량으로 만드세요.",
     "heroFooter": "팀의 지식을 모아 스킬의 가치를 높이세요",
     "shortTagline": "스킬로\n함께\n만들어요",
-    "capabilities": "SkillHub로 할 수 있는 일",
+    "capabilities": "SkillMall로 할 수 있는 일",
     "discoverTitle": "스킬 탐색",
     "discoverDescription": "팀에서 재사용할 수 있는 스킬과 실무 사례를 찾으세요.",
     "shareTitle": "지식 공유",
@@ -2579,7 +2579,7 @@
     "community": "커뮤니티",
     "privacy": "개인정보처리방침",
     "terms": "이용약관",
-    "copyright": "© 2026 SkillHub. Apache-2.0."
+    "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "publish": {
     "domain": "분야",
@@ -2602,7 +2602,7 @@
     "examplesInvalid": "예제 형식을 인식하지 못했습니다. 파일은 일반 파일로 유지되며 게시할 수 있습니다.",
     "packagePreviewFailed": "패키지를 읽을 수 없습니다. SKILL.md를 확인하고 패키지를 다시 선택하거나 재시도하세요.",
     "title": "스킬 게시",
-    "subtitle": "SkillHub에 스킬 패키지 업로드",
+    "subtitle": "SkillMall에 스킬 패키지 업로드",
     "directPublishNotice": {
       "title": "직접 게시 안내",
       "description": "공개 또는 네임스페이스 전용으로 게시하면 패키지 검증을 통과한 즉시 공개되어 검색, 조회, 다운로드가 가능합니다. 보안 스캔과 관리자 검토는 더 이상 게시 전제 조건이 아닙니다."
@@ -3201,7 +3201,7 @@
       "cancelFailed": "번들 작업을 취소하지 못했습니다",
       "openingTask": "게시 작업을 여는 중…",
       "taskListTitle": "스킬 모음 게시 작업",
-      "taskListDescription": "입력이 필요한 작업부터 처리하세요. 나머지는 SkillHub가 자동으로 진행합니다.",
+      "taskListDescription": "입력이 필요한 작업부터 처리하세요. 나머지는 SkillMall가 자동으로 진행합니다.",
       "taskDetailTitle": "스킬 모음 게시 작업",
       "taskDetailDescription": "작성 페이지 밖에서도 구성 스킬 게시와 스킬 모음 초안 생성을 확인할 수 있습니다.",
       "backToTasks": "게시 작업으로 돌아가기",
@@ -3300,7 +3300,7 @@
       },
       "noMembers": "아직 구성 스킬 진행 상황이 없습니다.",
       "cancelConfirmTitle": "이 스킬 모음의 생성을 중지하시겠습니까?",
-      "cancelConfirmDescription": "SkillHub가 구성 스킬 대기를 중지하고 스킬 모음 초안을 생성하지 않습니다. 이미 생성된 스킬 버전과 검토 작업은 유지되며 철회되지 않습니다.",
+      "cancelConfirmDescription": "SkillMall가 구성 스킬 대기를 중지하고 스킬 모음 초안을 생성하지 않습니다. 이미 생성된 스킬 버전과 검토 작업은 유지되며 철회되지 않습니다.",
       "cancelConfirmAction": "스킬 모음 생성 중지",
       "cancelledTitle": "스킬 모음 생성을 중지했습니다",
       "cancelledDescription": "이 작업은 내역에 남습니다. 기존 스킬 버전과 검토 작업은 철회되거나 삭제되지 않습니다.",

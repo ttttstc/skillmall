@@ -36,9 +36,9 @@ export function AuthShell({ children, className }: AuthShellProps) {
           <div className="relative z-10 px-12 pt-28 2xl:px-16">
             <div className="flex items-center gap-3">
               <BrandMark className="h-8 w-8" alt="" />
-              <span className="text-lg font-semibold tracking-tight">SkillHub</span>
+              <span className="text-lg font-semibold tracking-tight">SkillMall</span>
             </div>
-            <h2 className="mt-7 text-[clamp(4.5rem,6.5vw,6rem)] font-black leading-none tracking-[-0.04em]">SkillHub</h2>
+            <h2 className="mt-7 text-[clamp(4.5rem,6.5vw,6rem)] font-black leading-none tracking-[-0.04em]">SkillMall</h2>
             <p className="mt-5 max-w-[420px] whitespace-pre-line text-2xl font-semibold leading-snug tracking-tight">{t('authShell.heroTitle')}</p>
             <p className="mt-4 max-w-[350px] whitespace-pre-line text-sm leading-6 text-zinc-600 dark:text-zinc-400">{t('authShell.heroSubtitle')}</p>
           </div>
