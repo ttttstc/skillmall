@@ -643,18 +643,18 @@
   box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
 }
 .btn-pill-outline {
-  background: #f2f2f2;
+  background: #fff;
   color: #000;
-  border: 1px solid transparent;
+  border: 1px solid rgb(0 0 0 / 12%);
   box-shadow: none;
 }
 .btn-pill-outline:hover {
-  background: #e8e8e8;
-  border-color: rgb(0 0 0 / 6%);
+  background: #f7f7f7;
+  border-color: rgb(0 0 0 / 18%);
   transform: translateY(-1px);
 }
 .btn-pill-outline:active {
-  background: #dedede;
+  background: #efefef;
   transform: translateY(0) scale(0.985);
 }
 @media (prefers-reduced-motion: reduce) {

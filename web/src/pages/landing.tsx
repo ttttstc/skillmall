@@ -3,8 +3,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { normalizeSearchQuery } from '@/shared/lib/search-query'
 import {
-  ArrowRight,
   CheckCircle2,
+  LayoutGrid,
+  Send,
   GitBranch,
   Lock,
   Monitor,
@@ -256,10 +257,10 @@ export function LandingPage() {
             <input data-analytics-id="discovery.query.enter" name="query" type="search" aria-label={t('landing.hero.searchPlaceholder')} placeholder={t('landing.hero.searchPlaceholder')} className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground" />
           </form>
           <Link data-analytics-id="navigation.skills.open" to="/search" search={{ q: '', sort: 'relevance', page: 0, starredOnly: false }} className="btn-pill btn-pill-outline inline-flex h-12 items-center justify-center gap-2 px-6">
-            {t('landing.hero.exploreSkills')} <ArrowRight className="h-4 w-4" />
+            <LayoutGrid className="h-4 w-4" /> {t('landing.hero.exploreSkills')}
           </Link>
-          <Link data-analytics-id="skill.publish.open" to="/dashboard/publish" className="btn-pill btn-pill-primary inline-flex h-12 items-center justify-center px-6">
-            {t('landing.hero.publishSkill')}
+          <Link data-analytics-id="skill.publish.open" to="/dashboard/publish" className="btn-pill btn-pill-primary inline-flex h-12 items-center justify-center gap-2 px-6">
+            <Send className="h-4 w-4" /> {t('landing.hero.publishSkill')}
           </Link>
         </div>
       </main>

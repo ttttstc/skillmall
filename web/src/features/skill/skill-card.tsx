@@ -57,7 +57,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
     >
       <div className="flex h-full flex-col">
         <div className="mb-3 flex min-w-0 items-start gap-3">
-          <div className={market ? `${avatarTone} [&>span]:text-neutral-900` : undefined}><SkillAvatar name={skill.displayName} url={skill.avatarUrl} /></div>
+          <div className={market ? `${avatarTone} [&>span]:text-neutral-900` : undefined}><SkillAvatar name={skill.displayName} url={skill.avatarUrl} size={market ? 'h-12 w-12 rounded-xl' : undefined} /></div>
           <div className="min-w-0 flex-1">
             <h3
               className="line-clamp-2 text-base font-semibold [overflow-wrap:anywhere] group-hover:text-primary transition-colors duration-150"
@@ -75,7 +75,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
                 title={`@${skill.namespace}`}
               />
               {skill.domain ? (
-                <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-secondary/60 px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                <span className="inline-flex max-w-full shrink-0 items-center rounded-md border border-border/70 bg-secondary/60 px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
                   {t(`home.domain.${skill.domain}`)}
                 </span>
               ) : null}
@@ -94,7 +94,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
 
         {skill.summary && (
           <p
-            className={`${market ? 'line-clamp-1' : 'skill-card-summary'} mb-3 text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]`}
+            className={`${market ? 'line-clamp-2' : 'skill-card-summary'} mb-3 text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]`}
             title={skill.summary}
           >
             {skill.summary}
@@ -122,7 +122,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
         ) : null}
 
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-          {headlineVersion && (
+          {!market && headlineVersion && (
             <span title={`v${headlineVersion.version}`} className="max-w-full truncate px-2.5 py-1 rounded-full bg-secondary/60 font-mono text-[11px] font-semibold text-secondary-foreground">
               v{headlineVersion.version}
             </span>
