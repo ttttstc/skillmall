@@ -141,8 +141,8 @@
       },
       "agent": {
         "description": "Отправьте промпт своему Agent, чтобы настроить SkillHub Registry",
-        "command": "Подключите SkillHub по инструкции https://www.example.com/registry/skill.md",
-        "commandTemplate": "Подключите SkillHub по инструкции {{url}}"
+        "command": "Подключите SkillMall по инструкции https://www.example.com/registry/skill.md",
+        "commandTemplate": "Подключите SkillMall по инструкции {{url}}"
       },
       "human": {
         "description": "Используйте SkillHub CLI для поиска и установки Skills",
@@ -1843,7 +1843,7 @@
     "installForAgent": {
       "button": "Установить для агента",
       "copied": "Инструкция скопирована",
-      "prompt": "Следуйте инструкции {{guideUrl}}, чтобы подключить SkillHub и установить {{skill}} версии {{version}} из этого маркета."
+      "prompt": "Следуйте инструкции {{guideUrl}}, чтобы подключить SkillMall и установить {{skill}} версии {{version}} из этого маркета."
     }
   },
   "skillCompare": {
