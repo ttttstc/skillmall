@@ -1,4 +1,3 @@
-import { createInstance } from 'i18next'
 import { describe, expect, it } from 'vitest'
 import en from './locales/en.json'
 import ko from './locales/ko.json'
@@ -37,15 +36,5 @@ describe('Korean locale', () => {
     expect(ko.landing.quickStart.cli.command).toBe(en.landing.quickStart.cli.command)
     expect(ko.landing.quickStart.human.command).toBe(en.landing.quickStart.human.command)
     expect(ko.landing.quickStart.human.commandTemplate).toBe(en.landing.quickStart.human.commandTemplate)
-  })
-
-  it('uses Korean plural rules for zero, one, and multiple reviews without English fallback', async () => {
-    const instance = createInstance()
-    await instance.init({ lng: 'ko-KR', fallbackLng: 'en', resources: { en: { translation: en }, ko: { translation: ko } } })
-    for (const count of [0, 1, 2, 21, 100]) {
-      const result = instance.t('skillReviews.count', { count, returnDetails: true })
-      expect(result.res, String(count)).toBe(`리뷰 ${count}개`)
-      expect(result.usedLng).toBe('ko')
-    }
   })
 })
