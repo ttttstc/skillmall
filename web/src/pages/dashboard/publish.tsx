@@ -67,6 +67,13 @@ export function PublishPage() {
   const [warningDialogOpen, setWarningDialogOpen] = useState(false)
   const [precheckWarnings, setPrecheckWarnings] = useState<string[]>([])
   const [isPackaging, setIsPackaging] = useState(false)
+  // The wizard keeps the UCD three-step order; updates keep the single form because the owner
+  // usually only touches the avatar or the category there.
+  // A ?step= deep link may open the wizard at the file preview or basic-info step; the wizard
+  // keeps later movement in local state so the URL stays the canonical entry point.
+  const [step, setStep] = useState<number>(search.step ?? 1)
+  const [source, setSource] = useState<'local' | 'gitcode'>('local')
+  const showStep = (index: number) => isUpdate || step === index
 
   const { data: namespaces, isLoading: isLoadingNamespaces } = useMyNamespaces()
   const publishMutation = usePublishSkill()
@@ -114,6 +121,7 @@ export function PublishPage() {
       setDomain(current => current ?? savedDomain)
     }
   }, [savedDomain])
+
 
   const handleRemoveSelectedFile = () => {
     setSelectedFile(null)
@@ -252,9 +260,33 @@ export function PublishPage() {
     <div className="mx-auto max-w-[1704px] space-y-8 animate-fade-up">
       <DashboardPageHeader title={t(isUpdate ? 'publish.updateTitle' : 'publish.title')} subtitle={t(isUpdate ? 'publish.updateSubtitle' : 'publish.subtitle')} />
 
-      <GitCodeImportPanel />
+      {!isUpdate && (
+        <div className="flex w-fit items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1">
+          <Button data-analytics-id="skill.publish.source.local" type="button" size="sm" variant={source === 'local' ? 'default' : 'ghost'} aria-pressed={source === 'local'} onClick={() => setSource('local')}>
+            {t('publish.sourceLocal')}
+          </Button>
+          <Button data-analytics-id="skill.publish.source.gitcode" type="button" size="sm" variant={source === 'gitcode' ? 'default' : 'ghost'} aria-pressed={source === 'gitcode'} onClick={() => setSource('gitcode')}>
+            {t('publish.sourceGitcode')}
+          </Button>
+        </div>
+      )}
+
+      {source === 'gitcode' ? <GitCodeImportPanel /> : null}
 
       {ownerReadOnly && <p role="status" className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">{t('mySkills.ownerReadOnly')}</p>}
+
+      {!isUpdate && (
+        <ol className="flex flex-wrap items-center gap-4 text-sm">
+          {([1, 2, 3] as const).map((index) => (
+            <li key={index} className="flex items-center gap-2">
+              <span aria-hidden="true" className={index === step ? 'flex h-6 w-6 items-center justify-center rounded-full border border-primary bg-primary text-xs text-primary-foreground' : index < step ? 'flex h-6 w-6 items-center justify-center rounded-full border border-primary text-xs text-primary' : 'flex h-6 w-6 items-center justify-center rounded-full border border-border text-xs text-muted-foreground'}>{index}</span>
+              <span className={index === step ? 'font-medium text-foreground' : 'text-muted-foreground'}>
+                {t(index === 1 ? 'publish.stepUpload' : index === 2 ? 'publish.stepPreview' : 'publish.stepBasicInfo')}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
       <Card className="space-y-8 border-0 bg-transparent p-0 shadow-none">
         {prefill.resubmitSkill && prefill.resubmitVersion ? (
           <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
@@ -278,6 +310,7 @@ export function PublishPage() {
             <p className="text-sm text-muted-foreground">{t(publishNoticeCopyKeys(visibility).description)}</p>
           </div>
         </div>
+        {showStep(1) && (
         <div className="space-y-3">
           <Label className="text-sm font-semibold font-heading">{t('publish.file')}</Label>
           {isUpdate && <p className="text-sm text-muted-foreground">{t('publish.optionalPackage')}</p>}
@@ -309,7 +342,34 @@ export function PublishPage() {
             </div>
           )}
         </div>
+        )}
 
+        {showStep(2) && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold font-heading">{t('publish.stepPreview')}</h2>
+              <p className="text-sm text-muted-foreground">{t('publish.previewHint')}</p>
+            </div>
+            {selectedFile ? (
+              <dl className="grid gap-2 rounded-xl border border-border/60 bg-secondary/20 p-4 text-sm">
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t('publish.previewFile')}</dt><dd className="truncate">{selectedFile.name}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t('publish.previewSize')}</dt><dd>{(selectedFile.size / 1024).toFixed(1)} KB</dd></div>
+                {packagePreview.data && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t('publish.packageName')}</dt><dd className="truncate"><code>{packagePreview.data.name}</code></dd></div>}
+                {packagePreview.data && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{t('publish.displayName')}</dt><dd className="truncate">{packagePreview.data.displayName ?? packagePreview.data.name}</dd></div>}
+              </dl>
+            ) : <p className="text-sm text-muted-foreground">{t('publish.previewEmpty')}</p>}
+            {selectedFile && packagePreview.isPending && <p role="status" className="text-sm text-muted-foreground">{t('publish.readingPackage')}</p>}
+            {selectedFile && packagePreview.isError && <div role="alert" className="text-sm text-destructive">
+              <p>{t('publish.packagePreviewFailed')}</p>
+              <Button data-analytics-id="skill.package.preview.retry" type="button" size="sm" variant="outline" onClick={() => packagePreview.refetch()}>{t('publish.retryPackagePreview')}</Button>
+            </div>}
+            {selectedFile && packagePreview.data?.examplesStatus === 'ready' && <p role="status" className="text-xs text-muted-foreground">{t('publish.examplesReady', { count: packagePreview.data.examplesCount })}</p>}
+            {selectedFile && packagePreview.data?.examplesStatus === 'none' && <p className="text-xs text-muted-foreground">{t('publish.examplesNone')}</p>}
+            {selectedFile && packagePreview.data?.examplesStatus === 'invalid' && <p role="status" className="text-xs text-muted-foreground">{t('publish.examplesInvalid')}</p>}
+          </div>
+        )}
+
+        {showStep(3) && (<>
         <div className="space-y-3">
           <Label htmlFor="namespace" className="text-sm font-semibold font-heading">{t('publish.namespace')}</Label>
           {isLoadingNamespaces ? (
@@ -404,15 +464,6 @@ export function PublishPage() {
             }}
           />
           <p id="skill-display-name-help" className="text-sm text-muted-foreground">{t('publish.displayNameHelp')}</p>
-          {selectedFile && packagePreview.isPending && <p role="status" className="text-sm text-muted-foreground">{t('publish.readingPackage')}</p>}
-          {selectedFile && packagePreview.isError && <div role="alert" className="text-sm text-destructive">
-            <p>{t('publish.packagePreviewFailed')}</p>
-            <Button data-analytics-id="skill.package.preview.retry" type="button" size="sm" variant="outline" onClick={() => packagePreview.refetch()}>{t('publish.retryPackagePreview')}</Button>
-          </div>}
-          {selectedFile && packagePreview.data && <p className="break-all text-xs text-muted-foreground">{t('publish.packageName')}: <code>{packagePreview.data.name}</code></p>}
-          {selectedFile && packagePreview.data?.examplesStatus === 'ready' && <p role="status" className="text-xs text-muted-foreground">{t('publish.examplesReady', { count: packagePreview.data.examplesCount })}</p>}
-          {selectedFile && packagePreview.data?.examplesStatus === 'none' && <p className="text-xs text-muted-foreground">{t('publish.examplesNone')}</p>}
-          {selectedFile && packagePreview.data?.examplesStatus === 'invalid' && <p role="status" className="text-xs text-muted-foreground">{t('publish.examplesInvalid')}</p>}
         </div>
 
         <div className="space-y-2">
@@ -434,15 +485,44 @@ export function PublishPage() {
         <SkillAvatarEditor key={`${namespaceSlug}/${updateSlug}`} name={search.updateName ?? updateSlug} currentUrl={avatarTarget.data?.avatarUrl} canRemove={!!updateSlug} disabled={ownerReadOnly || isBusy || avatarUnavailable} onChange={setAvatarEdit} />
         {updateSlug && <SkillAvatarManager namespace={namespaceSlug} slug={updateSlug} disabled={ownerReadOnly || isBusy} />}
         {avatarTarget.isError && <p role="alert" className="text-sm text-destructive">{t('skillAvatar.failed')}</p>}
+        </>)}
 
-        <Button data-analytics-id={avatarOnly ? "skill.avatar.save" : "skill.publish.request"}
-          className="w-full text-primary-foreground disabled:text-primary-foreground"
-          size="lg"
-          onClick={handlePublish}
-          disabled={!canSubmit}
-        >
-          {isBusy ? t('publish.publishing') : t(avatarOnly ? (domainChanged && avatarEdit.action === 'KEEP' ? 'publish.saveDomain' : 'publish.saveAvatar') : 'publish.confirm')}
-        </Button>
+        {isUpdate ? (
+          <Button data-analytics-id={avatarOnly ? "skill.avatar.save" : "skill.publish.request"}
+            className="w-full text-primary-foreground disabled:text-primary-foreground"
+            size="lg"
+            onClick={handlePublish}
+            disabled={!canSubmit}
+          >
+            {isBusy ? t('publish.publishing') : t(avatarOnly ? (domainChanged && avatarEdit.action === 'KEEP' ? 'publish.saveDomain' : 'publish.saveAvatar') : 'publish.confirm')}
+          </Button>
+        ) : (
+          <div className="flex flex-wrap items-center justify-end gap-3 rounded-xl border border-border/70 bg-card px-4 py-3">
+            <Button data-analytics-id="skill.publish.cancel" type="button" variant="outline" onClick={() => navigate({ to: '/dashboard/skills' })}>
+              {t('publish.wizardCancel')}
+            </Button>
+            {step > 1 && (
+              <Button data-analytics-id="skill.publish.previous" type="button" variant="outline" onClick={() => setStep(current => Math.max(1, current - 1))}>
+                {t('publish.wizardPrevious')}
+              </Button>
+            )}
+            {step < 3 && (
+              <Button data-analytics-id="skill.publish.next" type="button" onClick={() => setStep(current => Math.min(3, current + 1))} disabled={step === 1 && !selectedFile}>
+                {t('publish.wizardNext')}
+              </Button>
+            )}
+            {step === 3 && (
+              <Button data-analytics-id="skill.publish.request"
+                className="text-primary-foreground disabled:text-primary-foreground"
+                type="button"
+                onClick={handlePublish}
+                disabled={!canSubmit}
+              >
+                {isBusy ? t('publish.publishing') : t('publish.confirm')}
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
 
       <ConfirmDialog confirmAnalyticsId={avatarOnly ? undefined : "skill.publish.confirm"} cancelAnalyticsId={avatarOnly ? undefined : "skill.publish.cancel"}

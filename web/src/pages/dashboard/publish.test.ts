@@ -85,6 +85,8 @@ describe('PublishPage', () => {
     useSearchMock.mockReturnValue({
       namespace: '  team-ai  ',
       visibility: 'private',
+      // The basic-info step owns the namespace and visibility selects, so render it directly.
+      step: 3,
     })
   })
 
@@ -96,7 +98,7 @@ describe('PublishPage', () => {
   })
 
   it('falls back to public visibility when search params are missing', () => {
-    useSearchMock.mockReturnValue({})
+    useSearchMock.mockReturnValue({ step: 3 })
 
     renderToStaticMarkup(createElement(PublishPage))
 

@@ -206,8 +206,10 @@ describe('Publish avatar submission', () => {
     mocks.search.updateSkill = ''
     if (mode === 'resubmit') mocks.search.resubmitSkill = 'foo'
     render(<PublishPage />)
-    fireEvent.click(screen.getByText('image uploaded'))
-    expect(screen.getByRole('button', { name: 'publish.confirm' }).hasAttribute('disabled')).toBe(true)
+    // The upload step is the only gate a package can open: without one the wizard cannot reach
+    // the submit step, so an avatar alone can never publish a version.
+    expect(screen.getByRole('button', { name: 'publish.wizardNext' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.queryByRole('button', { name: 'publish.confirm' })).toBeNull()
     expect(mocks.submit).not.toHaveBeenCalled()
   })
 

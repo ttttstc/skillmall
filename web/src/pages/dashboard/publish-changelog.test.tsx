@@ -25,6 +25,11 @@ function mount() {
 function select(name: string) {
   fireEvent.change(screen.getByLabelText('package'), { target: { files: [new File(['zip'], name)] } })
 }
+function advanceToBasicInfo(times: number) {
+  for (let index = 0; index < times; index += 1) {
+    fireEvent.click(screen.getByRole('button', { name: 'publish.wizardNext' }))
+  }
+}
 async function waitForSubmittable() {
   const confirm = screen.getByRole('button', { name: 'publish.confirm' })
   await waitFor(() => expect(confirm.hasAttribute('disabled')).toBe(false))
@@ -38,16 +43,16 @@ beforeEach(() => {
 })
 
 describe('version change note publishing', () => {
-  it('keeps the change note disabled until a package is selected', () => {
+  it('keeps the package step blocking until a package is selected', () => {
     mount()
 
-    expect((screen.getByLabelText('publish.changelog') as HTMLTextAreaElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'publish.wizardNext' }).hasAttribute('disabled')).toBe(true)
   })
 
   it('sends the typed change note with the new version', async () => {
     preview.mockResolvedValue(metadata())
     mount()
-    select('next.zip')
+    select('next.zip'); advanceToBasicInfo(2)
 
     const note = screen.getByLabelText('publish.changelog') as HTMLTextAreaElement
     await waitForSubmittable()
@@ -63,7 +68,7 @@ describe('version change note publishing', () => {
   it('sends an empty note when the author leaves the field blank', async () => {
     preview.mockResolvedValue(metadata())
     mount()
-    select('next.zip')
+    select('next.zip'); advanceToBasicInfo(2)
 
     await waitForSubmittable()
     fireEvent.click(screen.getByRole('button', { name: 'publish.confirm' }))
