@@ -1477,7 +1477,11 @@
   "stars": {
     "title": "내 즐겨찾기",
     "subtitle": "즐겨찾기한 스킬을 확인하세요",
-    "empty": "아직 즐겨찾기한 스킬이 없습니다"
+    "empty": "아직 즐겨찾기한 스킬이 없습니다",
+    "actions": {
+      "unstar": "즐겨찾기 해제",
+      "download": "다운로드"
+    }
   },
   "subscriptions": {
     "title": "내 구독",

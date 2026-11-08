@@ -1203,7 +1203,11 @@
   "stars": {
     "title": "My Stars",
     "subtitle": "View your starred skills",
-    "empty": "No starred skills yet"
+    "empty": "No starred skills yet",
+    "actions": {
+      "unstar": "Unstar",
+      "download": "Download"
+    }
   },
   "subscriptions": {
     "title": "My Subscriptions",
