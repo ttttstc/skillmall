@@ -282,6 +282,7 @@
   },
   "home": {
     "domainTitle": "Скиллы по областям",
+    "domainViewAll": "Смотреть все",
     "domainAll": "Все области",
     "domainFilterLabel": "Фильтр по области",
     "domainEmpty": "В этой области пока нет публичных навыков",

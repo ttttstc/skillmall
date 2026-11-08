@@ -282,6 +282,7 @@
   },
   "home": {
     "domainTitle": "领域 Skills",
+    "domainViewAll": "查看更多",
     "domainAll": "全部领域",
     "domainFilterLabel": "按领域筛选",
     "domainEmpty": "该领域暂无公开技能",

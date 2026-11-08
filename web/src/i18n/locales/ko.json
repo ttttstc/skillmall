@@ -319,6 +319,7 @@
   },
   "home": {
     "domainTitle": "분야별 Skills",
+    "domainViewAll": "전체 보기",
     "domainAll": "전체 분야",
     "domainFilterLabel": "분야별 필터",
     "domainEmpty": "이 분야에는 아직 공개 스킬이 없습니다",
