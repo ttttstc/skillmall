@@ -51,6 +51,20 @@ Stop the stack:
 make dev-all-down
 ```
 
+### Notes for Windows checkouts
+
+Two Windows-only traps cost a debugging session each; both come from the same
+security override in `web/package.json`.
+
+- `pnpm.overrides` pins `minimatch@<11.0.1` to `11.0.1`, while ESLint 8 declares
+  `minimatch: ^3.1.2`. minimatch v10 removed `matchBase`, so ESLint cannot expand
+  glob patterns on Windows: `eslint "src/*.tsx"` exits 2 with
+  `No files matching the pattern ...`. Pass a directory (`eslint .`,
+  `eslint src`) or explicit file paths instead.
+- `core.autocrlf` rewrites checked-out text to CRLF. Any assertion that compares a
+  repository file against a multi-line string joined with `\n` must normalise
+  first (`content.replace(/\r\n/gu, '\n')`), otherwise it fails only on Windows.
+
 ## Change Guidelines
 
 - Keep changes focused. Avoid mixing refactors with behavior changes.
