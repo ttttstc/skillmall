@@ -392,17 +392,17 @@
     }
   },
   "search": {
+    "back": "뒤로",
     "title": "스킬 검색",
     "placeholder": "스킬 검색...",
     "filters": {
       "label": "필터:"
     },
     "sort": {
-      "label": "정렬:",
-      "relevance": "관련도순",
+      "all": "전체",
+      "popular": "인기",
       "downloads": "다운로드",
-      "stars": "즐겨찾기",
-      "newest": "최신순"
+      "newest": "최근 등록"
     },
     "noResults": "검색 결과가 없습니다",
     "noResultsFor": "\"{{q}}\"에 해당하는 스킬을 찾지 못했습니다",
@@ -412,12 +412,12 @@
     "noStarredSkills": "아직 즐겨찾기한 스킬이 없습니다",
     "namespaceFilter": "@{{namespace}}",
     "enterKeyword": "검색어를 입력하세요",
-    "results": "스킬 {{count}}개를 찾았습니다",
     "resultCount": "검색 결과 <1>{{count}}</1>개",
     "loadingMore": "검색 결과를 업데이트하는 중...",
     "loadMore": "더 보기",
     "allSkillsTitle": "모든 스킬",
     "allSkillsHint": "마켓의 모든 공개 스킬을 둘러보세요",
+    "resultTotal": "총 스킬 {{count}}개",
     "viewGrid": "카드 보기",
     "viewList": "목록 보기",
     "viewToggleLabel": "보기 전환"

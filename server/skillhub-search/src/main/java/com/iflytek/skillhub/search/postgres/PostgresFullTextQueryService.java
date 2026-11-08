@@ -9,6 +9,8 @@ import com.iflytek.skillhub.search.SearchResult;
 import com.iflytek.skillhub.search.SearchTextTokenizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
@@ -37,6 +39,13 @@ import java.util.Set;
 public class PostgresFullTextQueryService implements SearchQueryService {
     private static final int MAX_QUERY_TERMS = 8;
     private static final int SHORT_PREFIX_LENGTH = 2;
+    /**
+     * Window of the "popular" ordering, in days. It matches
+     * {@code HomeDiscoveryAppService.RECENT_WINDOW_DAYS} on purpose: "热门" on the search page and
+     * "近期热门" on the home page must describe the same seven days, otherwise the two surfaces
+     * disagree about what is currently popular.
+     */
+    private static final int RECENT_POPULAR_WINDOW_DAYS = 7;
     private static final String TITLE_VECTOR_SQL = "to_tsvector('simple', coalesce(title, ''))";
     private static final String TITLE_SQL = "LOWER(title)";
 
@@ -83,6 +92,9 @@ public class PostgresFullTextQueryService implements SearchQueryService {
         boolean hasKeyword = normalizedKeyword != null;
         boolean hasTsQuery = tsQuery != null;
         boolean useRelevanceOrdering = "relevance".equals(query.sortBy()) && hasKeyword;
+        boolean usePopularOrdering = "popular".equals(query.sortBy());
+        LocalDate popularWindowEndExclusive = LocalDate.now(ZoneOffset.UTC).plusDays(1);
+        LocalDate popularWindowStart = popularWindowEndExclusive.minusDays(RECENT_POPULAR_WINDOW_DAYS);
         boolean useShortPrefixTitleSearch = hasTsQuery && isShortAsciiPrefixSearch(normalizedKeyword);
         boolean useSemanticRerank = semanticEnabled
                 && hasKeyword
@@ -170,7 +182,14 @@ public class PostgresFullTextQueryService implements SearchQueryService {
         }
 
         // Sorting
-        if ("downloads".equals(query.sortBy())) {
+        if (usePopularOrdering) {
+            sql.append("ORDER BY (SELECT COALESCE(SUM(popular_window.download_count), 0) ");
+            sql.append("FROM skill_download_daily popular_window ");
+            sql.append("WHERE popular_window.skill_id = s.id ");
+            sql.append("AND popular_window.download_date >= :popularWindowStart ");
+            sql.append("AND popular_window.download_date < :popularWindowEndExclusive) DESC, ");
+            sql.append("s.updated_at DESC, d.skill_id DESC ");
+        } else if ("downloads".equals(query.sortBy())) {
             sql.append("ORDER BY s.download_count DESC, s.updated_at DESC, d.skill_id DESC ");
         } else if ("rating".equals(query.sortBy())) {
             sql.append("ORDER BY s.rating_avg DESC, s.updated_at DESC, d.skill_id DESC ");
@@ -224,6 +243,11 @@ public class PostgresFullTextQueryService implements SearchQueryService {
                 nativeQuery.setParameter("titlePrefix", normalizedKeyword.toLowerCase(Locale.ROOT) + "%");
             }
             nativeQuery.setParameter("titleLike", "%" + normalizedKeyword.toLowerCase(Locale.ROOT) + "%");
+        }
+
+        if (usePopularOrdering) {
+            nativeQuery.setParameter("popularWindowStart", popularWindowStart);
+            nativeQuery.setParameter("popularWindowEndExclusive", popularWindowEndExclusive);
         }
 
         nativeQuery.setParameter("limit", sqlLimit);

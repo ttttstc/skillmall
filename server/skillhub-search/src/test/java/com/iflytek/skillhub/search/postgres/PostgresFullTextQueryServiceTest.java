@@ -400,6 +400,53 @@ class PostgresFullTextQueryServiceTest {
     }
 
     @Test
+    void popularSortShouldRankByTheRecentDownloadWindow() {
+        EntityManager entityManager = mock(EntityManager.class);
+        Query nativeQuery = mock(Query.class);
+        Query countQuery = mock(Query.class);
+        when(entityManager.createNativeQuery(anyString()))
+                .thenReturn(nativeQuery)
+                .thenReturn(countQuery);
+        when(nativeQuery.setParameter(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(nativeQuery);
+        when(countQuery.setParameter(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(countQuery);
+        when(nativeQuery.getResultList()).thenReturn(List.of());
+        when(countQuery.getSingleResult()).thenReturn(0L);
+
+        PostgresFullTextQueryService service = new PostgresFullTextQueryService(entityManager);
+
+        service.search(new SearchQuery(
+                null,
+                null,
+                new SearchVisibilityScope(null, Set.of(), Set.of()),
+                "popular",
+                0,
+                12
+        ));
+
+        var sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(entityManager, org.mockito.Mockito.times(2)).createNativeQuery(sqlCaptor.capture());
+        assertThat(sqlCaptor.getAllValues().getFirst())
+                .contains("ORDER BY (SELECT COALESCE(SUM(popular_window.download_count), 0)")
+                .contains("FROM skill_download_daily popular_window")
+                .contains("popular_window.download_date >= :popularWindowStart")
+                .contains("popular_window.download_date < :popularWindowEndExclusive");
+        // The count statement is truncated before ORDER BY, so it must not receive the window
+        // parameters: binding a parameter the SQL does not contain fails at runtime.
+        assertThat(sqlCaptor.getAllValues().get(1)).doesNotContain("popular_window");
+
+        var windowStartCaptor = ArgumentCaptor.forClass(java.time.LocalDate.class);
+        var windowEndCaptor = ArgumentCaptor.forClass(java.time.LocalDate.class);
+        verify(nativeQuery).setParameter(org.mockito.ArgumentMatchers.eq("popularWindowStart"), windowStartCaptor.capture());
+        verify(nativeQuery).setParameter(org.mockito.ArgumentMatchers.eq("popularWindowEndExclusive"), windowEndCaptor.capture());
+        verify(countQuery, never()).setParameter(
+                org.mockito.ArgumentMatchers.eq("popularWindowStart"), org.mockito.ArgumentMatchers.any());
+
+        // Seven UTC calendar days ending today, the same window the home page uses.
+        assertThat(windowEndCaptor.getValue().toEpochDay() - windowStartCaptor.getValue().toEpochDay()).isEqualTo(7);
+        assertThat(windowEndCaptor.getValue()).isEqualTo(java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
+    }
+
+    @Test
     void emptyKeywordRelevanceShouldUseStableNewestOrdering() {
         EntityManager entityManager = mock(EntityManager.class);
         Query nativeQuery = mock(Query.class);

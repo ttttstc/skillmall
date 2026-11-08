@@ -355,17 +355,17 @@
     }
   },
   "search": {
+    "back": "Назад",
     "title": "Поиск скиллов",
     "placeholder": "Поиск скиллов...",
     "filters": {
       "label": "Фильтр:"
     },
     "sort": {
-      "label": "Сортировка:",
-      "relevance": "Релевантность",
+      "all": "Все",
+      "popular": "Популярное",
       "downloads": "Загрузки",
-      "stars": "Звёзды",
-      "newest": "Новизна"
+      "newest": "Недавно добавленные"
     },
     "noResults": "Ничего не найдено",
     "noResultsFor": "Скиллы по запросу «{{q}}» не найдены",
@@ -375,12 +375,12 @@
     "noStarredSkills": "У вас пока нет избранных скиллов",
     "namespaceFilter": "@{{namespace}}",
     "enterKeyword": "Введите ключевое слово для поиска",
-    "results": "Найдено скиллов: {{count}}",
     "resultCount": "Найдено результатов: <1>{{count}}</1>",
     "loadingMore": "Обновление результатов поиска...",
     "loadMore": "Загрузить ещё",
     "allSkillsTitle": "Все навыки",
     "allSkillsHint": "Просмотр всех публичных навыков в каталоге",
+    "resultTotal": "Всего навыков: {{count}}",
     "viewGrid": "Карточный вид",
     "viewList": "Список",
     "viewToggleLabel": "Переключить вид"
