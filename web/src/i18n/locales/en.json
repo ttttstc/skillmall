@@ -294,15 +294,8 @@
       "PROJECT_MANAGEMENT": "Project management",
       "OTHER": "Other"
     },
-    "subtitle": "Skill Registry",
-    "description": "Efficient skill management, distribution, and collaboration platform for developers",
-    "browseSkills": "Browse Skills",
-    "publishSkill": "Publish Skill",
     "popularTitle": "Popular Downloads",
-    "popularDescription": "Most popular skills in the community",
     "latestTitle": "Latest Releases",
-    "latestDescription": "Freshly published skills",
-    "viewAll": "View All →",
     "recommend": {
       "title": "Recommended skills",
       "description": "A random pick of public skills, not based on your activity",

@@ -93,7 +93,6 @@ function createRoleProtectedRouteComponent<TModule extends Record<string, unknow
 }
 
 const LandingPage = createLazyRouteComponent(() => import('@/pages/landing'), 'LandingPage')
-const HomePage = createLazyRouteComponent(() => import('@/pages/home'), 'HomePage')
 const LoginPage = createLazyRouteComponent(() => import('@/pages/login'), 'LoginPage')
 const DeviceAuthPage = createLazyRouteComponent(() => import('@/pages/device'), 'DeviceAuthPage')
 const RegisterPage = createLazyRouteComponent(() => import('@/pages/register'), 'RegisterPage')
@@ -262,10 +261,15 @@ const landingRoute = createRoute({
   component: LandingPage,
 })
 
+// The market used to expose two competing home pages: the landing page at "/" and a second
+// "skill registry" variant at "/skills". The UCD home is the only home, so the old path
+// redirects into it instead of rendering a different product surface.
 const skillsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'skills',
-  component: HomePage,
+  beforeLoad: () => {
+    throw redirect({ to: '/', replace: true })
+  },
 })
 
 const loginRoute = createRoute({

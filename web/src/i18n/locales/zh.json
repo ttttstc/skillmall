@@ -294,15 +294,8 @@
       "PROJECT_MANAGEMENT": "项目管理",
       "OTHER": "其他"
     },
-    "subtitle": "技能注册中心",
-    "description": "为开发者提供高效的技能管理、分发和协作平台",
-    "browseSkills": "浏览技能",
-    "publishSkill": "发布技能",
     "popularTitle": "热门下载",
-    "popularDescription": "社区最受欢迎的技能",
     "latestTitle": "最新发布",
-    "latestDescription": "刚刚发布的新技能",
-    "viewAll": "查看全部 →",
     "recommend": {
       "title": "推荐 Skills",
       "description": "随机挑选的公开 Skill，与你的浏览偏好无关",

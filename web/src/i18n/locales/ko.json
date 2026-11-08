@@ -331,15 +331,8 @@
       "PROJECT_MANAGEMENT": "프로젝트 관리",
       "OTHER": "기타"
     },
-    "subtitle": "스킬 레지스트리",
-    "description": "개발자를 위한 효율적인 스킬 관리, 배포, 협업 플랫폼",
-    "browseSkills": "스킬 둘러보기",
-    "publishSkill": "스킬 게시",
     "popularTitle": "인기 다운로드",
-    "popularDescription": "커뮤니티에서 가장 인기 있는 스킬",
     "latestTitle": "최신 릴리스",
-    "latestDescription": "새로 게시된 스킬",
-    "viewAll": "전체 보기 →",
     "recommend": {
       "title": "추천 스킬",
       "description": "공개 스킬을 무작위로 보여 줍니다. 이용 기록과 무관합니다",
