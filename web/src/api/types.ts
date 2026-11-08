@@ -259,6 +259,8 @@ export interface SkillSummary {
   slug: string
   displayName: string
   summary?: string
+  /** First-level marketplace category (DESIGN, DEVELOPMENT …); absent when the projection has none. */
+  domain?: string
   visibility?: string
   status?: string
   downloadCount: number

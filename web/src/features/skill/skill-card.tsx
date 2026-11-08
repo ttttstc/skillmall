@@ -74,6 +74,11 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
                 name={`@${skill.namespace}`}
                 title={`@${skill.namespace}`}
               />
+              {skill.domain ? (
+                <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-secondary/60 px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                  {t(`home.domain.${skill.domain}`)}
+                </span>
+              ) : null}
               {skill.hasVisibleSuites === true ? (
                 <span
                   className="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-border bg-secondary/60 px-2 py-0.5 text-xs font-medium text-secondary-foreground"

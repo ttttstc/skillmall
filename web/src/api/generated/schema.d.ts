@@ -9410,6 +9410,7 @@ export interface components {
             avatarUrl?: string;
             managementState?: components["schemas"]["ManagementState"];
             hasVisibleSuites?: boolean;
+            domain?: string;
         };
         ApiResponseBoolean: {
             /** Format: int32 */
