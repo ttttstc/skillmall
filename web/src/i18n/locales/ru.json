@@ -140,7 +140,7 @@
         "command": "npm i -g @astron-team/skillhub"
       },
       "agent": {
-        "description": "Отправьте промпт своему Agent, чтобы настроить SkillHub Registry",
+        "description": "Отправьте промпт своему Agent, чтобы настроить SkillMall Registry",
         "command": "Подключите SkillMall по инструкции https://www.example.com/registry/skill.md",
         "commandTemplate": "Подключите SkillMall по инструкции {{url}}"
       },
@@ -245,17 +245,17 @@
           "registryTab": "Настройка Registry",
           "discoveryTab": "Неявный поиск",
           "live": "Agent онлайн",
-          "instruction": "Прочитайте {{url}} и следуйте инструкции для настройки SkillHub Skills Registry",
+          "instruction": "Прочитайте {{url}} и следуйте инструкции для настройки SkillMall Registry",
           "instructionLead": "Скопируйте инструкцию и отправьте её своему Agent",
           "instructionPrefix": "Прочитайте",
-          "instructionSuffix": "и следуйте ей для настройки SkillHub Skills Registry.",
+          "instructionSuffix": "и следуйте ей для настройки SkillMall Registry.",
           "copyInstruction": "Копировать инструкцию",
           "copyErrorDescription": "Выделите и скопируйте инструкцию настройки Registry вручную.",
           "steps": { "read": "Прочитать руководство", "configure": "Настроить Registry", "discover": "Находить скиллы по запросу" },
           "prompt": "Какая сегодня погода в Хэфэе?",
           "discovery": {
             "intentTitle": "Определить задачу", "intentDescription": "Нужны погода и совет для поездки",
-            "searchTitle": "Поиск в SkillHub Registry", "searchDescription": "Найден @global/weather · v1.3.0",
+            "searchTitle": "Поиск в SkillMall Registry", "searchDescription": "Найден @global/weather · v1.3.0",
             "readTitle": "Прочитать инструкции", "readDescription": "Проверить входные данные и способ вызова"
           },
           "answerLead": "Сегодня в Хэфэе облачно, 26°C",

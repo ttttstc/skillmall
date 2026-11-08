@@ -140,7 +140,7 @@
         "command": "npm i -g @astron-team/skillhub"
       },
       "agent": {
-        "description": "发送提示词给你的 Agent，以设置SkillHub Registry",
+        "description": "发送提示词给你的 Agent，以设置SkillMall Registry",
         "command": "请根据 https://www.example.com/registry/skill.md 接入 SkillMall",
         "commandTemplate": "请根据 {{url}} 接入 SkillMall"
       },
@@ -245,17 +245,17 @@
           "registryTab": "Registry 配置",
           "discoveryTab": "隐式发现",
           "live": "Agent 实时",
-          "instruction": "阅读 {{url}}，并按照说明完成 SkillHub Skills Registry 的配置",
+          "instruction": "阅读 {{url}}，并按照说明完成 SkillMall Registry 的配置",
           "instructionLead": "复制以下指令，发送给 Agent 即可完成配置",
           "instructionPrefix": "阅读",
-          "instructionSuffix": "，并按照说明完成 SkillHub Skills Registry 的配置。",
+          "instructionSuffix": "，并按照说明完成 SkillMall Registry 的配置。",
           "copyInstruction": "复制指令",
           "copyErrorDescription": "请手动选择并复制这条 Registry 配置指令。",
           "steps": { "read": "读取文档", "configure": "配置 Registry", "discover": "按需发现技能" },
           "prompt": "帮我查下合肥今天的天气",
           "discovery": {
             "intentTitle": "识别任务意图", "intentDescription": "需要实时天气与出行建议",
-            "searchTitle": "检索 SkillHub Registry", "searchDescription": "匹配 @global/weather · v1.3.0",
+            "searchTitle": "检索 SkillMall Registry", "searchDescription": "匹配 @global/weather · v1.3.0",
             "readTitle": "读取技能说明", "readDescription": "确认输入格式和调用方式"
           },
           "answerLead": "合肥今天多云，26°C",

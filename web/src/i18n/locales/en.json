@@ -140,7 +140,7 @@
         "command": "npm i -g @astron-team/skillhub"
       },
       "agent": {
-        "description": "Send a prompt to your Agent to set up the SkillHub Registry",
+        "description": "Send a prompt to your Agent to set up the SkillMall Registry",
         "command": "Connect SkillMall using https://www.example.com/registry/skill.md",
         "commandTemplate": "Connect SkillMall using {{url}}"
       },
@@ -245,17 +245,17 @@
           "registryTab": "Registry setup",
           "discoveryTab": "Implicit discovery",
           "live": "Agent live",
-          "instruction": "Read {{url}} and follow it to configure the SkillHub Skills Registry",
+          "instruction": "Read {{url}} and follow it to configure the SkillMall Registry",
           "instructionLead": "Copy this instruction and send it to your Agent",
           "instructionPrefix": "Read",
-          "instructionSuffix": "and follow it to configure the SkillHub Skills Registry.",
+          "instructionSuffix": "and follow it to configure the SkillMall Registry.",
           "copyInstruction": "Copy instruction",
           "copyErrorDescription": "Select and copy the Registry setup instruction manually.",
           "steps": { "read": "Read the guide", "configure": "Configure Registry", "discover": "Discover skills on demand" },
           "prompt": "What is the weather in Hefei today?",
           "discovery": {
             "intentTitle": "Identify the task", "intentDescription": "Real-time weather and travel advice are needed",
-            "searchTitle": "Search SkillHub Registry", "searchDescription": "Match @global/weather · v1.3.0",
+            "searchTitle": "Search SkillMall Registry", "searchDescription": "Match @global/weather · v1.3.0",
             "readTitle": "Read skill instructions", "readDescription": "Confirm the input and invocation contract"
           },
           "answerLead": "Hefei is cloudy today, 26°C",

@@ -24,6 +24,12 @@ const MARKET_BRAND_KEYS = [
   'authShell.eyebrow',
   'home.quickStart.description',
   'githubCatalog.description',
+  // The quick-start and registry copy describes this market's own registry, so it follows
+  // the market brand; only the CLI package and data-directory names stay SkillHub.
+  'landing.quickStart.agent.description',
+  'landing.experience.quickStart.agent.instruction',
+  'landing.experience.quickStart.agent.instructionSuffix',
+  'landing.experience.quickStart.agent.discovery.searchTitle',
 ] as const
 
 function readPath(source: unknown, dottedKey: string): unknown {
