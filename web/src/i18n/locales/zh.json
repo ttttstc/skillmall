@@ -2275,6 +2275,18 @@
     "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "publish": {
+    "sourceLocal": "本地上传",
+    "sourceGitcode": "代码仓导入",
+    "stepUpload": "上传文件",
+    "stepPreview": "文件预览",
+    "stepBasicInfo": "基本信息",
+    "previewHint": "先确认包内容，再填写发布信息。",
+    "previewFile": "文件",
+    "previewSize": "文件大小",
+    "previewEmpty": "还没有选择文件，先回到上一步上传技能包。",
+    "wizardNext": "下一步",
+    "wizardPrevious": "上一步",
+    "wizardCancel": "取消",
     "domain": "技能分类",
     "domainPlaceholder": "选择分类",
     "domainHelp": "选择该技能所属的一级分类，默认归入“其他”。",

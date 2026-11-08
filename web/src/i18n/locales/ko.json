@@ -2557,6 +2557,18 @@
     "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "publish": {
+    "sourceLocal": "로컬 업로드",
+    "sourceGitcode": "저장소 가져오기",
+    "stepUpload": "파일 업로드",
+    "stepPreview": "파일 미리보기",
+    "stepBasicInfo": "기본 정보",
+    "previewHint": "패키지 내용을 확인한 뒤 게시 정보를 입력하세요.",
+    "previewFile": "파일",
+    "previewSize": "크기",
+    "previewEmpty": "아직 패키지를 선택하지 않았습니다. 이전 단계로 돌아가 업로드하세요.",
+    "wizardNext": "다음",
+    "wizardPrevious": "이전",
+    "wizardCancel": "취소",
     "domain": "분야",
     "domainPlaceholder": "분야 선택",
     "domainHelp": "이 스킬이 속한 1차 분야를 선택하세요. 기본값은 기타입니다.",

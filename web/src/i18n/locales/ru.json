@@ -2300,6 +2300,18 @@
     "goToPage": "Перейти на страницу {{page}}"
   },
   "publish": {
+    "sourceLocal": "Загрузка с компьютера",
+    "sourceGitcode": "Импорт из репозитория",
+    "stepUpload": "Загрузка файлов",
+    "stepPreview": "Предпросмотр файлов",
+    "stepBasicInfo": "Основная информация",
+    "previewHint": "Проверьте содержимое пакета, затем заполните данные публикации.",
+    "previewFile": "Файл",
+    "previewSize": "Размер",
+    "previewEmpty": "Пакет ещё не выбран — вернитесь и загрузите его.",
+    "wizardNext": "Далее",
+    "wizardPrevious": "Назад",
+    "wizardCancel": "Отмена",
     "domain": "Категория",
     "domainPlaceholder": "Выберите категорию",
     "domainHelp": "Выберите первую категорию навыка. По умолчанию — «Другое».",

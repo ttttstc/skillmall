@@ -421,6 +421,7 @@ const dashboardPublishRoute = createRoute({
     updateSkill?: string
     resubmitSkill?: string
     resubmitVersion?: string
+    step?: 1 | 2 | 3
   } => ({
     namespace: typeof search.namespace === 'string' && search.namespace ? search.namespace : undefined,
     visibility: typeof search.visibility === 'string' && search.visibility ? search.visibility : undefined,
@@ -432,6 +433,13 @@ const dashboardPublishRoute = createRoute({
     resubmitVersion: typeof search.resubmitVersion === 'string' && search.resubmitVersion
       ? search.resubmitVersion
       : undefined,
+    step: search.step === 1 || search.step === '1'
+      ? 1
+      : search.step === 2 || search.step === '2'
+        ? 2
+        : search.step === 3 || search.step === '3'
+          ? 3
+          : undefined,
   }),
   component: PublishPage,
 })

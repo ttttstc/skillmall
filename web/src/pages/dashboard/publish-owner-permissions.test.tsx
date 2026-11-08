@@ -47,6 +47,12 @@ describe.each(['update', 'resubmit'])('%s package rejection refreshes current pe
     render(<QueryClientProvider client={client}><PublishPage /></QueryClientProvider>)
     await waitFor(() => expect(detailCalls()).toBe(1))
     fireEvent.click(screen.getByText('choose package'))
+    // A resubmission is a new publication, so it walks the UCD three-step form to reach submit.
+    if (mode === 'resubmit') {
+      for (let index = 0; index < 2; index += 1) {
+        fireEvent.click(screen.getByRole('button', { name: 'publish.wizardNext' }))
+      }
+    }
     const submit = screen.getByRole('button', { name: 'publish.confirm' })
     await waitFor(() => expect(submit.hasAttribute('disabled')).toBe(false))
     fireEvent.click(submit)
