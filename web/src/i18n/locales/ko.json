@@ -152,7 +152,7 @@
         "command": "npm i -g @astron-team/skillhub"
       },
       "agent": {
-        "description": "에이전트에 프롬프트를 보내 SkillHub 레지스트리를 설정하세요",
+        "description": "에이전트에 프롬프트를 보내 SkillMall 레지스트리를 설정하세요",
         "command": "https://www.example.com/registry/skill.md를 사용하여 SkillMall에 연결하세요",
         "commandTemplate": "{{url}}을 사용하여 SkillMall에 연결하세요"
       },
@@ -266,10 +266,10 @@
           "registryTab": "레지스트리 설정",
           "discoveryTab": "자동 탐색",
           "live": "에이전트 실행 중",
-          "instruction": "{{url}}을 읽고 안내에 따라 SkillHub 스킬 레지스트리를 설정하세요",
+          "instruction": "{{url}}을 읽고 안내에 따라 SkillMall 레지스트리를 설정하세요",
           "instructionLead": "이 안내를 복사하여 에이전트에 보내세요",
           "instructionPrefix": "다음 문서를 확인하세요:",
-          "instructionSuffix": "안내에 따라 SkillHub 스킬 레지스트리를 설정하세요.",
+          "instructionSuffix": "안내에 따라 SkillMall 레지스트리를 설정하세요.",
           "copyInstruction": "안내 복사",
           "copyErrorDescription": "레지스트리 설정 안내를 직접 선택하여 복사하세요.",
           "steps": {
@@ -281,7 +281,7 @@
           "discovery": {
             "intentTitle": "작업 파악",
             "intentDescription": "실시간 날씨와 이동 안내가 필요합니다",
-            "searchTitle": "SkillHub 레지스트리 검색",
+            "searchTitle": "SkillMall 레지스트리 검색",
             "searchDescription": "@global/weather · v1.3.0 일치",
             "readTitle": "스킬 사용 안내 읽기",
             "readDescription": "입력 및 호출 규약 확인"
