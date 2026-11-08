@@ -937,7 +937,7 @@
     "securityDesc": "Change password and account security options"
   },
   "mySkills": {
-    "table": {"name": "Name", "version": "Version", "status": "Status", "updated": "Updated", "actions": "Actions"},
+    "table": {"index": "#", "name": "Name", "version": "Version", "status": "Status", "createdBy": "Created by", "createdOn": "Created", "updatedBy": "Updated by", "updated": "Updated", "actions": "Actions"},
     "ownerReadOnly": "You are no longer a member of this space. You can view and download your skills, but cannot modify them.",
     "updateGlobalVersion": "Update global version",
     "viewGlobalCopy": "View global copy",

@@ -9360,6 +9360,10 @@ export interface components {
             relatedNamespace?: string;
             relatedSlug?: string;
             ownerReadOnly?: boolean;
+            createdByName?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            updatedByName?: string;
         };
         SearchResponse: {
             items?: components["schemas"]["SkillSummaryResponse"][];

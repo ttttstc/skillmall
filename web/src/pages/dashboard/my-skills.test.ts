@@ -366,6 +366,19 @@ describe('MySkillsPage', () => {
     expect(buttonRecords.some(button => button.label === 'mySkills.promoteToGlobal')).toBe(false)
   })
 
+  it('renders the UCD author columns from the owner projection', () => {
+    useMySkillsMock.mockReturnValue({ data: { items: [
+      { id: 1, displayName: 'Team Agent', namespace: 'team-ai', slug: 'team-agent', status: 'ACTIVE',
+        downloadCount: 0, canSubmitPromotion: false,
+        managementState: { createdByName: 'Zhang San', createdAt: '2026-01-02T03:04:05Z', updatedByName: 'Li Si' } },
+    ], total: 1, page: 0, size: 10 }, isLoading: false })
+    const html = renderToStaticMarkup(createElement(MySkillsPage))
+    for (const column of ['index', 'createdBy', 'createdOn', 'updatedBy']) {
+      expect(html).toContain('mySkills.table.' + column)
+    }
+    expect(html).toContain('Zhang San')
+    expect(html).toContain('Li Si')
+  })
   it('exports a named component function', () => {
     expect(typeof MySkillsPage).toBe('function')
   })

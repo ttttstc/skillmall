@@ -137,7 +137,10 @@ public class MySkillAppService {
                         state == null ? null : state.reviewTaskId(),
                         state == null ? null : state.promotionRole(),
                         state == null ? null : state.relatedNamespace(),
-                        state == null ? null : state.relatedSlug(), readOnly));
+                        state == null ? null : state.relatedSlug(), readOnly,
+                        state == null ? null : state.createdByName(),
+                        state == null ? null : state.createdAt(),
+                        state == null ? null : state.updatedByName()));
             }).toList();
         }
         return new PageResponse<>(withSuiteMemberships(items, userId), skillPage.getTotalElements(), skillPage.getNumber(), skillPage.getSize());

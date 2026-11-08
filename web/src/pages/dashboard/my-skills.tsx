@@ -370,11 +370,15 @@ export function MySkillsPage() {
       {skillPage && skillPage.total > 0 ? (
         <>
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
-            <div className="hidden items-center gap-4 bg-muted/60 px-4 py-3 text-xs font-medium text-muted-foreground xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(250px,auto)]">
+            <div className="hidden items-center gap-4 bg-muted/60 px-4 py-3 text-xs font-medium text-muted-foreground xl:grid xl:grid-cols-[40px_minmax(0,2fr)_minmax(0,5fr)_minmax(250px,auto)]">
+              <span>{t('mySkills.table.index')}</span>
               <span>{t('mySkills.table.name')}</span>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-6 gap-3">
                 <span>{t('mySkills.table.version')}</span>
                 <span>{t('mySkills.table.status')}</span>
+                <span>{t('mySkills.table.createdBy')}</span>
+                <span>{t('mySkills.table.createdOn')}</span>
+                <span>{t('mySkills.table.updatedBy')}</span>
                 <span>{t('mySkills.table.updated')}</span>
               </div>
               <span>{t('mySkills.table.actions')}</span>
@@ -402,7 +406,8 @@ export function MySkillsPage() {
                     className={`group rounded-none border-0 border-b border-border/60 p-4 shadow-none last:border-b-0 xl:px-4 xl:py-2 animate-fade-up delay-${Math.min(idx + 1, 6)} ${filter === 'HIDDEN' ? '' : 'cursor-pointer'}`}
                     onClick={filter === 'HIDDEN' ? undefined : () => handleSkillClick(skill.namespace, skill.slug, preview?.version)}
                   >
-                    <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(250px,auto)] xl:items-center">
+                    <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[40px_minmax(0,2fr)_minmax(0,5fr)_minmax(250px,auto)] xl:items-center">
+                      <span className="hidden text-xs text-muted-foreground xl:block">{page * PAGE_SIZE + idx + 1}</span>
                       <div className="min-w-0">
                         <div className="mb-2 flex items-center gap-3 xl:mb-1">
                           <span className="xl:hidden"><SkillAvatar name={displayName} url={skill.avatarUrl} size="h-8 w-8" /></span>
@@ -444,7 +449,7 @@ export function MySkillsPage() {
                           </p>
                         )}
                       </div>
-                      <div className="grid min-w-0 grid-cols-3 items-center gap-3 text-xs text-muted-foreground">
+                      <div className="grid min-w-0 grid-cols-6 items-center gap-3 text-xs text-muted-foreground">
                         <div>
                           {preview && publishedVersion ? (
                             <span>{t('mySkills.versionDifference', { version: preview.version, published: publishedVersion.version })}</span>
@@ -457,6 +462,10 @@ export function MySkillsPage() {
                           </span>}
                           <p>{t('skillVisibility.current', { visibility: t(`skillVisibility.${skill.visibility ?? 'PUBLIC'}`) })}</p>
                         </div>
+                        <span>{skill.managementState?.createdByName ?? '—'}</span>
+                        <span>{skill.managementState?.createdAt
+                          ? formatLocalDateTime(skill.managementState.createdAt, i18n.language) : '—'}</span>
+                        <span>{skill.managementState?.updatedByName ?? '—'}</span>
                         <span>{formatLocalDateTime(skill.updatedAt, i18n.language)}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 xl:justify-end">

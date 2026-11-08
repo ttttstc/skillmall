@@ -135,7 +135,8 @@ public class JpaMySkillQueryRepository implements MySkillQueryRepository {
                                 SELECT 1 FROM namespace_member m
                                 WHERE m.namespace_id = target.namespace_id AND m.user_id = :ownerId
                             ) THEN target_ns.slug END,
-                       CASE WHEN s.source_skill_id IS NOT NULL THEN source.slug ELSE target.slug END
+                       CASE WHEN s.source_skill_id IS NOT NULL THEN source.slug ELSE target.slug END,
+                       s.created_by, s.created_at, s.updated_by
                 FROM skill s
                 LEFT JOIN LATERAL (
                     SELECT r.id, r.requested_visibility FROM review_task r
@@ -155,13 +156,48 @@ public class JpaMySkillQueryRepository implements MySkillQueryRepository {
                 WHERE s.id IN :ids AND s.owner_id = :ownerId
                 """)
                 .setParameter("ids", ids).setParameter("ownerId", ownerId).getResultList();
+        // Author display names come from the same batch read; unknown ids stay null, never invented.
+        java.util.List<String> authorIds = new java.util.ArrayList<>();
+        for (Object[] row : rows) {
+            if (row[6] != null) {
+                authorIds.add((String) row[6]);
+            }
+            if (row[8] != null) {
+                authorIds.add((String) row[8]);
+            }
+        }
+        Map<String, UserAccount> authorsById = authorIds.isEmpty() || userAccountRepository == null
+                ? Map.of()
+                : userAccountRepository.findByIdIn(authorIds).stream()
+                .collect(Collectors.toMap(UserAccount::getId, Function.identity()));
         Map<Long, SkillSummaryResponse.ManagementState> states = new java.util.HashMap<>();
         for (Object[] row : rows) {
             states.put(((Number) row[0]).longValue(), new SkillSummaryResponse.ManagementState(
                     (String) row[1], row[2] == null ? null : ((Number) row[2]).longValue(),
-                    (String) row[3], (String) row[4], row[4] == null ? null : (String) row[5]));
+                    (String) row[3], (String) row[4], row[4] == null ? null : (String) row[5])
+                    .withAuthors(displayName(authorsById, (String) row[6]),
+                            toInstant(row[7]),
+                            displayName(authorsById, (String) row[8])));
         }
         return states;
+    }
+
+    private static String displayName(Map<String, UserAccount> authorsById, String userId) {
+        UserAccount account = userId == null ? null : authorsById.get(userId);
+        return account == null ? null : account.getDisplayName();
+    }
+
+    private static java.time.Instant toInstant(Object value) {
+        if (value instanceof java.sql.Timestamp timestamp) {
+            return timestamp.toInstant();
+        }
+        if (value instanceof java.time.OffsetDateTime offsetDateTime) {
+            return offsetDateTime.toInstant();
+        }
+        if (value instanceof java.time.Instant instant) {
+            return instant;
+        }
+        return null;
     }
 
     @Override
