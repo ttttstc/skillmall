@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { Download, FileArchive, Trash2 } from 'lucide-react'
 import { UploadZone } from '@/features/publish/upload-zone'
 import { GitCodeImportPanel } from '@/features/publish/gitcode-import'
 import { packageFolderAsZip } from '@/features/publish/folder-zip'
@@ -127,6 +128,16 @@ export function PublishPage() {
     setSelectedFile(null)
     setPrecheckWarnings([])
     setWarningDialogOpen(false)
+  }
+
+  const handleDownloadSelectedFile = () => {
+    if (!selectedFile) return
+    const url = URL.createObjectURL(selectedFile)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = selectedFile.name
+    anchor.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleFileSelect = (file: File | null) => {
@@ -321,24 +332,36 @@ export function PublishPage() {
             disabled={ownerReadOnly || isBusy || isPackaging}
           />
           {selectedFile && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-secondary/30 px-4 py-3">
-              <div className="min-w-0 text-sm text-muted-foreground flex items-center gap-2">
-                <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200/80 bg-[#fff4e8] px-4 py-3">
+              <div className="flex min-w-0 items-center gap-2 text-sm text-foreground">
+                <FileArchive className="h-4 w-4 flex-shrink-0 text-amber-500" />
                 <span className="truncate">
                   {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
                 </span>
               </div>
-              <Button data-analytics-id="skill.package.remove"
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRemoveSelectedFile}
-                disabled={ownerReadOnly || isBusy}
-              >
-                {t('publish.removeSelectedFile')}
-              </Button>
+              <div className="flex flex-shrink-0 items-center gap-1">
+                <Button data-analytics-id="skill.package.download"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted-foreground"
+                  onClick={handleDownloadSelectedFile}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {t('publish.downloadSelectedFile')}
+                </Button>
+                <Button data-analytics-id="skill.package.remove"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted-foreground"
+                  onClick={handleRemoveSelectedFile}
+                  disabled={ownerReadOnly || isBusy}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t('publish.removeSelectedFile')}
+                </Button>
+              </div>
             </div>
           )}
         </div>

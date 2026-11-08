@@ -273,4 +273,14 @@ describe('LandingPage', () => {
     expect(html).toContain('home.domainEmpty')
     expect(html).not.toContain('discovery.domain.open')
   })
+
+  it('frames the discovery headings with the UCD laurel decorations', () => {
+    resetRecommendationFixture()
+    resetDomainListFixture()
+    const html = renderToStaticMarkup(<LandingPage />)
+
+    // Both discovery headings use the UCD title colour and a mirrored laurel branch.
+    expect(html).toContain('text-[#182333]')
+    expect((html.match(/<ellipse/gu) ?? []).length).toBe(28)
+  })
 })

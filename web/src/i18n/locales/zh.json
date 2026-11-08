@@ -2038,8 +2038,10 @@
   },
   "upload": {
     "dropHint": "放开以上传文件...",
-    "dragHint": "拖拽 ZIP 文件到此处，或点击选择",
+    "dragHint": "将文件拖到此处或单击上传",
     "formatHint": "仅支持 .zip 格式",
+
+    "packageNote": "请确保压缩包内包含 SKILL.md 文件（最多 1 个，重复上传会覆盖，单个文件不超过 10.00 MB，整包不超过 100.00 MB）",
     "folderHint": "或选择文件夹，自动打包上传"
   },
   "layout": {
@@ -2330,7 +2332,9 @@
       "private": "私有"
     },
     "file": "技能包文件",
-    "removeSelectedFile": "删除已选文件",
+    "removeSelectedFile": "删除",
+
+    "downloadSelectedFile": "下载",
     "publishing": "发布中...",
     "confirm": "确认发布",
     "publishedTitle": "发布成功",

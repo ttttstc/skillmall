@@ -106,6 +106,7 @@ export function UploadZone({ onFileSelect, onFolderSelect, disabled, analyticsId
             <>
               <p className="text-sm font-medium text-foreground">{t('upload.dragHint')}</p>
               <p className="text-xs text-muted-foreground">{t('upload.formatHint')}</p>
+              <p className="text-xs text-muted-foreground">{t('upload.packageNote')}</p>
             </>
           )}
         </div>

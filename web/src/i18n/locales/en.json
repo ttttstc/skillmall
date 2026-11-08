@@ -2038,8 +2038,10 @@
   },
   "upload": {
     "dropHint": "Drop to upload...",
-    "dragHint": "Drag a ZIP file here, or click to select",
+    "dragHint": "Drag a file here, or click to upload",
     "formatHint": "Only .zip format supported",
+
+    "packageNote": "Make sure the package contains SKILL.md (only one; uploading again replaces it; each file up to 10.00 MB, package up to 100.00 MB)",
     "folderHint": "Or select a folder to package and upload"
   },
   "layout": {
@@ -2330,7 +2332,9 @@
       "private": "Private"
     },
     "file": "Skill Package File",
-    "removeSelectedFile": "Remove selected file",
+    "removeSelectedFile": "Remove",
+
+    "downloadSelectedFile": "Download",
     "publishing": "Publishing...",
     "confirm": "Confirm Publish",
     "publishedTitle": "Published Successfully",
