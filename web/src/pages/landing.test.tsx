@@ -6,6 +6,13 @@ const recommendationFixture = vi.hoisted(() => ({
   data: [] as unknown[],
 }))
 
+// The 领域 Skills list asks the marketplace listing endpoint for the selected category.
+const domainListFixture = vi.hoisted(() => ({
+  isLoading: false,
+  isError: false,
+  items: [] as unknown[],
+}))
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: unknown }) => children,
   useNavigate: () => vi.fn(),
@@ -37,6 +44,8 @@ vi.mock('lucide-react', () => ({
   Search: () => null,
   Server: () => null,
   Settings: () => null,
+  Star: () => null,
+  Download: () => null,
 }))
 
 vi.mock('@/shared/components/landing-quick-start', () => ({
@@ -90,6 +99,15 @@ vi.mock('@/shared/hooks/use-home-discovery', () => ({
   }),
 }))
 
+vi.mock('@/shared/hooks/use-skill-queries', () => ({
+  useSearchSkills: () => ({
+    data: { items: domainListFixture.items, total: domainListFixture.items.length },
+    isLoading: domainListFixture.isLoading,
+    isError: domainListFixture.isError,
+    refetch: vi.fn(),
+  }),
+}))
+
 vi.mock('@/shared/lib/format-relative-time', () => ({
   formatRelativeTime: () => 'recently',
 }))
@@ -113,6 +131,26 @@ function resetRecommendationFixture() {
   recommendationFixture.isLoading = false
   recommendationFixture.isError = false
   recommendationFixture.data = []
+}
+
+/** Two rows so the 领域 Skills section has content to render. */
+function resetDomainListFixture() {
+  domainListFixture.isLoading = false
+  domainListFixture.isError = false
+  domainListFixture.items = [
+    {
+      id: 1,
+      slug: 'domain-alpha',
+      displayName: 'Domain Alpha',
+      summary: 'first row',
+      namespace: 'team',
+      downloadCount: 1200,
+      starCount: 34,
+      ratingCount: 0,
+      updatedAt: '2026-11-01T00:00:00Z',
+      canSubmitPromotion: false,
+    },
+  ]
 }
 
 /**
@@ -208,5 +246,29 @@ describe('LandingPage', () => {
     expect(html).toContain('common.loadFailedTitle')
     expect(heroMarkup(html)).toContain('SkillMall')
     expect(heroMarkup(html)).not.toContain('SkillHub')
+  })
+
+  it('lists the skills of the selected category under 领域 Skills', () => {
+    resetRecommendationFixture()
+    resetDomainListFixture()
+    const html = renderToStaticMarkup(<LandingPage />)
+
+    // The section used to hold only the chips, so pressing one changed blocks further up
+    // the page and looked like it had done nothing under the heading the user pressed.
+    expect(html).toContain('discovery.domain.open')
+    expect(html).toContain('Domain Alpha')
+    expect(html).toContain('first row')
+    expect(html).toContain('home.domainViewAll')
+  })
+
+  it('shows the domain empty state when the category has no skills', () => {
+    resetRecommendationFixture()
+    resetDomainListFixture()
+    domainListFixture.items = []
+    const html = renderToStaticMarkup(<LandingPage />)
+    resetDomainListFixture()
+
+    expect(html).toContain('home.domainEmpty')
+    expect(html).not.toContain('discovery.domain.open')
   })
 })

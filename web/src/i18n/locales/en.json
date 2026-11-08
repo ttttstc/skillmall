@@ -282,6 +282,7 @@
   },
   "home": {
     "domainTitle": "Skills by domain",
+    "domainViewAll": "View all",
     "domainAll": "All domains",
     "domainFilterLabel": "Filter by domain",
     "domainEmpty": "No public skills in this domain yet",

@@ -19,6 +19,7 @@ import {
 import { LandingQuickStartSection } from '@/shared/components/landing-quick-start'
 import { SkillCard } from '@/features/skill/skill-card'
 import { DomainFilter } from '@/features/skill/domain-filter'
+import { DomainSkillList } from '@/features/skill/domain-skill-list'
 import type { SkillDomain } from '@/shared/lib/skill-domains'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
 import { LoadError } from '@/shared/components/load-error'
@@ -346,6 +347,9 @@ export function LandingPage() {
         <div className="mx-auto max-w-[1704px] space-y-6">
           <h2 className="text-3xl font-semibold tracking-tight text-foreground">{t('home.domainTitle')}</h2>
           <DomainFilter value={domain} onChange={handleDomainChange} />
+          <div className="mx-auto max-w-5xl text-left">
+            <DomainSkillList domain={domain} onSelect={handleSkillClick} />
+          </div>
         </div>
       </section>
 
