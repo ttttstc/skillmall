@@ -34,7 +34,6 @@ import { isSkillDetailQueriesEnabled } from './skill-detail-query'
 import { RatingInput } from '@/features/social/rating-input'
 import { StarButton } from '@/features/social/star-button'
 import { SubscribeButton } from '@/features/social/subscribe-button'
-import { SkillReviews } from '@/features/social/skill-reviews'
 import { useAuth } from '@/features/auth/use-auth'
 import { useMyNamespaces } from '@/shared/hooks/use-namespace-queries'
 import { adminApi, ApiError, buildApiUrl, WEB_API_PREFIX } from '@/api/client'
@@ -1260,8 +1259,6 @@ export function SkillDetailPage() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        <SkillReviews skillId={skill.id} canInteract={canInteract} onRequireLogin={requireLogin} />
       </div>
 
       {/* Sidebar */}
