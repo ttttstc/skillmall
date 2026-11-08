@@ -80,10 +80,25 @@ public record SkillSummaryResponse(
     /** Owner workspace projection, never populated by public discovery or social lists. */
     public record ManagementState(String requestedVisibility, Long reviewTaskId,
                                   String promotionRole, String relatedNamespace, String relatedSlug,
-                                  boolean ownerReadOnly) {
+                                  boolean ownerReadOnly,
+                                  @JsonInclude(JsonInclude.Include.NON_NULL) String createdByName,
+                                  @JsonInclude(JsonInclude.Include.NON_NULL) Instant createdAt,
+                                  @JsonInclude(JsonInclude.Include.NON_NULL) String updatedByName) {
+        public ManagementState(String requestedVisibility, Long reviewTaskId, String promotionRole,
+                               String relatedNamespace, String relatedSlug, boolean ownerReadOnly) {
+            this(requestedVisibility, reviewTaskId, promotionRole, relatedNamespace, relatedSlug,
+                    ownerReadOnly, null, null, null);
+        }
+
         public ManagementState(String requestedVisibility, Long reviewTaskId, String promotionRole,
                                String relatedNamespace, String relatedSlug) {
             this(requestedVisibility, reviewTaskId, promotionRole, relatedNamespace, relatedSlug, false);
+        }
+
+        /** Owner listing augmentation: who created and last changed the skill, and when. */
+        public ManagementState withAuthors(String createdByName, Instant createdAt, String updatedByName) {
+            return new ManagementState(requestedVisibility, reviewTaskId, promotionRole, relatedNamespace,
+                    relatedSlug, ownerReadOnly, createdByName, createdAt, updatedByName);
         }
     }
 
