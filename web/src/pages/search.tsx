@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Loader2, LayoutGrid, List } from 'lucide-react'
+import { Loader2, LayoutGrid, List, ArrowLeft } from 'lucide-react'
 import type { SkillSummary } from '@/api/types'
 import { useAuth } from '@/features/auth/use-auth'
 import { SearchBar } from '@/features/search/search-bar'
@@ -104,6 +104,15 @@ export function SearchPage() {
   const page = searchParams.page ?? 0
   const starredOnly = searchParams.starredOnly ?? false
   const view = searchParams.view === 'list' ? 'list' : 'grid'
+  // The UCD header carries a "返回" action. Real history is preferred so a filtered search returns
+  // to whatever page the visitor came from; a direct visit falls back to the landing page.
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back()
+      return
+    }
+    navigate({ to: '/' })
+  }
   const [queryInput, setQueryInput] = useState(formatNamespaceSearchInput(namespace, q))
   const previousPageRef = useRef(page)
   const loadingMoreRef = useRef(false)
@@ -249,13 +258,24 @@ export function SearchPage() {
   return (
     <div className={APP_SHELL_PAGE_CLASS_NAME}>
       {/* Page Heading */}
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h1 className="text-3xl font-bold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
-          {t('search.allSkillsTitle')}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {resultCount > 0 ? t('search.results', { count: resultCount }) : t('search.allSkillsHint')}
-        </p>
+      <div className="space-y-2">
+        <Button data-analytics-id="search.header.back"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 gap-1 px-2"
+          onClick={handleBack}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t('search.back')}
+        </Button>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <h1 className="text-3xl font-bold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
+            {t('search.allSkillsTitle')}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {resultCount > 0 ? t('search.resultTotal', { count: resultCount }) : t('search.allSkillsHint')}
+          </p>
+        </div>
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-[236px_minmax(0,1fr)]">
@@ -301,14 +321,20 @@ export function SearchPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">{t('search.sort.label')}</span>
             <div className="flex max-w-full flex-wrap gap-2">
-              <Button data-analytics-id="search.sort.relevance"
+              <Button data-analytics-id="search.sort.all"
                 variant={sort === 'relevance' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => handleSortChange('relevance')}
               >
-                {t('search.sort.relevance')}
+                {t('search.sort.all')}
+              </Button>
+              <Button data-analytics-id="search.sort.popular"
+                variant={sort === 'popular' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleSortChange('popular')}
+              >
+                {t('search.sort.popular')}
               </Button>
               <Button data-analytics-id="search.sort.downloads"
                 variant={sort === 'downloads' ? 'default' : 'outline'}

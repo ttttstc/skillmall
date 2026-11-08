@@ -91,7 +91,7 @@ final result: blocked（已被下方 2026-11-08 实测取代，本节保留为�
 | --- | --- | --- | --- |
 | `/` 落地页（承担 UCD 首页职责） | Hero 标题/副标题/搜索框/两个按钮（探索全部技能 描边 + 发布 Skill 实心）；推荐 Skills 四列卡片含版本、下载、星标；近期热门/累计热榜/最新上线 三榜单；领域 tab 全 7 项 + **该领域技能单行列表 + 查看更多** | 无「热门 Skills」四榜单 tab 形态；无「精选专题」四卡；缺右下角回顶浮钮 | 基本对齐（领域 Skills 区本次已补齐） |
 | `/skills` | 技能卡片与榜单数据可用 | Hero 文案与按钮主次与 UCD 相反（实现：浏览技能 实心 + 发布技能 描边）；无四榜单 tab；无领域列表；无精选专题；多出「快速开始」代码块区 | 偏差（P2，`/` 已承担首页职责） |
-| `/search` 全部技能 | 搜索框、网格/列表切换、四列卡片、「加载更多」 | 无「← 返回」；标题为「找到 N 个技能」而非「全部技能 共 15,320 Skill」；左侧为「只看已收藏」+7 个领域胶囊，非多级筛选树；排序仅 相关性/下载量/最新，缺 热门/最近上榜；卡片缺分类 chip；多 footer | 偏差（P2） |
+| `/search` 全部技能 | 搜索框、网格/列表切换、四列卡片、「加载更多」；**「← 返回」**、标题「全部技能」+「共 N Skill」、**四档排序 全部/热门/下载量/最近上榜**（本次补齐） | 左侧为「只看已收藏」+7 个领域胶囊，非 UCD 的多级筛选树；卡片缺分类 chip；缺多选下拉筛选；多 footer | 部分对齐（本次补头部与排序，筛选树/分类 chip 仍缺） |
 | 技能详情 | ← 返回、图标+名称+作者+命名空间、收藏/分享、指标条、README/安装说明/文件/版本历史 四 tab、Markdown 渲染（标题/列表/表格）、右侧安装与下载 | 指标条只有 下载量 / 收藏 两格，UCD 第三格「安全（绿勾）查看风险报告」落在右栏「安全审核」卡；右栏信息密度远高于 UCD（新增 文件浏览/评分/命名空间/订阅/所属套件/标签管理/生命周期管理/提升到全局）；多出「用户评价」区；无「专题」标签与分类面包屑 | 偏差（P2） |
 | 发布页 | 标题、命名空间/可见性/技能分类/显示名称/变更说明/头像 | 单页表单，UCD 为三步向导（①上传文件②文件预览③基本信息）；无分段控件「本地上传\|代码仓导入」（改为「从 GitCode 导入」卡片）；无「取消」「下一步」；拖拽区无「最多 1 个 / 总大小不超过 10.00 MB / 须含 SKILL.md」说明；无已选文件条 | 偏差（P2，分步流程为既定范围外） |
 | 我的技能 | 标题、副标题、搜索、表格（名称/版本/状态/更新时间/操作）、分页（10 条/页，`web/src/pages/dashboard/my-skills.tsx:28` `PAGE_SIZE = 10`，仅在 `total > PAGE_SIZE` 时渲染） | 左侧缺 下载/关注 统计；缺「我的专题」入口；表格缺 序号/创建人/创建时间/更新人 列；操作是文字按钮（更新/可见范围/申请提升到全局）而非铅笔/垃圾桶图标；缺「共 N 条」文案 | 偏差（P2） |
@@ -107,7 +107,7 @@ final result: blocked（已被下方 2026-11-08 实测取代，本节保留为�
 
 1. ~~P1｜`/` 领域 Skills 区无可视内容~~ → **本次已修复**（见下节）。原状：`web/src/pages/landing.tsx` 该区只渲染 `DomainFilter`，且与上方推荐区是同一个 `domain` 状态——点选后变化发生在上方的推荐与榜单区块，本区看不到任何反馈。
 2. ~~P1｜`/dashboard/stars` 缺「取消收藏」「下载」~~ → **本次已修复**（见下节）。
-3. P2｜`/search` 缺返回与「共 N Skill」式标题、排序缺 热门/最近上榜。
+3. ~~P2｜`/search` 缺返回与「共 N Skill」式标题、排序缺 热门/最近上榜~~ → **本次已修复**（见下节）。
 4. P2｜「我的技能」表格缺 创建人/创建时间/更新人 三列、缺「共 N 条」文案（分页本身已有：`my-skills.tsx:28` `PAGE_SIZE = 10`，`total > PAGE_SIZE` 才渲染，实测账号只有 6 个技能故未出现——早先记的「无分页」是误判，已更正）。
 5. P3｜详情页右栏信息密度、用户评价区去留、指标条三格化需产品确认。
 
@@ -140,10 +140,26 @@ final result: blocked（已被下方 2026-11-08 实测取代，本节保留为�
 - 点「测试」：只剩 1 行「测试计划生成器」并带「测试」chip，href 追加 `&domain=TESTING`。
 - 全程 `errs: []`（0 console error / 0 未捕获异常 / 0 失败请求）。
 
+### 本次修复：`/search` 头部与四档排序
+
+- 头部：新增「← 返回」（`data-analytics-id="search.header.back"`），优先 `history.back()`，无历史时回首页；标题改为「全部技能」+「共 {{count}} Skill」（`search.resultTotal`），计数为 0 时回落到 `search.allSkillsHint`。
+- 排序：按钮改为 UCD 的 全部 / 热门 / 下载量 / 最近上榜 四档，默认「全部」。其中「全部」对应既有的 `relevance` 排序（无关键词时等价于最新），「最近上榜」即既有 `newest`。
+- 「热门」是新语义，后端新增：`PostgresFullTextQueryService` 增加 `RECENT_POPULAR_WINDOW_DAYS = 7` 与 `popular` 分支，按 `skill_download_daily` 近 7 天窗口求和倒序（`ORDER BY (SELECT COALESCE(SUM(...)) FROM skill_download_daily popular_window WHERE ... download_date >= :popularWindowStart AND < :popularWindowEndExclusive) DESC, s.updated_at DESC, d.skill_id DESC`）。窗口口径与 `HomeDiscoveryAppService.RECENT_WINDOW_DAYS = 7` 对齐，避免搜索页「热门」与首页「近期热门」两套定义。
+- 参数只绑到 nativeQuery，不绑 countQuery：计数 SQL 在 `ORDER BY` 处被截断，绑定不存在的参数会在运行时报错。
+- 四语重写 `search` 块：新增 `back`、`resultTotal`，`sort` 由「label/relevance/downloads/stars/newest」改为「all/popular/downloads/newest」，删除死键 `search.results`。
+- `docs/frontend-analytics-manifest.json` 重新生成：新增 `search.header.back`、`search.sort.popular`，移除 `search.sort.relevance`，uniqueIds 811 → 813。
+
+验证：
+
+- 后端单测：`PostgresFullTextQueryServiceTest` 24 例通过，新增 `popularSortShouldRankByTheRecentDownloadWindow`（断言窗口子查询存在、计数 SQL 不含窗口、窗口差 7 天）。
+- 前端门禁：`tsc --noEmit`、全量 eslint、`vite build`、全量 vitest（280 文件 / 1498 例）全部通过。
+- 排序语义真机对照（8099，`/api/web/skills?size=6`）：给 `test-plan-generator` 造一条 2026-10-01 的 50 次下载记录（窗口外）后，`sort=popular` 把它排在最后、`sort=downloads` 把它排在第一 —— 证明「热门」用的是近 7 天窗口而非累计下载数。
+- 页面真机（3125）：标题「全部技能 / 共 31 Skill」、按钮「返回」「全部 热门 下载量 最近上榜」；点「热门」URL 变 `sort=popular`、首屏为 设计决策矩阵 → 容量评估模型 → 渐进式重构指南 → 随手记录整理器 → 路线图构建器（与接口同序）；点「下载量」首屏变为 测试计划生成器（50 次）；点「返回」回到上一页；`errs: []`。
+
 ### 验证记录
 
 - 逐页整页截图与 UCD 原图并置比对（7 个页面 / 6 张 UCD 图），非像素级测量：字号、行高、间距未逐项量取。
 - 浏览器会话为真实登录用户 `ucd`，未使用 mock 鉴权。
 - 未执行：详情页「安装说明」「文件」「版本历史」三个 tab 的逐屏截图；移动端布局；深色主题。
 
-final result: passed（结构对照）；视觉像素级未测；首页「领域 Skills」区与我的收藏行内操作两处 P1 已修复，其余 P2/P3 差异清单如上，需产品确认后再决定修复范围
+final result: passed（结构对照）；视觉像素级未测；首页「领域 Skills」区、我的收藏行内操作、`/search` 头部与四档排序三处 P1/P2 已修复，其余差异清单如上（`/search` 筛选树与卡片分类 chip、「我的技能」列与「共 N 条」、详情页右栏与指标条），需产品确认后再决定修复范围
