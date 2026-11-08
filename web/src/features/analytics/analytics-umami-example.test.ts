@@ -22,7 +22,9 @@ describe('production deployment defaults', () => {
   })
   it('keeps the release Web entry and independent collector networking', () => {
     const release = readFileSync('../compose.release.yml', 'utf8')
-    const overlay = readFileSync('../compose.release.analytics.yml', 'utf8')
+    // Git stores the overlay with LF; a Windows checkout rewrites it to CRLF, which would
+    // defeat the multi-line expectation below. Normalise so the YAML shape stays asserted.
+    const overlay = readFileSync('../compose.release.analytics.yml', 'utf8').replace(/\r\n/gu, '\n')
     const collector = readFileSync('../compose.analytics-umami.yml', 'utf8')
     expect(release).toContain('${WEB_PORT:-80}:80')
     expect(overlay).toContain('  web:\n    networks:\n      - default\n      - analytics')

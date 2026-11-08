@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import skillGuideTemplate from '../docs/skill.md.template?raw'
+import rawSkillGuideTemplate from '../docs/skill.md.template?raw'
 import en from './locales/en.json'
 import ko from './locales/ko.json'
 import ru from './locales/ru.json'
 import zh from './locales/zh.json'
+
+// Git stores this template with LF, but a Windows checkout with core.autocrlf rewrites it
+// to CRLF, so the multi-line assertions below would compare CRLF text against snippets
+// joined with LF. Normalise the line endings; the asserted command text stays exact.
+const skillGuideTemplate = rawSkillGuideTemplate.replace(/\r\n/gu, '\n')
 
 describe('landing quick start locales', () => {
   it('uses localized agent setup prompts for chinese, english, and russian', () => {

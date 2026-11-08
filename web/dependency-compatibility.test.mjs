@@ -36,10 +36,16 @@ it('persists and invalidates ESLint file caches after replacing flat-cache', asy
     const file = join(cwd, 'example.js')
     const options = { cwd, useEslintrc: false, cache: true, cacheStrategy: 'content', cacheLocation: join(cwd, '.eslintcache'), overrideConfig: { rules: { 'no-undef': 'error' } } }
     writeFileSync(file, 'var value = 1\n')
-    expect((await new ESLint(options).lintFiles(['*.js']))[0].errorCount).toBe(0)
-    expect((await new ESLint(options).lintFiles(['*.js']))[0].errorCount).toBe(0)
+    // Lint the file directly instead of globbing for it: the `minimatch@<11.0.1: 11.0.1`
+    // override in package.json forces ESLint 8's `minimatch: ^3.1.2` to v11, which dropped
+    // `matchBase`, so a pattern like '*.js' matches nothing on Windows and ESLint reports
+    // "No files matching". What this case verifies is cache persistence and invalidation,
+    // not glob expansion, so passing the path keeps the check meaningful on every platform.
+    const lintOnce = () => new ESLint(options).lintFiles([file])
+    expect((await lintOnce())[0].errorCount).toBe(0)
+    expect((await lintOnce())[0].errorCount).toBe(0)
     writeFileSync(file, 'missingName()\n')
-    expect((await new ESLint(options).lintFiles(['*.js']))[0].messages[0].ruleId).toBe('no-undef')
+    expect((await lintOnce())[0].messages[0].ruleId).toBe('no-undef')
   } finally {
     rmSync(cwd, { recursive: true, force: true })
   }
