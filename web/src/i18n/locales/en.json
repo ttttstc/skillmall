@@ -141,8 +141,8 @@
       },
       "agent": {
         "description": "Send a prompt to your Agent to set up the SkillHub Registry",
-        "command": "Connect SkillHub using https://www.example.com/registry/skill.md",
-        "commandTemplate": "Connect SkillHub using {{url}}"
+        "command": "Connect SkillMall using https://www.example.com/registry/skill.md",
+        "commandTemplate": "Connect SkillMall using {{url}}"
       },
       "human": {
         "description": "Use the SkillHub CLI to search for and install Skills",
@@ -1778,7 +1778,7 @@
     "installForAgent": {
       "button": "Install for Agent",
       "copied": "Agent prompt copied",
-      "prompt": "Follow {{guideUrl}} to connect SkillHub and install {{skill}} version {{version}} from this market."
+      "prompt": "Follow {{guideUrl}} to connect SkillMall and install {{skill}} version {{version}} from this market."
     }
   },
   "skillCompare": {

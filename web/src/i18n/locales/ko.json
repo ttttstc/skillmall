@@ -153,8 +153,8 @@
       },
       "agent": {
         "description": "에이전트에 프롬프트를 보내 SkillHub 레지스트리를 설정하세요",
-        "command": "https://www.example.com/registry/skill.md를 사용하여 SkillHub에 연결하세요",
-        "commandTemplate": "{{url}}을 사용하여 SkillHub에 연결하세요"
+        "command": "https://www.example.com/registry/skill.md를 사용하여 SkillMall에 연결하세요",
+        "commandTemplate": "{{url}}을 사용하여 SkillMall에 연결하세요"
       },
       "human": {
         "description": "SkillHub CLI로 스킬을 검색하고 설치하세요",
@@ -2060,7 +2060,7 @@
     "installForAgent": {
       "button": "에이전트용 설치",
       "copied": "에이전트 프롬프트를 복사했습니다",
-      "prompt": "{{guideUrl}}의 안내에 따라 SkillHub에 연결하고 이 마켓에서 {{skill}}의 {{version}} 버전을 설치하세요."
+      "prompt": "{{guideUrl}}의 안내에 따라 SkillMall에 연결하고 이 마켓에서 {{skill}}의 {{version}} 버전을 설치하세요."
     }
   },
   "skillCompare": {

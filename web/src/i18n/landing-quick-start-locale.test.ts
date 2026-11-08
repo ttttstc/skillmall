@@ -12,15 +12,15 @@ const skillGuideTemplate = rawSkillGuideTemplate.replace(/\r\n/gu, '\n')
 
 describe('landing quick start locales', () => {
   it('uses localized agent setup prompts for chinese, english, and russian', () => {
-    expect(zh.landing.quickStart.agent.command).toBe('请根据 https://www.example.com/registry/skill.md 接入 SkillHub')
-    expect(en.landing.quickStart.agent.command).toBe('Connect SkillHub using https://www.example.com/registry/skill.md')
-    expect(ru.landing.quickStart.agent.command).toBe('Подключите SkillHub по инструкции https://www.example.com/registry/skill.md')
+    expect(zh.landing.quickStart.agent.command).toBe('请根据 https://www.example.com/registry/skill.md 接入 SkillMall')
+    expect(en.landing.quickStart.agent.command).toBe('Connect SkillMall using https://www.example.com/registry/skill.md')
+    expect(ru.landing.quickStart.agent.command).toBe('Подключите SkillMall по инструкции https://www.example.com/registry/skill.md')
   })
 
   it('provides command templates with url placeholder for dynamic rendering', () => {
-    expect(zh.landing.quickStart.agent.commandTemplate).toBe('请根据 {{url}} 接入 SkillHub')
-    expect(en.landing.quickStart.agent.commandTemplate).toBe('Connect SkillHub using {{url}}')
-    expect(ru.landing.quickStart.agent.commandTemplate).toBe('Подключите SkillHub по инструкции {{url}}')
+    expect(zh.landing.quickStart.agent.commandTemplate).toBe('请根据 {{url}} 接入 SkillMall')
+    expect(en.landing.quickStart.agent.commandTemplate).toBe('Connect SkillMall using {{url}}')
+    expect(ru.landing.quickStart.agent.commandTemplate).toBe('Подключите SkillMall по инструкции {{url}}')
     expect(zh.landing.quickStart.human.commandTemplate).toContain('--registry {{url}}')
     expect(en.landing.quickStart.human.commandTemplate).toContain('--registry {{url}}')
     expect(ru.landing.quickStart.human.commandTemplate).toContain('--registry {{url}}')
