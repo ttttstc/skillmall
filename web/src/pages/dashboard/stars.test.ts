@@ -5,7 +5,7 @@ import { fireEvent, render, screen, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const navigate = vi.fn()
-const { useMyStarsPage } = vi.hoisted(() => ({ useMyStarsPage: vi.fn() }))
+const { useMyStarsPage, toggleStar } = vi.hoisted(() => ({ useMyStarsPage: vi.fn(), toggleStar: vi.fn() }))
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigate,
@@ -28,7 +28,12 @@ vi.mock('react-i18next', async () => {
 })
 
 vi.mock('@/features/skill/skill-list-row', () => ({
-  SkillListRow: ({ onClick }: { onClick?: () => void }) => createElement('button', { onClick }, 'skill-row'),
+  SkillListRow: ({ onClick, actions }: { onClick?: () => void; actions?: unknown }) =>
+    createElement('div', null, createElement('button', { onClick }, 'skill-row'), actions as never),
+}))
+
+vi.mock('@/features/social/use-star', () => ({
+  useToggleStar: () => ({ mutate: toggleStar, isPending: false }),
 }))
 
 vi.mock('@/shared/components/pagination', () => ({
@@ -52,7 +57,7 @@ import { MyStarsPage } from './stars'
 function starsPage(overrides: Record<string, unknown> = {}) {
   return {
     data: {
-      items: [{ id: 1, namespace: 'team-a', slug: 'demo skill' }],
+      items: [{ id: 1, namespace: 'team-a', slug: 'demo skill', headlineVersion: { version: '1.2.3', status: 'PUBLISHED' } }],
       total: 1,
       page: 0,
       size: 12,
@@ -67,6 +72,7 @@ function starsPage(overrides: Record<string, unknown> = {}) {
 describe('MyStarsPage', () => {
   beforeEach(() => {
     navigate.mockClear()
+    toggleStar.mockClear()
     useMyStarsPage.mockReturnValue(starsPage())
   })
   afterEach(() => cleanup())
@@ -90,6 +96,33 @@ describe('MyStarsPage', () => {
     render(createElement(MyStarsPage))
 
     expect(useMyStarsPage).toHaveBeenCalledWith({ page: 2, size: 12 })
+  })
+
+  it('offers per-row unstar and download actions', () => {
+    render(createElement(MyStarsPage))
+
+    expect(screen.getByRole('button', { name: 'stars.actions.unstar' })).toBeTruthy()
+    const download = screen.getByRole('link', { name: 'stars.actions.download' })
+    expect(download.getAttribute('href')).toContain('/api/web/skills/team-a/demo%20skill/versions/1.2.3/download')
+  })
+
+  it('removes the star in place instead of opening the skill', () => {
+    render(createElement(MyStarsPage))
+
+    fireEvent.click(screen.getByRole('button', { name: 'stars.actions.unstar' }))
+
+    expect(toggleStar).toHaveBeenCalledWith(true)
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('hides the download action when the skill exposes no headline version', () => {
+    useMyStarsPage.mockReturnValue(starsPage({
+      data: { items: [{ id: 1, namespace: 'team-a', slug: 'demo skill' }], total: 1, page: 0, size: 12 },
+    }))
+
+    render(createElement(MyStarsPage))
+
+    expect(screen.queryByRole('link', { name: 'stars.actions.download' })).toBeNull()
   })
 
   it('reports a failed load instead of presenting it as an empty collection', () => {

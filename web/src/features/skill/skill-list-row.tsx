@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { SkillSummary } from '@/api/types'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/use-auth'
@@ -15,6 +16,8 @@ interface SkillListRowProps {
   skill: SkillSummary
   onClick?: () => void
   highlightStarred?: boolean
+  /** Row-level actions (unstar, download …) rendered after the metrics block. */
+  actions?: ReactNode
 }
 
 /**
@@ -23,7 +26,7 @@ interface SkillListRowProps {
  * Kept deliberately close to SkillCard so both views expose the same facts
  * (name, coordinate, summary, version, downloads, stars, owner, freshness).
  */
-export function SkillListRow({ skill, onClick, highlightStarred = true, analyticsId }: SkillListRowProps) {
+export function SkillListRow({ skill, onClick, highlightStarred = true, analyticsId, actions }: SkillListRowProps) {
   const { t, i18n } = useTranslation()
   const { isAuthenticated } = useAuth()
   const { starredIds } = useStarredIdSet(highlightStarred && isAuthenticated)
@@ -113,6 +116,17 @@ export function SkillListRow({ skill, onClick, highlightStarred = true, analytic
             </span>
           )}
         </div>
+
+        {actions ? (
+          <div
+            className="flex shrink-0 items-center gap-1"
+            // The whole card is a link: row actions must not also navigate.
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            {actions}
+          </div>
+        ) : null}
       </div>
     </Card>
   )

@@ -1203,7 +1203,11 @@
   "stars": {
     "title": "我的收藏",
     "subtitle": "查看你标记过的技能",
-    "empty": "还没有收藏任何技能"
+    "empty": "还没有收藏任何技能",
+    "actions": {
+      "unstar": "取消收藏",
+      "download": "下载"
+    }
   },
   "subscriptions": {
     "title": "我的订阅",
