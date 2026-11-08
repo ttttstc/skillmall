@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { normalizeSearchQuery } from '@/shared/lib/search-query'
 import {
@@ -36,6 +36,42 @@ const RECOMMENDATION_SIZE = 6
 const RANKING_SIZE = 8
 
 type RankingKind = 'recent' | 'cumulative' | 'newest'
+
+/**
+ * Laurel branch drawn as a curved stem with leaves, used to frame the
+ * discovery section headings the way the UCD home page does.
+ */
+function LaurelBranch({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 34" aria-hidden="true" className={className} fill="currentColor">
+      <path
+        d="M28.6 32c-8.4-2.6-15-8.6-18.4-16.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+      <ellipse cx="8.6" cy="13.4" rx="4.6" ry="1.9" transform="rotate(-38 8.6 13.4)" opacity="0.9" />
+      <ellipse cx="12.4" cy="18.8" rx="4.9" ry="2" transform="rotate(-30 12.4 18.8)" opacity="0.9" />
+      <ellipse cx="17.4" cy="23.4" rx="4.9" ry="2" transform="rotate(-18 17.4 23.4)" opacity="0.9" />
+      <ellipse cx="23.2" cy="27" rx="4.6" ry="1.9" transform="rotate(-8 23.2 27)" opacity="0.9" />
+      <ellipse cx="12.8" cy="10.6" rx="3.4" ry="1.5" transform="rotate(24 12.8 10.6)" opacity="0.5" />
+      <ellipse cx="17.8" cy="15.4" rx="3.4" ry="1.5" transform="rotate(32 17.8 15.4)" opacity="0.5" />
+      <ellipse cx="23.4" cy="20.6" rx="3.2" ry="1.4" transform="rotate(40 23.4 20.6)" opacity="0.5" />
+    </svg>
+  )
+}
+
+/** Centered discovery heading with the UCD laurel decorations and title colour. */
+function SectionHeading({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={`flex items-center justify-center gap-3 ${className}`}>
+      <LaurelBranch className="h-8 w-8 -scale-x-100 text-[#808080]" />
+      <h2 className="text-3xl font-semibold tracking-tight text-[#182333]">{children}</h2>
+      <LaurelBranch className="h-8 w-8 text-[#808080]" />
+    </div>
+  )
+}
 
 function EnterpriseSection() {
   const { t } = useTranslation()
@@ -269,7 +305,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-[1704px] space-y-6">
           <div className="flex flex-col gap-4 text-center">
             <div>
-              <h2 className="mb-2 text-3xl font-semibold tracking-tight text-foreground">{t('home.recommend.title')}</h2>
+              <SectionHeading className="mb-2">{t('home.recommend.title')}</SectionHeading>
               <p className="text-sm text-muted-foreground">{t('home.recommend.description')}</p>
             </div>
             <DomainFilter value={domain} onChange={handleDomainChange} />
@@ -346,7 +382,7 @@ export function LandingPage() {
 
       <section className="relative z-10 w-full px-6 pb-16 pt-8 text-center md:pb-20 md:pt-12">
         <div className="mx-auto max-w-[1704px] space-y-6">
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground">{t('home.domainTitle')}</h2>
+          <SectionHeading>{t('home.domainTitle')}</SectionHeading>
           <DomainFilter value={domain} onChange={handleDomainChange} />
           <div className="mx-auto max-w-5xl text-left">
             <DomainSkillList domain={domain} onSelect={handleSkillClick} />

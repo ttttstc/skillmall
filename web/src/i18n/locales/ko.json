@@ -2320,8 +2320,10 @@
   },
   "upload": {
     "dropHint": "놓아서 업로드하세요...",
-    "dragHint": "ZIP 파일을 여기로 끌어 놓거나 클릭하여 선택하세요",
+    "dragHint": "파일을 여기로 끌어 놓거나 클릭하여 업로드하세요",
     "formatHint": ".zip 형식만 지원합니다",
+
+    "packageNote": "패키지에 SKILL.md 파일이 포함되어야 합니다 (1개만, 다시 업로드하면 덮어씁니다. 파일당 최대 10.00 MB, 패키지 최대 100.00 MB)",
     "folderHint": "또는 폴더를 선택하여 패키지로 묶어 업로드하세요"
   },
   "layout": {
@@ -2612,7 +2614,9 @@
       "private": "비공개"
     },
     "file": "스킬 패키지 파일",
-    "removeSelectedFile": "선택한 파일 제거",
+    "removeSelectedFile": "삭제",
+
+    "downloadSelectedFile": "다운로드",
     "publishing": "게시하는 중...",
     "confirm": "게시 확인",
     "publishedTitle": "게시 성공",

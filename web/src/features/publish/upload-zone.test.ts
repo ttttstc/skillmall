@@ -35,6 +35,12 @@ describe('upload-zone module exports', () => {
     expect(screen.queryByRole('button', { name: 'upload.folderHint' })).toBeNull()
   })
 
+  it('shows the package guidance note under the drop hint', () => {
+    render(createElement(mod.UploadZone, { onFileSelect: vi.fn(), onFolderSelect: vi.fn() }))
+    expect(screen.getByText('upload.dragHint')).not.toBeNull()
+    expect(screen.getByText('upload.packageNote')).not.toBeNull()
+  })
+
   it('shows directory selection only when the browser supports it', async () => {
     const previous = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'webkitdirectory')
     Object.defineProperty(HTMLInputElement.prototype, 'webkitdirectory', {
