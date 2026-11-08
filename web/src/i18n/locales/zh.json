@@ -1778,7 +1778,7 @@
     "installForAgent": {
       "button": "安装到 Agent",
       "copied": "安装指令已复制",
-      "prompt": "请根据 {{guideUrl}} 接入 SkillHub，并从该 SkillHub 安装 {{skill}} 的 {{version}} 版本。"
+      "prompt": "请根据 {{guideUrl}} 接入 SkillHub，并从该技能市场安装 {{skill}} 的 {{version}} 版本。"
     }
   },
   "skillCompare": {

@@ -1843,7 +1843,7 @@
     "installForAgent": {
       "button": "Установить для агента",
       "copied": "Инструкция скопирована",
-      "prompt": "Следуйте инструкции {{guideUrl}}, чтобы подключить SkillHub и установить {{skill}} версии {{version}} из этого SkillHub."
+      "prompt": "Следуйте инструкции {{guideUrl}}, чтобы подключить SkillHub и установить {{skill}} версии {{version}} из этого маркета."
     }
   },
   "skillCompare": {
