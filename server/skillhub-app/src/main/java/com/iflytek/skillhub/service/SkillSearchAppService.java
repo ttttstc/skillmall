@@ -331,7 +331,7 @@ public class SkillSearchAppService {
                 null,
                 skill.getVisibility() == com.iflytek.skillhub.domain.skill.SkillVisibility.PRIVATE
                         && !skill.getOwnerId().equals(userId) ? null : SkillAvatarUrls.current(skill, namespaceSlug)
-        );
+        ).withDomain(skill.getDomain().name());
     }
 
     private com.iflytek.skillhub.dto.SkillLifecycleVersionResponse toLifecycleVersion(

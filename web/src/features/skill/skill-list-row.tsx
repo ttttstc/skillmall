@@ -72,6 +72,11 @@ export function SkillListRow({ skill, onClick, highlightStarred = true, analytic
               name={`@${skill.namespace}`}
               title={`@${skill.namespace}`}
             />
+            {skill.domain ? (
+              <span className="shrink-0 rounded-full border border-border bg-secondary/60 px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                {t(`home.domain.${skill.domain}`)}
+              </span>
+            ) : null}
           </div>
           {skill.summary && (
             <p className="mt-1 truncate text-xs leading-5 text-muted-foreground" title={skill.summary}>
