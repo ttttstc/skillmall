@@ -36,7 +36,7 @@ export function SkillListRow({ skill, onClick, highlightStarred = true, analytic
   return (
     <Card
       data-analytics-id={isInteractive ? analyticsId : undefined}
-      className="group min-w-0 cursor-pointer rounded-none border-0 bg-card px-5 py-4 text-card-foreground shadow-none transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-ring/15"
+      className="group min-h-[64px] min-w-0 cursor-pointer rounded-none border-0 bg-card px-5 py-3 text-card-foreground shadow-none transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-ring/15"
       onClick={onClick}
       onKeyDown={(event) => {
         if (!isInteractive) {
@@ -51,8 +51,8 @@ export function SkillListRow({ skill, onClick, highlightStarred = true, analytic
       role={isInteractive ? 'link' : undefined}
       tabIndex={isInteractive ? 0 : undefined}
     >
-      <div className="flex min-w-0 items-center gap-4">
-        <SkillAvatar name={skill.displayName} url={skill.avatarUrl} />
+      <div className="flex min-w-0 items-center gap-3">
+        <SkillAvatar name={skill.displayName} url={skill.avatarUrl} size="h-[42px] w-[42px]" />
 
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">

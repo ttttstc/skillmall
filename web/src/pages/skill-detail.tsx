@@ -2,7 +2,7 @@ import { startTransition, useCallback, useEffect, useRef, useState, type MouseEv
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowUpCircle, Boxes, ChevronDown, ChevronUp, Clock, Download, Folder, Globe, Lock, RefreshCw, Shield, ShieldCheck, Star, Terminal, User, Users } from 'lucide-react'
+import { ArrowLeft, ArrowUpCircle, Boxes, ChevronDown, ChevronUp, Clock, Download, FileArchive, Globe, Lock, Maximize2, RefreshCw, ShieldCheck, Star, User, Users } from 'lucide-react'
 import { MarkdownRenderer } from '@/features/skill/markdown-renderer'
 import { SkillVisibilityDialog } from '@/features/skill/skill-visibility-dialog'
 import { SkillAvatar } from '@/features/skill/skill-avatar'
@@ -10,8 +10,10 @@ import { SkillAvatarTakedown } from '@/features/skill/skill-avatar-takedown'
 import { resolvePackageRelativeLink } from '@/features/skill/package-relative-link'
 import { FileTree } from '@/features/skill/file-tree'
 import { FilePreviewDialog } from '@/features/skill/file-preview-dialog'
+import { CodeRenderer } from '@/features/skill/code-renderer'
+import { canPreviewFile, getFileTypeLabel, getLanguageForHighlight } from '@/features/skill/file-type-utils'
 import type { FileTreeNode } from '@/features/skill/file-tree-builder'
-import type { SkillFile } from '@/api/types'
+import type { SkillFile, SkillVersion } from '@/api/types'
 import { getVersionPresentation } from '@/shared/lib/version-presentation'
 import { CopyButton } from '@/shared/components/copy-button'
 import { InstallCommand } from '@/features/skill/install-command'
@@ -40,6 +42,7 @@ import { adminApi, ApiError, buildApiUrl, WEB_API_PREFIX } from '@/api/client'
 import { useSubmitSkillReport } from '@/features/report/use-skill-reports'
 import { SecurityAuditSummary } from '@/features/security-audit/security-audit-summary'
 import { SecurityEvaluationNotice } from '@/features/security-audit/security-evaluation-notice'
+import { SecurityStatusCell } from '@/features/security-audit/security-status-cell'
 import { LoadError } from '@/shared/components/load-error'
 import { formatLocalDateTime } from '@/shared/lib/date-time'
 import { incrementSkillDownloadCount } from '@/shared/lib/skill-download-cache'
@@ -119,6 +122,52 @@ function createPackageFilePreviewNode(file: SkillFile): FileTreeNode {
   }
 }
 
+/** Month/day label for the version timeline; falls back to a dash when the timestamp is missing. */
+function formatVersionMonthDay(value: string | null | undefined, language: string): string {
+  if (!value) {
+    return '—'
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+  return new Intl.DateTimeFormat(language, { month: '2-digit', day: '2-digit' }).format(date)
+}
+
+/** Year bucket for the version timeline; unpublishable timestamps collapse into one bucket. */
+function resolveVersionYear(value: string | null | undefined): string {
+  if (!value) {
+    return '—'
+  }
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : String(date.getFullYear())
+}
+
+/** A changelog is free-form text; the timeline renders it as the bullet list the design shows. */
+function toChangelogBullets(changelog?: string | null): string[] {
+  return (changelog ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*•]\s*/, '').trim())
+    .filter(Boolean)
+}
+
+/**
+ * Picks the file the inline browser opens first: the documented entry point when it exists,
+ * otherwise the first previewable file so the pane is not empty on arrival.
+ */
+function pickInitialPreviewFile(files: SkillFile[] | undefined, documentationPath: string | null): SkillFile | null {
+  if (!files || files.length === 0) {
+    return null
+  }
+  if (documentationPath) {
+    const documented = files.find((file) => file.filePath === documentationPath)
+    if (documented) {
+      return documented
+    }
+  }
+  return files.find((file) => canPreviewFile(file.filePath, file.fileSize).canPreview) ?? files[0]
+}
+
 function getPromotionConflictKey(error: ApiError): 'promotion.duplicate_pending' | 'promotion.already_promoted' | 'promotion.target_version_conflict' | null {
   if (error.serverMessageKey === 'promotion.duplicate_pending') {
     return 'promotion.duplicate_pending'
@@ -175,7 +224,10 @@ export function SkillDetailPage() {
   // File preview state
   const [previewNode, setPreviewNode] = useState<FileTreeNode | null>(null)
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
-  const [fileBrowserOpen, setFileBrowserOpen] = useState(true)
+  const [activeTab, setActiveTab] = useState('readme')
+  const [installMethod, setInstallMethod] = useState<'command' | 'manual'>('command')
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+  const [collapsedVersionYears, setCollapsedVersionYears] = useState<string[]>([])
   const overviewContentRef = useRef<HTMLDivElement | null>(null)
   const overviewSectionRef = useRef<HTMLDivElement | null>(null)
   const overviewLayoutQuietRef = useRef(false)
@@ -211,6 +263,25 @@ export function SkillDetailPage() {
     ? requestedVersion
     : headlineVersion?.version ?? versions?.[0]?.version
   const selectedVersionEntry = versions?.find((version) => version.version === selectedVersion) ?? versions?.[0]
+  const versionGroups = (() => {
+    // Version history is presented year by year, newest first, following the source order.
+    const groups = new Map<string, SkillVersion[]>()
+    for (const version of versions ?? []) {
+      const year = resolveVersionYear(version.publishedAt)
+      const bucket = groups.get(year)
+      if (bucket) {
+        bucket.push(version)
+      } else {
+        groups.set(year, [version])
+      }
+    }
+    return Array.from(groups, ([year, entries]) => ({ year, versions: entries }))
+  })()
+  const toggleVersionYear = (year: string) => {
+    setCollapsedVersionYears((current) => (current.includes(year)
+      ? current.filter((entry) => entry !== year)
+      : [...current, year]))
+  }
   const selectedMetadata = selectedVersion === ownerPreviewVersion?.version ? ownerPreviewVersion
     : selectedVersion === publishedVersion?.version ? publishedVersion
       : selectedVersion === headlineVersion?.version ? headlineVersion : null
@@ -222,6 +293,16 @@ export function SkillDetailPage() {
 
   const { data: files } = useSkillFiles(qns, qslug, selectedVersion, skillReady)
   const documentationPath = resolveDocumentationFilePath(files)
+  const initialPreviewFile = pickInitialPreviewFile(files, documentationPath)
+  const selectedFile = (selectedFilePath ? files?.find((file) => file.filePath === selectedFilePath) : null) ?? initialPreviewFile
+  const inlinePreviewPath = activeTab === 'files' ? selectedFile?.filePath ?? null : null
+  const { data: inlinePreviewContent, isLoading: isInlinePreviewLoading, error: inlinePreviewError } = useSkillFile(
+    qns,
+    qslug,
+    selectedVersion,
+    inlinePreviewPath,
+    skillReady && Boolean(inlinePreviewPath),
+  )
   const { data: readme, error: readmeError } = useSkillReadme(qns, qslug, selectedVersion, documentationPath, skillReady)
   const { data: previewContent, isLoading: isLoadingPreview, error: previewError } = useSkillFile(
     qns,
@@ -415,40 +496,52 @@ export function SkillDetailPage() {
   }, [handlePackageMarkdownLinkClick, previewNode?.path])
 
   // Download a single file from the skill version
-  const handleDownloadFile = () => {
+  const downloadSingleFile = (filePath: string, fileName: string) => {
     const isAnonymousAllowed = namespace === 'global' && skill?.visibility === 'PUBLIC'
     if (!user && !isAnonymousAllowed) {
       requireLogin()
       return
     }
-    if (!previewNode || !selectedVersion) return
+    if (!selectedVersion) return
     const cleanNamespace = namespace.startsWith('@') ? namespace.slice(1) : namespace
     const url = buildApiUrl(
-      `${WEB_API_PREFIX}/skills/${cleanNamespace}/${encodeURIComponent(slug)}/versions/${encodeURIComponent(selectedVersion)}/file?path=${encodeURIComponent(previewNode.path)}`
+      `${WEB_API_PREFIX}/skills/${cleanNamespace}/${encodeURIComponent(slug)}/versions/${encodeURIComponent(selectedVersion)}/file?path=${encodeURIComponent(filePath)}`
     )
     // Set download attribute to the original filename so the browser saves it correctly
     const link = document.createElement('a')
     link.href = url
-    link.download = previewNode.name
+    link.download = fileName
     document.body.appendChild(link)
     link.click()
     link.remove()
   }
 
-  const handleDownload = async () => {
+  const handleDownloadFile = () => {
+    if (!previewNode) return
+    downloadSingleFile(previewNode.path, previewNode.name)
+  }
+
+  // The inline file browser has no dialog node, so it asks for the file it is currently showing.
+  const handleDownloadPreviewFile = () => {
+    if (!selectedFile) return
+    const name = selectedFile.filePath.split('/').filter(Boolean).pop() ?? selectedFile.filePath
+    downloadSingleFile(selectedFile.filePath, name)
+  }
+
+  const downloadVersion = (version: SkillVersion) => {
     const isAnonymousAllowed = namespace === 'global' && skill?.visibility === 'PUBLIC'
     if (!user && !isAnonymousAllowed) {
       requireLogin()
       return
     }
-    if (!selectedVersionEntry || !isVersionDownloadable) {
+    if (!version.downloadAvailable) {
       return
     }
 
     try {
       const cleanNamespace = namespace.startsWith('@') ? namespace.slice(1) : namespace
       triggerBrowserDownload(
-        buildApiUrl(`${WEB_API_PREFIX}/skills/${cleanNamespace}/${encodeURIComponent(slug)}/versions/${encodeURIComponent(selectedVersionEntry.version)}/download`),
+        buildApiUrl(`${WEB_API_PREFIX}/skills/${cleanNamespace}/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version.version)}/download`),
       )
       incrementSkillDownloadCount(queryClient, { namespace, slug })
       queryClient.invalidateQueries({ queryKey: ['skills', namespace, slug] })
@@ -458,6 +551,18 @@ export function SkillDetailPage() {
     } catch (error) {
       toast.error(t(resolveSkillActionErrorTitle('download')), error instanceof Error ? error.message : '')
     }
+  }
+
+  const handleDownload = () => {
+    if (!selectedVersionEntry || !isVersionDownloadable) {
+      return
+    }
+    downloadVersion(selectedVersionEntry)
+  }
+
+  const handleFileSelect = (node: FileTreeNode) => {
+    // The inline browser keeps the tree in place; the dialog stays available for a wider read.
+    setSelectedFilePath(node.path)
   }
 
   const requireLogin = () => {
@@ -895,30 +1000,60 @@ export function SkillDetailPage() {
             <ArrowLeft className="h-4 w-4" />
             {t('skillDetail.back')}
           </Button>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <SkillAvatar name={selectedDisplayName ?? skill.displayName} url={skill.avatarUrl} size="h-[60px] w-[60px] text-xl" />
-              <div className="min-w-0 space-y-1">
-                <h1 className="text-balance break-words text-xl font-bold font-heading text-foreground [overflow-wrap:anywhere]">{selectedDisplayName}</h1>
-                {skill.ownerDisplayName && (
-                  <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                    <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 truncate">{t('skillDetail.authorLabel', { name: skill.ownerDisplayName })}</span>
-                  </div>
-                )}
-                <div className="flex min-w-0 items-center gap-1">
-                  <code className="min-w-0 break-all text-xs text-muted-foreground">@{skill.namespace}/{skill.slug}</code>
-                  <CopyButton analyticsId="skill.coordinate.copy" text={`@${skill.namespace}/${skill.slug}`} ariaLabel={t('skillDetail.copyCoordinate')} className="shrink-0" />
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-4">
+              <SkillAvatar name={selectedDisplayName ?? skill.displayName} url={skill.avatarUrl} size="h-16 w-16 text-2xl" />
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-balance break-words font-heading text-2xl font-bold leading-tight text-foreground [overflow-wrap:anywhere]">{selectedDisplayName}</h1>
+                  {selectedVersionEntry && (
+                    <span className="shrink-0 rounded-full border border-border/60 bg-secondary/40 px-2 py-0.5 font-mono text-xs leading-5 text-muted-foreground">
+                      {selectedVersionEntry.syncRevision != null
+                        ? t('review.githubRevisionValue', { count: selectedVersionEntry.syncRevision })
+                        : `v${selectedVersionEntry.version}`}
+                    </span>
+                  )}
+                </div>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {skill.ownerDisplayName && (
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 truncate">{skill.ownerDisplayName}</span>
+                    </span>
+                  )}
+                  <span className="flex min-w-0 items-center gap-1">
+                    <code className="min-w-0 break-all font-mono">@{skill.namespace}/{skill.slug}</code>
+                    <CopyButton analyticsId="skill.coordinate.copy" text={`@${skill.namespace}/${skill.slug}`} ariaLabel={t('skillDetail.copyCoordinate')} className="shrink-0" />
+                  </span>
                 </div>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2 [&_button]:rounded-full">
               {canInteract && !isFetchingSkill && <StarButton skillId={skill.id} starCount={skill.starCount} onRequireLogin={requireLogin} />}
-              <div className="[&>button]:px-3 [&>button]:py-1">
+              <div className="[&>button]:w-auto [&>button]:rounded-full [&>button]:border [&>button]:border-border [&>button]:bg-background [&>button]:px-4 [&>button]:py-2 [&>button]:hover:bg-muted/60">
                 <ShareButton namespace={namespace} slug={slug} description={skill.summary} />
               </div>
             </div>
           </div>
+          {(skill.labels?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {skill.labels!.map((label) => (
+                <Link data-analytics-id="search.label.open"
+                  key={label.slug}
+                  to="/search"
+                  search={getSkillLabelSearch(label.slug)}
+                  className={cn(
+                    'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2',
+                    label.type === 'PRIVILEGED'
+                      ? 'border-amber-500/40 bg-amber-100 text-amber-900 hover:bg-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/70'
+                      : 'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                  )}
+                >
+                  {label.displayName}
+                </Link>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <NamespaceBadge type="GLOBAL" name={namespace} />
             {skill.status && (
@@ -963,26 +1098,7 @@ export function SkillDetailPage() {
             : myNamespaces?.some((item) => item.slug === namespace && (item.currentUserRole === 'OWNER' || item.currentUserRole === 'ADMIN')))
             && <SkillAvatarTakedown namespace={namespace} slug={slug} />}
           {selectedSummary && (
-            <p className="text-sm text-foreground leading-relaxed">{selectedSummary}</p>
-          )}
-          {(skill.labels?.length ?? 0) > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {skill.labels!.map((label) => (
-                <Link data-analytics-id="search.label.open"
-                  key={label.slug}
-                  to="/search"
-                  search={getSkillLabelSearch(label.slug)}
-                  className={cn(
-                    'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2',
-                    label.type === 'PRIVILEGED'
-                      ? 'border-amber-500/40 bg-amber-100 text-amber-900 hover:bg-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/70'
-                      : 'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                  )}
-                >
-                  {label.displayName}
-                </Link>
-              ))}
-            </div>
+            <p className="text-sm leading-relaxed text-foreground">{selectedSummary}</p>
           )}
           {showingUnpublishedPreview && (
             <Card className="border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">
@@ -1006,24 +1122,26 @@ export function SkillDetailPage() {
           )}
         </div>
 
-        <div className={cn('grid grid-cols-2 overflow-hidden rounded-lg border border-border/60 bg-card', !(canManageSecurityScan && securityAuditVersion) && 'sm:grid-cols-3')}>
-          <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 border-r border-border/60 px-3 py-3 text-center">
+        <div className="grid grid-cols-1 overflow-hidden rounded-xl border border-border/60 bg-card sm:grid-cols-3">
+          <div className="flex min-h-[92px] flex-col items-center justify-center gap-1.5 px-3 py-4 text-center">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Download className="h-4 w-4" aria-hidden="true" />{t('skillDetail.downloads')}</span>
-            <span className="text-base font-semibold text-blue-600 dark:text-blue-400">{formatCompactCount(skill.downloadCount)}</span>
+            <span className="text-xl font-semibold text-blue-600 dark:text-blue-400">{formatCompactCount(skill.downloadCount)}</span>
           </div>
-          <div className={cn('flex min-h-[88px] flex-col items-center justify-center gap-2 px-3 py-3 text-center', !(canManageSecurityScan && securityAuditVersion) && 'sm:border-r sm:border-border/60')}>
+          <div className="flex min-h-[92px] flex-col items-center justify-center gap-1.5 border-t border-border/60 px-3 py-4 text-center sm:border-l sm:border-t-0">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Star className="h-4 w-4" aria-hidden="true" />{t('starButton.star')}</span>
-            <span className="text-base font-semibold text-amber-600 dark:text-amber-400">{formatCompactCount(skill.starCount)}</span>
+            <span className="text-xl font-semibold text-amber-600 dark:text-amber-400">{formatCompactCount(skill.starCount)}</span>
           </div>
-          {!(canManageSecurityScan && securityAuditVersion) && (
-            <div className="col-span-2 flex min-h-[72px] items-center justify-center gap-2 border-t border-border/60 px-3 py-3 text-sm text-muted-foreground sm:col-span-1 sm:border-t-0" title={t('securityAudit.notEvaluatedDescription')}>
-              <Shield className="h-5 w-5" aria-hidden="true" />{t('securityAudit.notEvaluatedTitle')}
-            </div>
-          )}
+          <SecurityStatusCell
+            skillId={skill.id}
+            versionId={securityAuditVersion?.id}
+            versionStatus={securityAuditVersion?.status}
+            canViewAudit={canManageSecurityScan && Boolean(securityAuditVersion)}
+            className="border-t border-border/60 sm:border-t-0"
+          />
         </div>
 
-        <Tabs defaultValue="readme">
-          <TabsList className="flex w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="flex w-full gap-8">
             <TabsTrigger data-analytics-id="skill.overview.tab" value="readme">{t('skillDetail.tabReadme')}</TabsTrigger>
             <TabsTrigger value="install">{t('skillDetail.tabInstall')}</TabsTrigger>
             <TabsTrigger data-analytics-id="skill.files.tab" value="files">{t('skillDetail.tabFiles')}</TabsTrigger>
@@ -1096,123 +1214,324 @@ export function SkillDetailPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="install" className="mt-6">
-            <Card className="p-8 text-center text-sm text-muted-foreground">
-              {t('skillDetail.installUnavailable')}
-            </Card>
+          <TabsContent value="install" className="mt-5">
+            <Tabs value={installMethod} onValueChange={(value) => setInstallMethod(value as 'command' | 'manual')} className="space-y-4">
+              <TabsList className="inline-flex w-auto items-center gap-1 rounded-lg border border-transparent bg-muted p-1">
+                <TabsTrigger
+                  value="command"
+                  className="rounded-md border-b-0 px-3 py-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
+                  {t('skillDetail.installTabCommand', { defaultValue: '命令行安装' })}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="manual"
+                  className="rounded-md border-b-0 px-3 py-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
+                  {t('skillDetail.installTabManual', { defaultValue: '手动安装' })}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="command" className="space-y-3 pt-1">
+                {skill.status === 'ARCHIVED' && (
+                  <p className="text-sm text-muted-foreground">{t('skillDetail.archivedInstallHint')}</p>
+                )}
+                <p role="status" className="text-sm text-muted-foreground">{t('skillDetail.installUnavailable')}</p>
+                {publishedVersion ? (
+                  <fieldset disabled className="opacity-60" aria-label={t('skillDetail.installUnavailable')}>
+                    <InstallCommand analyticsId="skill.command.copy"
+                      namespace={namespace}
+                      slug={slug}
+                      version={publishedVersion.version} skillhubAnalyticsId="skill.command.skillhub.select" clawhubAnalyticsId="skill.command.clawhub.select"
+                    />
+                  </fieldset>
+                ) : null}
+              </TabsContent>
+
+              <TabsContent value="manual" className="pt-1">
+                <div className="space-y-5">
+                  <div className="relative flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-semibold text-blue-600 dark:text-blue-400">1</span>
+                    <span className="absolute left-[13px] top-8 h-[calc(100%-0.75rem)] w-px bg-border" aria-hidden="true" />
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div className="text-sm font-semibold text-foreground">{t('skillDetail.download')}</div>
+                      <div className="inline-flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+                        <FileArchive className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                        <span className="text-sm font-semibold text-foreground">{skill.slug}.zip</span>
+                        <Button variant="ghost"
+                          size="sm"
+                          className="gap-1.5 px-2"
+                          onClick={handleDownload}
+                          disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionDownloadable}
+                        >
+                          <Download className="h-4 w-4" aria-hidden="true" />
+                          {t('skillDetail.download')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-semibold text-blue-600 dark:text-blue-400">2</span>
+                    <span className="absolute left-[13px] top-8 h-[calc(100%-0.75rem)] w-px bg-border" aria-hidden="true" />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="text-sm font-semibold text-foreground">
+                        {t('skillDetail.manualInstallExtractTitle', { defaultValue: '解压' })}
+                      </div>
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        {t('skillDetail.manualInstallExtractDescription', { defaultValue: '将下载的压缩包解压到本地文件目录中' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-semibold text-blue-600 dark:text-blue-400">3</span>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="text-sm font-semibold text-foreground">
+                        {t('skillDetail.manualInstallPlaceTitle', { defaultValue: '运行' })}
+                      </div>
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        {t('skillDetail.manualInstallPlaceDescription', { defaultValue: '将解压后的技能文件夹放到你所使用 Agent 的技能目录下' })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
-          <TabsContent value="files" className="mt-6">
+          <TabsContent value="files" className="mt-5">
             {files && files.length > 0 ? (
-              <FileTree analyticsId="skill.file.open" files={files} onFileClick={handleFileClick} />
+              <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+                <Card className="max-h-[32rem] overflow-y-auto p-2">
+                  <FileTree analyticsId="skill.file.open" files={files} onFileClick={handleFileSelect} bare />
+                </Card>
+                <Card className="flex min-h-[20rem] flex-col overflow-hidden p-0">
+                  {selectedFile ? (
+                    <>
+                      <div className="flex items-center gap-2 border-b border-border/50 px-4 py-2.5">
+                        <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">{selectedFile.filePath}</span>
+                        <span className="shrink-0 rounded border border-border/60 bg-background/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                          {getFileTypeLabel(selectedFile.filePath)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          title={t('skillDetail.openFileFullscreen', { defaultValue: '全屏查看' })}
+                          aria-label={t('skillDetail.openFileFullscreen', { defaultValue: '全屏查看' })}
+                          onClick={() => handleFileClick(createPackageFilePreviewNode(selectedFile))}
+                        >
+                          <Maximize2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
+                        {isInlinePreviewLoading ? (
+                          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">{t('common.loading')}</div>
+                        ) : inlinePreviewError ? (
+                          <div className="space-y-2 py-8 text-center">
+                            <p className="text-sm font-medium text-foreground">{t('filePreview.loadError')}</p>
+                            <p className="text-xs text-muted-foreground">{inlinePreviewError.message}</p>
+                          </div>
+                        ) : !canPreviewFile(selectedFile.filePath, selectedFile.fileSize).canPreview ? (
+                          <div className="space-y-3 py-8 text-center">
+                            <p className="text-sm font-medium text-foreground">
+                              {canPreviewFile(selectedFile.filePath, selectedFile.fileSize).reason === 'too-large'
+                                ? t('filePreview.tooLarge')
+                                : canPreviewFile(selectedFile.filePath, selectedFile.fileSize).reason === 'binary'
+                                  ? t('filePreview.binaryFile')
+                                  : t('filePreview.unsupported')}
+                            </p>
+                            <Button variant="outline" size="sm" onClick={handleDownloadPreviewFile}>{t('filePreview.downloadFile')}</Button>
+                          </div>
+                        ) : inlinePreviewContent ? (
+                          getFileTypeLabel(selectedFile.filePath) === 'markdown' ? (
+                            <MarkdownRenderer
+                              content={inlinePreviewContent}
+                              onLinkClick={handlePreviewLinkClick}
+                              className="[&_h1]:mb-4 [&_h1]:border-0 [&_h1]:pb-0 [&_h1]:text-xl [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:border-0 [&_h2]:pb-0 [&_h2]:text-lg [&_h3]:mt-5 [&_h3]:text-base [&_li]:text-[13px] [&_p]:my-3 [&_p]:text-[13px] [&_p]:leading-7"
+                            />
+                          ) : getLanguageForHighlight(selectedFile.filePath) ? (
+                            <CodeRenderer code={inlinePreviewContent} language={getLanguageForHighlight(selectedFile.filePath) ?? null} />
+                          ) : (
+                            <pre className="whitespace-pre-wrap break-words text-[13px] leading-6">
+                              <code>{inlinePreviewContent}</code>
+                            </pre>
+                          )
+                        ) : null}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+                      {t('skillDetail.filesPreviewEmpty', { defaultValue: '从左侧选择一个文件查看内容' })}
+                    </div>
+                  )}
+                </Card>
+              </div>
             ) : (
-              <Card className="p-8 text-muted-foreground text-center">
+              <Card className="p-8 text-center text-muted-foreground">
                 {t('skillDetail.noFiles')}
               </Card>
             )}
           </TabsContent>
 
-          <TabsContent value="versions" className="mt-6">
-            <Card className="p-6">
-              {versions && versions.length > 0 ? (
-                <div className="space-y-0 divide-y divide-border/40">
-                  {versions.map((version) => (
-                    <div key={version.id} className="py-5 first:pt-0 last:pb-0">
-                      <div className="flex items-start justify-between gap-4 mb-2">
-                        <span className="font-semibold font-heading text-foreground flex items-center gap-2 flex-wrap min-w-0">
-                          <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-sm font-mono">
-                            {version.syncRevision ? t('review.githubRevisionValue', { count: version.syncRevision }) : `v${version.version}`}
-                          </span>
-                          {version.syncRevision && <span className="max-w-full break-all text-xs font-normal text-muted-foreground">{version.version}</span>}
-                          {version.status && (
-                            <span className="rounded-full border border-border/60 bg-secondary/40 px-2.5 py-0.5 text-xs text-muted-foreground">
-                              {resolveVersionStatusLabel(version.status)}
-                            </span>
-                          )}
-                          {headlineVersion?.version === version.version && (
-                            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground">
-                              {t(hasPublishedPendingReview && publishedVersion?.version === version.version
-                                ? 'skillDetail.currentPublicVersion'
-                                : 'skillDetail.currentVersion')}
-                            </span>
-                          )}
-                        </span>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <span className="text-sm text-muted-foreground">
-                            {formatLocalDateTime(version.publishedAt, i18n.language)}
-                          </span>
-                          {skill.canManageLifecycle && canRereleaseVersion(version.status) && (
-                            <>
-                              <Button data-analytics-id="skill.comparison.open"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleOpenDiff(version.version)}
-                              >
-                                {t('skillDetail.compareVersions')}
-                              </Button>
-                              <Button data-analytics-id="skill.rerelease.open"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleOpenRerelease(version.version)}
-                              >
-                                {t('skillDetail.rereleaseVersion')}
-                              </Button>
-                            </>
-                          )}
-                          {skill.canManageLifecycle && canDeleteVersion(version.status) && !isLastVersion && (
-                            <Button data-analytics-id="skill.version.delete"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setDeleteVersionTarget(version.version)}
-                            >
-                              {t('skillDetail.deleteVersion')}
-                            </Button>
-                          )}
-                          {skill.canManageLifecycle && canWithdrawVersion(version.status) && (
-                            <Button data-analytics-id="skill.review.withdraw"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setWithdrawVersionTarget(version.version)}
-                            >
-                              {t('skillDetail.withdrawReview')}
-                            </Button>
-                          )}
-                          {skill.canManageLifecycle && version.status === 'UPLOADED' && skill.visibility === 'PRIVATE' && (
-                            <Button data-analytics-id="skill.version.publish"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setConfirmPublishTarget(version.version)}
-                            >
-                              {t('skillDetail.confirmPublish')}
-                            </Button>
-                          )}
-                          {skill.canManageLifecycle && version.status === 'UPLOADED' && skill.visibility === 'PRIVATE' && (
-                            <Button data-analytics-id="skill.review.submit"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setSubmitReviewTarget(version.version)}
-                            >
-                              {t('skillDetail.submitReview')}
-                            </Button>
-                          )}
+          <TabsContent value="versions" className="mt-5">
+            {versions && versions.length > 0 ? (
+              <div className="space-y-8">
+                {versionGroups.map((group) => {
+                  const collapsed = collapsedVersionYears.includes(group.year)
+                  return (
+                    <section key={group.year} className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-muted-foreground">{group.year}</span>
+                        <span className="h-px flex-1 bg-border/60" aria-hidden="true" />
+                        <button
+                          type="button"
+                          aria-expanded={!collapsed}
+                          aria-label={t(collapsed ? 'common.expand' : 'common.collapse')}
+                          onClick={() => toggleVersionYear(group.year)}
+                          className="rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                        >
+                          {collapsed ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronUp className="h-4 w-4" aria-hidden="true" />}
+                        </button>
+                      </div>
+                      {!collapsed && (
+                        <div>
+                          {group.versions.map((version, index) => {
+                            const changelogBullets = toChangelogBullets(version.changelog)
+                            return (
+                              <div key={version.id} className="flex gap-4 pb-6 last:pb-0">
+                                <div className="w-11 shrink-0 pt-0.5 text-right text-xs font-medium leading-5 text-foreground/70">
+                                  <span title={formatLocalDateTime(version.publishedAt, i18n.language)}>
+                                    {formatVersionMonthDay(version.publishedAt, i18n.language)}
+                                  </span>
+                                </div>
+                                <div className="relative flex w-3 shrink-0 justify-center">
+                                  <span
+                                    className={cn(
+                                      'mt-1 h-2.5 w-2.5 rounded-full ring-4',
+                                      headlineVersion?.version === version.version
+                                        ? 'bg-primary ring-primary/15'
+                                        : 'bg-muted-foreground/40 ring-muted/60',
+                                    )}
+                                    aria-hidden="true"
+                                  />
+                                  {index < group.versions.length - 1 && (
+                                    <span className="absolute bottom-[-1.5rem] left-1/2 top-4 w-px -translate-x-1/2 bg-border/70" aria-hidden="true" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-heading text-base font-semibold text-foreground">
+                                      {version.syncRevision ? t('review.githubRevisionValue', { count: version.syncRevision }) : `v${version.version}`}
+                                    </span>
+                                    {version.syncRevision && <span className="max-w-full break-all font-mono text-xs font-normal text-muted-foreground">{version.version}</span>}
+                                    {version.status && (
+                                      <span className="rounded-full border border-border/60 bg-secondary/40 px-2.5 py-0.5 text-xs text-muted-foreground">
+                                        {resolveVersionStatusLabel(version.status)}
+                                      </span>
+                                    )}
+                                    {headlineVersion?.version === version.version && (
+                                      <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground">
+                                        {t(hasPublishedPendingReview && publishedVersion?.version === version.version
+                                          ? 'skillDetail.currentPublicVersion'
+                                          : 'skillDetail.currentVersion')}
+                                      </span>
+                                    )}
+                                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                                      {skill.canManageLifecycle && canRereleaseVersion(version.status) && (
+                                        <>
+                                          <Button data-analytics-id="skill.comparison.open"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleOpenDiff(version.version)}
+                                          >
+                                            {t('skillDetail.compareVersions')}
+                                          </Button>
+                                          <Button data-analytics-id="skill.rerelease.open"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleOpenRerelease(version.version)}
+                                          >
+                                            {t('skillDetail.rereleaseVersion')}
+                                          </Button>
+                                        </>
+                                      )}
+                                      {skill.canManageLifecycle && canDeleteVersion(version.status) && !isLastVersion && (
+                                        <Button data-analytics-id="skill.version.delete"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setDeleteVersionTarget(version.version)}
+                                        >
+                                          {t('skillDetail.deleteVersion')}
+                                        </Button>
+                                      )}
+                                      {skill.canManageLifecycle && canWithdrawVersion(version.status) && (
+                                        <Button data-analytics-id="skill.review.withdraw"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setWithdrawVersionTarget(version.version)}
+                                        >
+                                          {t('skillDetail.withdrawReview')}
+                                        </Button>
+                                      )}
+                                      {skill.canManageLifecycle && version.status === 'UPLOADED' && skill.visibility === 'PRIVATE' && (
+                                        <Button data-analytics-id="skill.version.publish"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setConfirmPublishTarget(version.version)}
+                                        >
+                                          {t('skillDetail.confirmPublish')}
+                                        </Button>
+                                      )}
+                                      {skill.canManageLifecycle && version.status === 'UPLOADED' && skill.visibility === 'PRIVATE' && (
+                                        <Button data-analytics-id="skill.review.submit"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setSubmitReviewTarget(version.version)}
+                                        >
+                                          {t('skillDetail.submitReview')}
+                                        </Button>
+                                      )}
+                                      {version.status === 'PUBLISHED' && version.downloadAvailable && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          title={t('skillDetail.download')}
+                                          aria-label={t('skillDetail.download')}
+                                          onClick={() => downloadVersion(version)}
+                                        >
+                                          <Download className="h-4 w-4" aria-hidden="true" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {changelogBullets.length > 0 && (
+                                    <ul className="list-disc space-y-1 pl-5 text-xs leading-6 text-muted-foreground marker:text-muted-foreground/50">
+                                      {changelogBullets.map((entry, entryIndex) => (
+                                        <li key={`${version.id}-${entryIndex}`}>{entry}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                  <ComplianceSnapshotPanel snapshot={version.complianceSnapshot} />
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span>{t('skillDetail.fileCount', { count: version.fileCount })}</span>
+                                    <span className="h-1 w-1 rounded-full bg-muted-foreground/40" aria-hidden="true" />
+                                    <span>{(version.totalSize / 1024).toFixed(1)} KB</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
-                      </div>
-                      {version.changelog && (
-                        <p className="text-sm text-muted-foreground leading-relaxed">{version.changelog}</p>
                       )}
-                      <ComplianceSnapshotPanel snapshot={version.complianceSnapshot} className="mt-3" />
-                      <div className="text-xs text-muted-foreground mt-2 flex items-center gap-3">
-                        <span>{t('skillDetail.fileCount', { count: version.fileCount })}</span>
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
-                        <span>{(version.totalSize / 1024).toFixed(1)} KB</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Card className="p-8 text-muted-foreground text-center">{t('skillDetail.noVersions')}</Card>
-              )}
-            </Card>
+                    </section>
+                  )
+                })}
+              </div>
+            ) : (
+              <Card className="p-8 text-center text-muted-foreground">{t('skillDetail.noVersions')}</Card>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -1221,56 +1540,33 @@ export function SkillDetailPage() {
 
       {/* Sidebar */}
       <aside className="w-full lg:w-[290px] flex-shrink-0 space-y-3">
-        <InstallForAgentButton analyticsId="skill.prompt.copy"
-          namespace={namespace}
-          slug={slug}
-          version={selectedVersionEntry?.version ?? publishedVersion?.version ?? ''}
-          disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionInstallable}
-        />
+        <Card className="space-y-4 p-5">
+          <p className="text-center text-sm font-semibold leading-6 text-foreground">
+            {t('skillDetail.installHelperText', { defaultValue: '复制安装指引到你的 Agent，即可让它安装当前 Skill' })}
+          </p>
+          <div className="rounded-full bg-gradient-to-r from-blue-300/70 via-amber-300/70 to-purple-300/70 p-px">
+            <div className="[&>button]:rounded-full [&>button]:border-0 [&>button]:bg-card [&>button]:px-4 [&>button]:py-3">
+              <InstallForAgentButton analyticsId="skill.prompt.copy"
+                namespace={namespace}
+                slug={slug}
+                version={selectedVersionEntry?.version ?? publishedVersion?.version ?? ''}
+                disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionInstallable}
+              />
+            </div>
+          </div>
+        </Card>
 
         <Button data-analytics-id="skill.download.request"
-          className="w-full"
+          className="w-full justify-center gap-2 rounded-xl"
           variant="outline"
           size="lg"
+          title={t('skillDetail.downloadZip', { defaultValue: '下载 zip 包' })}
           onClick={handleDownload}
           disabled={!selectedVersionEntry || skill.status === 'ARCHIVED' || !isVersionDownloadable}
         >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-          </svg>
+          <Download className="h-4 w-4" aria-hidden="true" />
           {t('skillDetail.download')}
         </Button>
-
-        {/* File Tree Sidebar — collapsible, mirrors SecurityAuditSummary card pattern */}
-        {files && files.length > 0 && (
-          <Card className="p-5 space-y-3">
-            <button data-analytics-id="skill.browser.toggle"
-              type="button"
-              className="flex w-full items-center gap-2 text-left"
-              aria-expanded={fileBrowserOpen}
-              onClick={() => setFileBrowserOpen((v) => !v)}
-            >
-              <Folder className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-semibold font-heading text-foreground">
-                {t('fileTree.title')}
-              </span>
-              <span className="text-xs text-muted-foreground ml-auto mr-2">
-                {files.length}
-              </span>
-              <span className={cn(
-                'text-muted-foreground transition-transform duration-200',
-                fileBrowserOpen && 'rotate-180'
-              )}>
-                <ChevronDown className="h-4 w-4" />
-              </span>
-            </button>
-            {fileBrowserOpen && (
-              <div className="max-h-[400px] overflow-y-auto -mx-5 px-5">
-                <FileTree analyticsId="skill.file.open" files={files} onFileClick={handleFileClick} bare />
-              </div>
-            )}
-          </Card>
-        )}
 
         <Card className="p-5 space-y-5">
           <div className="flex items-center justify-between">
@@ -1280,13 +1576,6 @@ export function SkillDetailPage() {
                 ? t('review.githubRevisionValue', { count: selectedVersionEntry.syncRevision })
                 : `v${selectedVersionEntry.version}` : '—'}
             </div>
-          </div>
-
-          <div className="h-px bg-border/40" />
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">{t('skillDetail.downloads')}</div>
-            <div className="font-semibold text-foreground">{formatCompactCount(skill.downloadCount)}</div>
           </div>
 
           <div className="h-px bg-border/40" />
@@ -1427,26 +1716,6 @@ export function SkillDetailPage() {
             </p>
           )}
         </Card>
-
-        {publishedVersion && canInteract && (
-          <Card className="p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-semibold font-heading text-foreground">{t('skillDetail.install')}</span>
-            </div>
-            {skill.status === 'ARCHIVED' && (
-              <p className="text-sm text-muted-foreground">{t('skillDetail.archivedInstallHint')}</p>
-            )}
-            <p className="text-sm text-muted-foreground">{t('skillDetail.installUnavailable')}</p>
-            <fieldset disabled className="opacity-50" aria-label={t('skillDetail.installUnavailable')}>
-              <InstallCommand analyticsId="skill.command.copy"
-                namespace={namespace}
-                slug={slug}
-                version={publishedVersion.version} skillhubAnalyticsId="skill.command.skillhub.select" clawhubAnalyticsId="skill.command.clawhub.select"
-              />
-            </fieldset>
-          </Card>
-        )}
 
         {hasPublishedPendingReview && ownerPreviewVersion && (
           <Card className="border-amber-500/30 bg-amber-500/5 p-5 space-y-4">

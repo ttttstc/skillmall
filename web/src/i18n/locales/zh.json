@@ -29,7 +29,7 @@
     "login": "登录"
   },
   "githubCatalog": {
-    "title": "开源技能", "sourceLabel": "GITHUB 公开仓库", "description": "浏览来自公开 GitHub 仓库、经过 SkillHub 审核发布的技能。每项技能均可查看来源仓库、路径、固定提交和许可证信息。",
+    "title": "开源技能", "sourceLabel": "GITHUB 公开仓库", "description": "浏览来自公开 GitHub 仓库、经过 SkillMall 审核发布的技能。每项技能均可查看来源仓库、路径、固定提交和许可证信息。",
     "explore": "浏览开源技能", "allSkills": "查看全部技能", "publishedCount": "已发布的 GitHub 技能",
     "countNote": "仅统计当前已发布且公开可见的 @github 技能。", "resultsTitle": "探索技能",
     "resultsDescription": "按名称或描述检索 @github 目录中的技能。", "resultCount": "共 {{count}} 项",
@@ -78,8 +78,8 @@
       "downloads": "下载量",
       "teams": "团队"
     },
-    "whySkillHub": {
-      "title": "为什么选择 SkillHub",
+    "whySkillMall": {
+      "title": "为什么选择 SkillMall",
       "subtitle": "专为企业打造的私有化 Agent 技能管理平台"
     },
     "badge": "企业级技能注册中心",
@@ -121,7 +121,7 @@
     "ctaTitle": "准备好开始了吗？",
     "ctaDescription": "一条命令即可启动本地开发环境，体验完整的技能管理流程",
     "ctaButton": "立即体验",
-    "footerLicense": "© 2026 SkillHub。Apache License 2.0。",
+    "footerLicense": "© 2026 SkillMall。Apache License 2.0。",
     "footerDocs": "文档",
     "footerGithub": "GitHub",
     "footerCommunity": "社区",
@@ -136,23 +136,23 @@
         "cli": "CLI"
       },
       "cli": {
-        "description": "安装 SkillHub CLI 到本地，后续可运行 skillhub install 安装技能",
+        "description": "安装 SkillMall CLI 到本地，后续可运行 skillhub install 安装技能",
         "command": "npm i -g @astron-team/skillhub"
       },
       "agent": {
-        "description": "发送提示词给你的 Agent，以设置SkillHub Registry",
-        "command": "请根据 https://www.example.com/registry/skill.md 接入 SkillHub",
-        "commandTemplate": "请根据 {{url}} 接入 SkillHub"
+        "description": "发送提示词给你的 Agent，以设置SkillMall Registry",
+        "command": "请根据 https://www.example.com/registry/skill.md 接入 SkillMall",
+        "commandTemplate": "请根据 {{url}} 接入 SkillMall"
       },
       "human": {
-        "description": "使用 SkillHub CLI 搜索和安装技能",
+        "description": "使用 SkillMall CLI 搜索和安装技能",
         "command": "npx @astron-team/skillhub@latest search <keyword> --registry https://www.example.com",
         "commandTemplate": "npx @astron-team/skillhub@latest search <keyword> --registry {{url}}"
       },
       "steps": {
         "configureEnv": {
           "title": "1. 配置环境变量",
-          "description": "设置 ClawHub CLI 连接到 SkillHub"
+          "description": "设置 ClawHub CLI 连接到 SkillMall"
         },
         "installSkills": {
           "title": "2. 安装技能",
@@ -191,44 +191,6 @@
         "title": "从注册到分发，管理完整的技能生命周期",
         "description": "不只是技能仓库，而是一套覆盖发布、审核、分发和治理的平台。"
       },
-      "enterprise": {
-        "title": "为团队和企业而建",
-        "description": "在一个 Registry 中提供自托管、权限控制、审核流程与审计能力。",
-        "clientLayer": "接入端",
-        "serviceLayer": "服务层",
-        "storageLayer": "存储层",
-        "networkBoundary": "部署在企业环境中，自主管理 Registry 数据",
-        "deployment": {
-          "title": "自托管部署",
-          "description": "使用 Docker Compose 或仓库提供的 Kubernetes 清单部署 SkillHub，并选择本地或 S3 兼容对象存储。"
-        },
-        "security": {
-          "title": "校验与审核",
-          "description": "通过技能包校验、安全扫描和审核流程，帮助团队在发布前评估技能。"
-        },
-        "rbac": {
-          "title": "分层 RBAC",
-          "description": "平台角色与命名空间角色分离全局管理和团队所有权。"
-        },
-        "access": {
-          "title": "灵活接入",
-          "description": "浏览器支持 OAuth2 和本地账号登录，API Token 用于程序化访问。"
-        },
-        "audit": {
-          "title": "审计记录",
-          "description": "关键的发布、下载、删除和授权操作都有审计记录，便于追溯。"
-        },
-        "openSource": {
-          "title": "开源透明",
-          "description": "代码采用 Apache-2.0 许可证，可用于检查、自托管和社区贡献。"
-        }
-      },
-      "cta": {
-        "title": "构建团队自己的技能 Registry",
-        "description": "查看源代码和部署文档，然后在自己的环境中运行 SkillHub。",
-        "deploy": "查看源码",
-        "docs": "查看文档"
-      },
       "quickStart": {
         "title": "选择接入方式",
         "description": "通过 Agent、CLI 或 Web 界面使用同一个技能 Registry。",
@@ -245,17 +207,17 @@
           "registryTab": "Registry 配置",
           "discoveryTab": "隐式发现",
           "live": "Agent 实时",
-          "instruction": "阅读 {{url}}，并按照说明完成 SkillHub Skills Registry 的配置",
+          "instruction": "阅读 {{url}}，并按照说明完成 SkillMall Skills Registry 的配置",
           "instructionLead": "复制以下指令，发送给 Agent 即可完成配置",
           "instructionPrefix": "阅读",
-          "instructionSuffix": "，并按照说明完成 SkillHub Skills Registry 的配置。",
+          "instructionSuffix": "，并按照说明完成 SkillMall Skills Registry 的配置。",
           "copyInstruction": "复制指令",
           "copyErrorDescription": "请手动选择并复制这条 Registry 配置指令。",
           "steps": { "read": "读取文档", "configure": "配置 Registry", "discover": "按需发现技能" },
           "prompt": "帮我查下合肥今天的天气",
           "discovery": {
             "intentTitle": "识别任务意图", "intentDescription": "需要实时天气与出行建议",
-            "searchTitle": "检索 SkillHub Registry", "searchDescription": "匹配 @global/weather · v1.3.0",
+            "searchTitle": "检索 SkillMall Registry", "searchDescription": "匹配 @global/weather · v1.3.0",
             "readTitle": "读取技能说明", "readDescription": "确认输入格式和调用方式"
           },
           "answerLead": "合肥今天多云，26°C",
@@ -280,9 +242,36 @@
       }
     }
   },
+  "domainTree": {
+    "ascend": "昇腾",
+    "kunpeng": "鲲鹏",
+    "yueying": "越影",
+    "design": "设计",
+    "testing": "测试",
+    "itEquipment": "IT装备",
+    "projectManagement": "项目管理",
+    "other": "其他"
+  },
   "home": {
     "domainTitle": "领域 Skills",
     "domainUnavailable": "领域分类暂未开放",
+    "domain": {
+      "subtitle": "各领域最实用的 Skills",
+      "viewAll": "查看更多",
+      "tabs": {
+        "design": "设计",
+        "development": "开发",
+        "testing": "测试",
+        "engineering": "工程",
+        "projectManagement": "项目管理",
+        "other": "其他"
+      }
+    },
+    "popular": {
+      "title": "热门 Skills",
+      "tabs": { "recommend": "为你推荐" },
+      "viewAll": "查看更多"
+    },
     "subtitle": "技能注册中心",
     "description": "为开发者提供高效的技能管理、分发和协作平台",
     "browseSkills": "浏览技能",
@@ -323,12 +312,12 @@
     "quickStart": {
       "title": "快速开始",
       "subtitle": "Quick Start",
-      "description": "只需几个简单步骤，即可开始使用 SkillHub",
+      "description": "只需几个简单步骤，即可开始使用 SkillMall",
       "tip": "💡 提示：访问技能详情页可获取带环境变量的一键复制安装命令",
       "steps": {
         "configureEnv": {
           "title": "1. 配置环境变量",
-          "description": "设置 ClawHub CLI 连接到 SkillHub"
+          "description": "设置 ClawHub CLI 连接到 SkillMall"
         },
         "installSkills": {
           "title": "2. 安装技能",
@@ -380,7 +369,7 @@
     "clear": "清空搜索"
   },
   "login": {
-    "title": "登录 SkillHub",
+    "title": "登录 SkillMall",
     "subtitle": "一个账号，开启更高效的技能协作",
     "eyebrow": "欢迎回来",
     "tabEnterprise": "组织登录",
@@ -391,7 +380,7 @@
     "enterpriseConfigHint": "企业登录入口由管理员开通。",
     "noEnterpriseMethods": "当前还没有可用的企业登录入口。你可以先使用个人账号登录，或联系管理员开通。",
     "personalTitle": "账号密码登录",
-    "personalHint": "使用 SkillHub 用户名和密码登录。",
+    "personalHint": "使用 SkillMall 用户名和密码登录。",
     "otherMethods": "或使用以下方式登录",
     "orgLoginHint": "适用于已配置企业单点登录的组织",
     "externalIdentityMethods": "外部身份源",
@@ -413,7 +402,7 @@
     "register": "立即注册",
     "oauthHint": "使用 OAuth 登录时，认证完成后会自动返回当前站点。",
     "enterpriseSsoTitle": "企业单点登录",
-    "enterpriseSsoHint": "当前部署已启用兼容接入层。若浏览器中已存在 {{name}} 会话，可直接尝试建立 SkillHub 登录态。",
+    "enterpriseSsoHint": "当前部署已启用兼容接入层。若浏览器中已存在 {{name}} 会话，可直接尝试建立 SkillMall 登录态。",
     "enterpriseSsoAutoHint": "当前部署已启用自动 {{name}} 探测。若未成功，你仍可继续使用现有登录方式。",
     "enterpriseSsoAction": "尝试 {{name}} 登录",
     "enterpriseSsoSubmitting": "正在尝试 {{name}} 登录...",
@@ -1493,6 +1482,16 @@
     "tabInstall": "安装说明",
     "tabVersionHistory": "版本历史",
     "installUnavailable": "安装命令尚未在本地验证，暂不可用。",
+    "installTabCommand": "命令行安装",
+    "installTabManual": "手动安装",
+    "manualInstallExtractTitle": "解压",
+    "manualInstallExtractDescription": "将下载的压缩包解压到本地文件目录中",
+    "manualInstallPlaceTitle": "运行",
+    "manualInstallPlaceDescription": "将解压后的技能文件夹放到你所使用 Agent 的技能目录下",
+    "installHelperText": "复制安装指引到你的 Agent，即可让它安装当前 Skill",
+    "downloadZip": "下载 zip 包",
+    "filesPreviewEmpty": "从左侧选择一个文件查看内容",
+    "openFileFullscreen": "全屏查看",
     "tabOverview": "概览",
     "tabFiles": "文件",
     "tabVersions": "版本",
@@ -1534,7 +1533,7 @@
     "suiteMembershipMore": "已显示 {{shown}} 个，共 {{total}} 个所属套件；其余结果可通过分页接口读取。",
     "suiteMembershipUnavailable": "当前不可安装",
     "installMethodClawhub": "ClawHub CLI",
-    "installMethodSkillhub": "SkillHub CLI",
+    "installMethodSkillhub": "SkillMall CLI",
     "installCommandUnsafeVersion": "该版本号无法安全地生成跨平台命令，请联系发布者修正版本号。",
     "download": "下载",
     "labelsSectionTitle": "标签管理",
@@ -1741,7 +1740,7 @@
     "installForAgent": {
       "button": "安装到 Agent",
       "copied": "安装指令已复制",
-      "prompt": "请根据 {{guideUrl}} 接入 SkillHub，并从该 SkillHub 安装 {{skill}} 的 {{version}} 版本。"
+      "prompt": "请根据 {{guideUrl}} 接入 SkillMall，并从该 SkillMall 安装 {{skill}} 的 {{version}} 版本。"
     }
   },
   "skillCompare": {
@@ -2059,13 +2058,13 @@
     "loginWith": "使用 {{name}} 登录"
   },
   "authShell": {
-    "eyebrow": "SkillHub",
+    "eyebrow": "SkillMall",
     "backHome": "返回首页",
     "heroTitle": "让团队的技能\n被发现、被沉淀、被复用",
     "heroSubtitle": "从一份 SKILL.md 开始，\n把经验转化为可共享的团队能力。",
     "heroFooter": "汇聚团队智慧，释放技能价值",
     "shortTagline": "让技能\n连接团队",
-    "capabilities": "SkillHub 的能力",
+    "capabilities": "SkillMall 的能力",
     "discoverTitle": "发现技能",
     "discoverDescription": "找到团队可复用的技能包与实践。",
     "shareTitle": "沉淀共享",
@@ -2273,9 +2272,35 @@
     "community": "社区",
     "privacy": "隐私政策",
     "terms": "服务条款",
-    "copyright": "© 2026 SkillHub. Apache-2.0."
+    "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "publish": {
+    "source": {
+      "local": "本地上传",
+      "repo": "代码仓导入"
+    },
+    "back": "返回",
+    "repoAddress": "代码仓地址",
+    "repoAddressPlaceholder": "https://gitcode.com/owner/repo",
+    "repoInspectFailed": "仓库解析失败，请检查地址后重试",
+    "repoMultipleSkills": "该仓库包含多个技能，请选择要导入的目录",
+    "stepAddress": "填写地址",
+    "stepPreview": "文件预览",
+    "stepBasic": "基础信息",
+    "next": "下一步",
+    "prev": "上一步",
+    "repoMetadata": "技能元数据",
+    "repoName": "名称",
+    "repoDescription": "描述",
+    "repoDirectory": "导入目录",
+    "repoSubmit": "提交审核",
+    "repoPreviewEmpty": "未能读取该目录的 SKILL.md 内容",
+    "repoPreviewSkillMdOnly": "文件预览仅渲染 SKILL.md，其余文件请在 GitCode 仓库查看",
+    "repoUrlRequired": "请输入代码仓地址",
+    "repoUrlInvalid": "地址格式不正确，示例：https://gitcode.com/owner/repo",
+    "repoUrlHost": "目前仅支持 GitCode 公开仓库地址（gitcode.com）",
+    "repoVersion": "版本号",
+    "repoVersionHint": "该 SKILL.md 未声明版本，请填写要发布的版本号",
     "retryPackagePreview": "重试",
     "packageName": "包内名称",
     "displayName": "显示名称",
@@ -2290,7 +2315,7 @@
     "examplesInvalid": "未识别案例格式，文件将保留为普通文件，不影响发布。",
     "packagePreviewFailed": "无法读取技能包，请检查 SKILL.md 后重新选择，或重试。",
     "title": "发布技能",
-    "subtitle": "上传技能包到 SkillHub",
+    "subtitle": "上传技能包到 SkillMall",
     "directPublishNotice": {
       "title": "直接发布说明",
       "description": "选择「公开」或「仅命名空间」时，技能包通过校验后立即发布，马上可以被搜索、查看和下载；安全扫描与管理员审核不再是发布前置。"
@@ -2549,6 +2574,9 @@
     "remediation": "修复建议",
     "viewDetails": "查看详情",
     "notEvaluatedTitle": "未评测",
+    "statusSafe": "安全",
+    "viewRiskReport": "查看风险报告",
+    "notEvaluatedHint": "本期不提供自动安全评测",
     "notEvaluatedDescription": "本市场首期不提供自动安全评测。未评测表示没有评测结果，不代表该技能通过或未通过安全检查。",
     "verdict": {
       "SAFE": "未发现高风险问题",
@@ -2565,6 +2593,17 @@
     }
   },
   "error": {
+    "gitcode": {
+      "url.invalid": "代码仓地址不合法，请填写 GitCode 仓库地址，例如 https://gitcode.com/owner/repo",
+      "unreachable": "无法访问 GitCode，请稍后重试",
+      "rateLimited": "GitCode 访问过于频繁，请稍后重试",
+      "repo.notFound": "仓库不存在或不是公开仓库",
+      "skillMd.notFound": "该路径下没有找到 SKILL.md",
+      "skillAmbiguous": "该仓库包含多个技能，请选择要导入的目录",
+      "version.invalid": "版本号只能包含字母、数字与 . - + _，且不超过 64 个字符",
+      "tooLarge": "仓库体积超过导入上限",
+      "tooManyFiles": "仓库文件数超过导入上限"
+    },
     "auth": {
       "local": {
         "invalidCredentials": "用户名或密码错误",
@@ -2988,7 +3027,7 @@
       },
       "noMembers": "暂无成员进度。",
       "cancelConfirmTitle": "停止创建这个套件？",
-      "cancelConfirmDescription": "停止后，SkillHub 不再等待成员或创建套件草稿。已经创建的技能版本和已经提交的审核任务不会撤回，仍可在技能审核中继续处理。",
+      "cancelConfirmDescription": "停止后，SkillMall 不再等待成员或创建套件草稿。已经创建的技能版本和已经提交的审核任务不会撤回，仍可在技能审核中继续处理。",
       "cancelConfirmAction": "停止创建套件",
       "cancelledTitle": "套件创建已停止",
       "cancelledDescription": "任务记录会保留。已创建的技能版本和审核任务仍然存在，不会自动撤回或删除。",

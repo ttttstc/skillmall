@@ -115,7 +115,7 @@ export function Layout() {
       >
         {!isSplitAuthRoute ? (
           <Link data-analytics-id="navigation.home.open" to="/" className="text-xl font-semibold tracking-tight flex-shrink-0" style={{ color: 'hsl(var(--foreground))' }}>
-            SkillHub
+            SkillMall
           </Link>
         ) : null}
 
@@ -231,7 +231,7 @@ export function Layout() {
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4 flex items-center gap-2.5">
                 <BrandMark className="h-8 w-8 rounded-lg bg-background ring-1 ring-border/70" />
-                <span className="font-semibold text-foreground">SkillHub</span>
+                <span className="font-semibold text-foreground">SkillMall</span>
               </div>
               <p className="text-sm text-muted-foreground">{t('layout.footerDescription')}</p>
             </div>

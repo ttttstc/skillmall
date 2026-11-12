@@ -31,7 +31,7 @@
   "githubCatalog": {
     "title": "오픈소스 스킬",
     "sourceLabel": "공개 GitHub 저장소",
-    "description": "SkillHub에서 검토하고 게시한 공개 GitHub 저장소의 스킬을 탐색하세요. 각 스킬 페이지에서 출처, 경로, 고정된 커밋, 라이선스 정보를 확인할 수 있습니다.",
+    "description": "SkillMall에서 검토하고 게시한 공개 GitHub 저장소의 스킬을 탐색하세요. 각 스킬 페이지에서 출처, 경로, 고정된 커밋, 라이선스 정보를 확인할 수 있습니다.",
     "explore": "오픈소스 스킬 둘러보기",
     "allSkills": "모든 스킬 보기",
     "publishedCount": "게시된 GitHub 스킬",
@@ -90,8 +90,8 @@
       "downloads": "다운로드",
       "teams": "팀"
     },
-    "whySkillHub": {
-      "title": "SkillHub를 선택하는 이유",
+    "whySkillMall": {
+      "title": "SkillMall를 선택하는 이유",
       "subtitle": "기업 팀을 위해 설계된 비공개 에이전트 스킬 플랫폼"
     },
     "badge": "기업용 스킬 레지스트리",
@@ -133,7 +133,7 @@
     "ctaTitle": "시작할 준비가 되셨나요?",
     "ctaDescription": "명령어 하나로 로컬 개발 환경을 시작하고 전체 스킬 관리 워크플로를 경험하세요",
     "ctaButton": "지금 시작하기",
-    "footerLicense": "© 2026 SkillHub. Apache License 2.0.",
+    "footerLicense": "© 2026 SkillMall. Apache License 2.0.",
     "footerDocs": "문서",
     "footerGithub": "GitHub",
     "footerCommunity": "커뮤니티",
@@ -148,23 +148,23 @@
         "cli": "CLI"
       },
       "cli": {
-        "description": "SkillHub CLI를 로컬에 설치하면 skillhub install 명령어로 스킬을 설치할 수 있습니다.",
+        "description": "SkillMall CLI를 로컬에 설치하면 skillhub install 명령어로 스킬을 설치할 수 있습니다.",
         "command": "npm i -g @astron-team/skillhub"
       },
       "agent": {
-        "description": "에이전트에 프롬프트를 보내 SkillHub 레지스트리를 설정하세요",
-        "command": "https://www.example.com/registry/skill.md를 사용하여 SkillHub에 연결하세요",
-        "commandTemplate": "{{url}}을 사용하여 SkillHub에 연결하세요"
+        "description": "에이전트에 프롬프트를 보내 SkillMall 레지스트리를 설정하세요",
+        "command": "https://www.example.com/registry/skill.md를 사용하여 SkillMall에 연결하세요",
+        "commandTemplate": "{{url}}을 사용하여 SkillMall에 연결하세요"
       },
       "human": {
-        "description": "SkillHub CLI로 스킬을 검색하고 설치하세요",
+        "description": "SkillMall CLI로 스킬을 검색하고 설치하세요",
         "command": "npx @astron-team/skillhub@latest search <keyword> --registry https://www.example.com",
         "commandTemplate": "npx @astron-team/skillhub@latest search <keyword> --registry {{url}}"
       },
       "steps": {
         "configureEnv": {
           "title": "1. 환경변수 설정",
-          "description": "ClawHub CLI가 SkillHub에 연결되도록 설정하세요"
+          "description": "ClawHub CLI가 SkillMall에 연결되도록 설정하세요"
         },
         "installSkills": {
           "title": "2. 스킬 설치",
@@ -203,44 +203,6 @@
         "title": "등록부터 배포까지 스킬의 전체 수명 주기를 관리하세요",
         "description": "패키지 저장소를 넘어 게시, 검토, 배포, 거버넌스를 하나의 플랫폼에서 제공합니다."
       },
-      "enterprise": {
-        "title": "팀과 기업을 위한 설계",
-        "description": "자체 호스팅, 접근 제어, 검토 워크플로, 감사 기능을 하나의 레지스트리에서 제공합니다.",
-        "clientLayer": "클라이언트",
-        "serviceLayer": "서비스",
-        "storageLayer": "스토리지",
-        "networkBoundary": "조직 내부에 배포하여 레지스트리 데이터를 직접 관리하세요",
-        "deployment": {
-          "title": "자체 호스팅 배포",
-          "description": "Docker Compose 또는 제공된 Kubernetes 매니페스트로 자체 인프라에서 SkillHub를 실행하고, 로컬 또는 S3 호환 오브젝트 스토리지를 사용하세요."
-        },
-        "security": {
-          "title": "검증 및 검토",
-          "description": "패키지 검증, 보안 검사, 검토 워크플로를 통해 게시 전에 스킬을 평가할 수 있습니다."
-        },
-        "rbac": {
-          "title": "계층별 RBAC",
-          "description": "플랫폼 역할과 네임스페이스 역할로 조직 전체 관리와 팀 소유 권한을 구분합니다."
-        },
-        "access": {
-          "title": "유연한 접근 방식",
-          "description": "브라우저에서는 OAuth2와 로컬 계정으로 로그인하고, 프로그램에서는 API 토큰으로 접근할 수 있습니다."
-        },
-        "audit": {
-          "title": "감사 추적",
-          "description": "감사 기록을 통해 주요 게시, 다운로드, 삭제, 권한 부여 작업을 추적할 수 있습니다."
-        },
-        "openSource": {
-          "title": "오픈소스",
-          "description": "Apache-2.0 라이선스로 공개된 코드를 검토하거나 자체 호스팅하고 커뮤니티에 기여할 수 있습니다."
-        }
-      },
-      "cta": {
-        "title": "팀의 스킬 레지스트리를 구축하세요",
-        "description": "소스와 배포 안내를 확인한 후 자체 환경에서 SkillHub를 실행하세요.",
-        "deploy": "소스 보기",
-        "docs": "문서 읽기"
-      },
       "quickStart": {
         "title": "접근 방식 선택",
         "description": "에이전트, CLI 또는 웹 화면에서 동일한 레지스트리를 사용할 수 있습니다.",
@@ -266,10 +228,10 @@
           "registryTab": "레지스트리 설정",
           "discoveryTab": "자동 탐색",
           "live": "에이전트 실행 중",
-          "instruction": "{{url}}을 읽고 안내에 따라 SkillHub 스킬 레지스트리를 설정하세요",
+          "instruction": "{{url}}을 읽고 안내에 따라 SkillMall 스킬 레지스트리를 설정하세요",
           "instructionLead": "이 안내를 복사하여 에이전트에 보내세요",
           "instructionPrefix": "다음 문서를 확인하세요:",
-          "instructionSuffix": "안내에 따라 SkillHub 스킬 레지스트리를 설정하세요.",
+          "instructionSuffix": "안내에 따라 SkillMall 스킬 레지스트리를 설정하세요.",
           "copyInstruction": "안내 복사",
           "copyErrorDescription": "레지스트리 설정 안내를 직접 선택하여 복사하세요.",
           "steps": {
@@ -281,7 +243,7 @@
           "discovery": {
             "intentTitle": "작업 파악",
             "intentDescription": "실시간 날씨와 이동 안내가 필요합니다",
-            "searchTitle": "SkillHub 레지스트리 검색",
+            "searchTitle": "SkillMall 레지스트리 검색",
             "searchDescription": "@global/weather · v1.3.0 일치",
             "readTitle": "스킬 사용 안내 읽기",
             "readDescription": "입력 및 호출 규약 확인"
@@ -317,9 +279,36 @@
       }
     }
   },
+  "domainTree": {
+    "ascend": "어센드",
+    "kunpeng": "쿤펑",
+    "yueying": "웨잉",
+    "design": "디자인",
+    "testing": "테스트",
+    "itEquipment": "IT 장비",
+    "projectManagement": "프로젝트 관리",
+    "other": "기타"
+  },
   "home": {
     "domainTitle": "분야별 Skills",
     "domainUnavailable": "분야 분류는 아직 제공되지 않습니다",
+    "domain": {
+      "subtitle": "각 분야에서 가장 실용적인 Skills",
+      "viewAll": "더 보기",
+      "tabs": {
+        "design": "디자인",
+        "development": "개발",
+        "testing": "테스트",
+        "engineering": "엔지니어링",
+        "projectManagement": "프로젝트 관리",
+        "other": "기타"
+      }
+    },
+    "popular": {
+      "title": "인기 Skills",
+      "tabs": { "recommend": "추천" },
+      "viewAll": "더 보기"
+    },
     "subtitle": "스킬 레지스트리",
     "description": "개발자를 위한 효율적인 스킬 관리, 배포, 협업 플랫폼",
     "browseSkills": "스킬 둘러보기",
@@ -360,12 +349,12 @@
     "quickStart": {
       "title": "빠른 시작",
       "subtitle": "빠른 시작",
-      "description": "몇 가지 간단한 단계로 SkillHub를 시작하세요",
+      "description": "몇 가지 간단한 단계로 SkillMall를 시작하세요",
       "tip": "💡 팁: 스킬 상세 페이지에서 환경변수가 포함된 설치 명령어를 한 번에 복사할 수 있습니다",
       "steps": {
         "configureEnv": {
           "title": "1. 환경변수 설정",
-          "description": "ClawHub CLI가 SkillHub에 연결되도록 설정하세요"
+          "description": "ClawHub CLI가 SkillMall에 연결되도록 설정하세요"
         },
         "installSkills": {
           "title": "2. 스킬 설치",
@@ -417,7 +406,7 @@
     "clear": "검색어 지우기"
   },
   "login": {
-    "title": "SkillHub 로그인",
+    "title": "SkillMall 로그인",
     "subtitle": "하나의 계정으로 더 나은 스킬 협업을 시작하세요",
     "eyebrow": "다시 오신 것을 환영합니다",
     "tabEnterprise": "조직 로그인",
@@ -428,7 +417,7 @@
     "enterpriseConfigHint": "업무용 로그인 항목은 관리자가 활성화합니다.",
     "noEnterpriseMethods": "아직 업무용 계정 로그인을 사용할 수 없습니다. 개인 계정을 사용하거나 관리자에게 문의하세요.",
     "personalTitle": "비밀번호 로그인",
-    "personalHint": "SkillHub 사용자 이름과 비밀번호를 사용하세요.",
+    "personalHint": "SkillMall 사용자 이름과 비밀번호를 사용하세요.",
     "otherMethods": "또는 다음으로 계속하기",
     "orgLoginHint": "통합 로그인이 설정된 조직용",
     "externalIdentityMethods": "외부 인증 제공자",
@@ -450,7 +439,7 @@
     "register": "회원가입",
     "oauthHint": "OAuth 인증 후 이 사이트로 자동으로 돌아옵니다.",
     "enterpriseSsoTitle": "기업 SSO",
-    "enterpriseSsoHint": "이 배포 환경에서는 호환 계층이 활성화되어 있습니다. 브라우저에 {{name}} 세션이 있다면 SkillHub 세션을 바로 생성해 볼 수 있습니다.",
+    "enterpriseSsoHint": "이 배포 환경에서는 호환 계층이 활성화되어 있습니다. 브라우저에 {{name}} 세션이 있다면 SkillMall 세션을 바로 생성해 볼 수 있습니다.",
     "enterpriseSsoAutoHint": "이 배포 환경에서는 {{name}} 자동 감지가 활성화되어 있습니다. 실패하면 일반 로그인 방식을 사용할 수 있습니다.",
     "enterpriseSsoAction": "{{name}}으로 시도",
     "enterpriseSsoSubmitting": "{{name}}으로 시도하는 중...",
@@ -1771,6 +1760,16 @@
     "tabInstall": "설치 안내",
     "tabVersionHistory": "버전 기록",
     "installUnavailable": "설치 명령을 아직 로컬에서 검증하지 않아 사용할 수 없습니다.",
+    "installTabCommand": "명령줄 설치",
+    "installTabManual": "수동 설치",
+    "manualInstallExtractTitle": "압축 해제",
+    "manualInstallExtractDescription": "다운로드한 압축 파일을 로컬 폴더에 압축 해제합니다",
+    "manualInstallPlaceTitle": "실행",
+    "manualInstallPlaceDescription": "압축을 푼 스킬 폴더를 사용하는 Agent의 스킬 디렉터리에 넣습니다",
+    "installHelperText": "Agent에 설치 안내를 복사하면 이 스킬을 설치합니다",
+    "downloadZip": "zip 다운로드",
+    "filesPreviewEmpty": "왼쪽에서 파일을 선택해 내용을 확인하세요",
+    "openFileFullscreen": "전체 화면으로 보기",
     "tabOverview": "개요",
     "tabFiles": "파일",
     "tabVersions": "버전",
@@ -1812,7 +1811,7 @@
     "suiteMembershipMore": "스킬 모음 소속 {{total}}개 중 {{shown}}개를 표시합니다. 나머지 결과는 페이지 단위 API로 확인할 수 있습니다.",
     "suiteMembershipUnavailable": "현재 사용 불가",
     "installMethodClawhub": "ClawHub CLI",
-    "installMethodSkillhub": "SkillHub CLI",
+    "installMethodSkillhub": "SkillMall CLI",
     "installCommandUnsafeVersion": "이 버전은 여러 운영체제에서 안전하게 사용할 수 있는 명령어로 표현할 수 없습니다. 게시자에게 수정을 요청하세요.",
     "download": "다운로드",
     "labelsSectionTitle": "라벨",
@@ -2023,7 +2022,7 @@
     "installForAgent": {
       "button": "에이전트용 설치",
       "copied": "에이전트 프롬프트를 복사했습니다",
-      "prompt": "{{guideUrl}}의 안내에 따라 SkillHub에 연결하고 이 SkillHub에서 {{skill}}의 {{version}} 버전을 설치하세요."
+      "prompt": "{{guideUrl}}의 안내에 따라 SkillMall에 연결하고 이 SkillMall에서 {{skill}}의 {{version}} 버전을 설치하세요."
     }
   },
   "skillCompare": {
@@ -2341,13 +2340,13 @@
     "loginWith": "{{name}}으로 로그인"
   },
   "authShell": {
-    "eyebrow": "SkillHub",
+    "eyebrow": "SkillMall",
     "backHome": "홈으로 돌아가기",
     "heroTitle": "팀의 스킬을 발견하고\n보존하고 재사용하세요",
     "heroSubtitle": "SKILL.md로 시작하세요.\n경험을 팀이 공유할 수 있는 역량으로 만드세요.",
     "heroFooter": "팀의 지식을 모아 스킬의 가치를 높이세요",
     "shortTagline": "스킬로\n함께\n만들어요",
-    "capabilities": "SkillHub로 할 수 있는 일",
+    "capabilities": "SkillMall로 할 수 있는 일",
     "discoverTitle": "스킬 탐색",
     "discoverDescription": "팀에서 재사용할 수 있는 스킬과 실무 사례를 찾으세요.",
     "shareTitle": "지식 공유",
@@ -2555,9 +2554,35 @@
     "community": "커뮤니티",
     "privacy": "개인정보처리방침",
     "terms": "이용약관",
-    "copyright": "© 2026 SkillHub. Apache-2.0."
+    "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "publish": {
+    "source": {
+      "local": "로컬 업로드",
+      "repo": "리포지토리에서 가져오기"
+    },
+    "back": "뒤로",
+    "repoAddress": "리포지토리 주소",
+    "repoAddressPlaceholder": "https://gitcode.com/owner/repo",
+    "repoInspectFailed": "리포지토리를 읽지 못했습니다. 주소를 확인한 뒤 다시 시도하세요.",
+    "repoMultipleSkills": "이 리포지토리에는 여러 스킬이 있습니다. 가져올 디렉터리를 선택하세요.",
+    "stepAddress": "주소 입력",
+    "stepPreview": "파일 미리보기",
+    "stepBasic": "기본 정보",
+    "next": "다음",
+    "prev": "이전",
+    "repoMetadata": "스킬 메타데이터",
+    "repoName": "이름",
+    "repoDescription": "설명",
+    "repoDirectory": "가져올 디렉터리",
+    "repoSubmit": "검토 요청",
+    "repoPreviewEmpty": "이 디렉터리의 SKILL.md를 읽지 못했습니다.",
+    "repoPreviewSkillMdOnly": "여기서는 SKILL.md만 표시합니다. 다른 파일은 GitCode에서 확인하세요.",
+    "repoUrlRequired": "리포지토리 주소를 입력하세요",
+    "repoUrlInvalid": "주소 형식이 올바르지 않습니다. 예: https://gitcode.com/owner/repo",
+    "repoUrlHost": "현재는 GitCode 공개 리포지토리(gitcode.com)만 지원합니다.",
+    "repoVersion": "버전",
+    "repoVersionHint": "이 SKILL.md에는 버전이 없습니다. 게시할 버전을 입력하세요.",
     "retryPackagePreview": "다시 시도",
     "packageName": "패키지 이름",
     "displayName": "표시 이름",
@@ -2572,7 +2597,7 @@
     "examplesInvalid": "예제 형식을 인식하지 못했습니다. 파일은 일반 파일로 유지되며 게시할 수 있습니다.",
     "packagePreviewFailed": "패키지를 읽을 수 없습니다. SKILL.md를 확인하고 패키지를 다시 선택하거나 재시도하세요.",
     "title": "스킬 게시",
-    "subtitle": "SkillHub에 스킬 패키지 업로드",
+    "subtitle": "SkillMall에 스킬 패키지 업로드",
     "directPublishNotice": {
       "title": "직접 게시 안내",
       "description": "공개 또는 네임스페이스 전용으로 게시하면 패키지 검증을 통과한 즉시 공개되어 검색, 조회, 다운로드가 가능합니다. 보안 스캔과 관리자 검토는 더 이상 게시 전제 조건이 아닙니다."
@@ -2844,9 +2869,23 @@
       "INFO": "안내"
     },
     "notEvaluatedTitle": "평가되지 않음",
+    "statusSafe": "안전",
+    "viewRiskReport": "위험 보고서 보기",
+    "notEvaluatedHint": "이번 버전에서는 자동 보안 평가를 제공하지 않습니다",
     "notEvaluatedDescription": "이번 첫 릴리스에서는 자동 보안 평가를 제공하지 않습니다. 평가되지 않음은 결과가 없다는 뜻이며, 안전성 검사를 통과했거나 실패했음을 의미하지 않습니다."
   },
   "error": {
+    "gitcode": {
+      "url.invalid": "리포지토리 주소는 GitCode 주소여야 합니다. 예: https://gitcode.com/owner/repo",
+      "unreachable": "GitCode에 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
+      "rateLimited": "GitCode 요청이 너무 잦습니다. 잠시 후 다시 시도하세요.",
+      "repo.notFound": "리포지토리를 찾을 수 없거나 공개 리포지토리가 아닙니다.",
+      "skillMd.notFound": "이 경로에 SKILL.md가 없습니다.",
+      "skillAmbiguous": "이 리포지토리에는 여러 스킬이 있습니다. 가져올 디렉터리를 선택하세요.",
+      "version.invalid": "버전은 영문·숫자와 . - + _ 만 사용할 수 있으며 64자를 넘을 수 없습니다.",
+      "tooLarge": "리포지토리 용량이 가져오기 한도를 초과했습니다.",
+      "tooManyFiles": "리포지토리 파일 수가 가져오기 한도를 초과했습니다."
+    },
     "auth": {
       "local": {
         "invalidCredentials": "사용자 이름 또는 비밀번호가 올바르지 않습니다",
@@ -3171,7 +3210,7 @@
       "cancelFailed": "번들 작업을 취소하지 못했습니다",
       "openingTask": "게시 작업을 여는 중…",
       "taskListTitle": "스킬 모음 게시 작업",
-      "taskListDescription": "입력이 필요한 작업부터 처리하세요. 나머지는 SkillHub가 자동으로 진행합니다.",
+      "taskListDescription": "입력이 필요한 작업부터 처리하세요. 나머지는 SkillMall가 자동으로 진행합니다.",
       "taskDetailTitle": "스킬 모음 게시 작업",
       "taskDetailDescription": "작성 페이지 밖에서도 구성 스킬 게시와 스킬 모음 초안 생성을 확인할 수 있습니다.",
       "backToTasks": "게시 작업으로 돌아가기",
@@ -3270,7 +3309,7 @@
       },
       "noMembers": "아직 구성 스킬 진행 상황이 없습니다.",
       "cancelConfirmTitle": "이 스킬 모음의 생성을 중지하시겠습니까?",
-      "cancelConfirmDescription": "SkillHub가 구성 스킬 대기를 중지하고 스킬 모음 초안을 생성하지 않습니다. 이미 생성된 스킬 버전과 검토 작업은 유지되며 철회되지 않습니다.",
+      "cancelConfirmDescription": "SkillMall가 구성 스킬 대기를 중지하고 스킬 모음 초안을 생성하지 않습니다. 이미 생성된 스킬 버전과 검토 작업은 유지되며 철회되지 않습니다.",
       "cancelConfirmAction": "스킬 모음 생성 중지",
       "cancelledTitle": "스킬 모음 생성을 중지했습니다",
       "cancelledDescription": "이 작업은 내역에 남습니다. 기존 스킬 버전과 검토 작업은 철회되거나 삭제되지 않습니다.",

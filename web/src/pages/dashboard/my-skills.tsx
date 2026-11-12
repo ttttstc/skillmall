@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { Search, Send } from 'lucide-react'
 import { useAuth } from '@/features/auth/use-auth'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
@@ -95,6 +96,10 @@ export function MySkillsPage() {
   const canRestoreHidden = filter === 'HIDDEN' && hasRole('SUPER_ADMIN')
   const hasActiveSearch = keyword.trim() !== '' || namespaceFilter !== ''
   const emptyStateKey = getMySkillEmptyStateKey(filter)
+  // UCD: a genuinely empty collection shows only the illustration + CTA, no search toolbar.
+  // Keep the toolbar whenever there is something to search, a query to clear, or a filter the
+  // user must be able to switch back from — otherwise an empty filtered view traps them.
+  const showToolbar = (skillPage?.total ?? 0) > 0 || hasActiveSearch || filter !== 'ALL'
   const archiveMutation = useArchiveSkill()
   const unarchiveMutation = useUnarchiveSkill()
   const withdrawMutation = useWithdrawSkillReview()
@@ -174,6 +179,25 @@ export function MySkillsPage() {
       return 'status-pill status-pill--review'
     }
     return 'status-pill'
+  }
+
+  /**
+   * UCD renders the status as a soft tint pill (light fill + saturated text) instead of the
+   * legacy solid pill defined in index.css. The shared `.status-pill` rule is emitted after the
+   * Tailwind utilities layer, so the tint is applied with the `!` important modifier to win the
+   * cascade without touching the shared stylesheet.
+   */
+  const resolveStatusToneClassName = (status?: string) => {
+    if (status === 'PUBLISHED') {
+      return '!bg-[#E8F7EC] !text-[#1B8A45]'
+    }
+    if (status === 'PENDING_REVIEW' || status === 'SCANNING' || status === 'UPLOADED') {
+      return '!bg-[#FFF3E0] !text-[#C2410C]'
+    }
+    if (status === 'REJECTED' || status === 'SCAN_FAILED') {
+      return '!bg-[#FDECEC] !text-[#D13B3B]'
+    }
+    return '!bg-[#F1F2F4] !text-[#5B6472]'
   }
 
   const handleArchiveSkill = async () => {
@@ -296,27 +320,28 @@ export function MySkillsPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-up">
+    <div className="space-y-6 animate-fade-up">
       <DashboardPageHeader
         title={t('mySkills.title')}
         subtitle={t('mySkills.subtitle')}
       />
 
+      {showToolbar ? (
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <form data-analytics-id="skill.owned.search" className="flex gap-2 sm:w-full sm:max-w-md" onSubmit={event => {
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <form data-analytics-id="skill.owned.search" className="relative w-full sm:w-80" onSubmit={event => {
             event.preventDefault()
             updateSearch({ q: keywordInput.trim() || undefined, page: 0 }, { replace: true })
           }}>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             type="search"
             value={keywordInput}
             onChange={(event) => setKeywordInput(event.target.value)}
             placeholder={t('mySkills.searchPlaceholder')}
             aria-label={t('mySkills.searchPlaceholder')}
-            className="sm:max-w-md"
+            className="h-9 pl-9 text-sm"
           />
-          <Button type="submit" variant="outline">{t('nav.search')}</Button>
           </form>
           {filter === 'HIDDEN' ? null : (
             <Select
@@ -325,7 +350,7 @@ export function MySkillsPage() {
                 updateSearch({ namespace: value === ALL_NAMESPACES_VALUE ? undefined : value, page: 0 })
               }}
             >
-              <SelectTrigger data-analytics-id="skill.owned.namespace.interact" aria-label={t('mySkills.namespaceFilterLabel')} className="sm:max-w-[14rem]">
+              <SelectTrigger data-analytics-id="skill.owned.namespace.interact" aria-label={t('mySkills.namespaceFilterLabel')} className="h-9 w-full text-sm sm:w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -343,6 +368,7 @@ export function MySkillsPage() {
               type="button"
               size="sm"
               variant="ghost"
+              className="h-9 text-xs text-muted-foreground hover:text-foreground"
               onClick={handleClearSearch}
             >
               {t('mySkills.clearSearch')}
@@ -357,6 +383,7 @@ export function MySkillsPage() {
               type="button"
               size="sm"
               variant={filter === option ? 'default' : 'outline'}
+              className="h-7 rounded-full px-3 text-xs"
               onClick={() => {
                 updateSearch({ filter: option === 'ALL' ? undefined : option, page: 0 })
               }}
@@ -366,18 +393,19 @@ export function MySkillsPage() {
           ))}
         </div>
       </div>
+      ) : null}
 
       {skillPage && skillPage.total > 0 ? (
         <>
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
-            <div className="hidden items-center gap-4 bg-muted/60 px-4 py-3 text-xs font-medium text-muted-foreground xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(250px,auto)]">
-              <span>{t('mySkills.table.name')}</span>
-              <div className="grid grid-cols-3 gap-3">
-                <span>{t('mySkills.table.version')}</span>
-                <span>{t('mySkills.table.status')}</span>
-                <span>{t('mySkills.table.updated')}</span>
-              </div>
-              <span>{t('mySkills.table.actions')}</span>
+            <div className="hidden border-b border-border/60 bg-secondary/60 xl:grid xl:grid-cols-[3.25rem_minmax(0,22rem)_6rem_7.5rem_11rem_11rem_minmax(0,1fr)] xl:items-center xl:gap-x-2 xl:divide-x xl:divide-border/50">
+              <span className="px-2 py-2.5 text-center text-[13px] font-semibold text-foreground/80">#</span>
+              <span className="px-2 py-2.5 text-[13px] font-semibold text-foreground/80">{t('mySkills.table.name')}</span>
+              <span className="px-2 py-2.5 text-[13px] font-semibold text-foreground/80">{t('mySkills.table.version')}</span>
+              <span className="px-2 py-2.5 text-[13px] font-semibold text-foreground/80">{t('mySkills.table.status')}</span>
+              <span className="px-2 py-2.5 text-[13px] font-semibold text-foreground/80">{t('suite.createdBy')}</span>
+              <span className="px-2 py-2.5 text-[13px] font-semibold text-foreground/80">{t('mySkills.table.updated')}</span>
+              <span className="px-2 py-2.5 text-right text-[13px] font-semibold text-foreground/80">{t('mySkills.table.actions')}</span>
             </div>
             {skills.map((skill, idx) => (
               (() => {
@@ -399,67 +427,82 @@ export function MySkillsPage() {
                 return (
                   <Card data-analytics-id={filter === "HIDDEN" ? undefined : "skill.owned.open"}
                     key={skill.id}
-                    className={`group rounded-none border-0 border-b border-border/60 p-4 shadow-none last:border-b-0 xl:px-4 xl:py-2 animate-fade-up delay-${Math.min(idx + 1, 6)} ${filter === 'HIDDEN' ? '' : 'cursor-pointer'}`}
+                    className={`group flex flex-col gap-3 rounded-none border-0 border-b border-border/60 px-4 py-3 shadow-none transition-colors duration-150 last:border-b-0 xl:grid xl:grid-cols-[3.25rem_minmax(0,22rem)_6rem_7.5rem_11rem_11rem_minmax(0,1fr)] xl:items-center xl:gap-x-2 xl:py-3 hover:bg-secondary/40 hover:shadow-none animate-fade-up delay-${Math.min(idx + 1, 6)} ${filter === 'HIDDEN' ? '' : 'cursor-pointer'}`}
                     onClick={filter === 'HIDDEN' ? undefined : () => handleSkillClick(skill.namespace, skill.slug, preview?.version)}
                   >
-                    <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(250px,auto)] xl:items-center">
-                      <div className="min-w-0">
-                        <div className="mb-2 flex items-center gap-3 xl:mb-1">
-                          <span className="xl:hidden"><SkillAvatar name={displayName} url={skill.avatarUrl} size="h-8 w-8" /></span>
-                          <h3 className="min-w-0 break-words font-heading text-sm font-semibold group-hover:text-primary transition-colors xl:text-blue-600 dark:xl:text-blue-400">
-                            {displayName}
-                          </h3>
-                        </div>
-                        {ownerReadOnly && <p role="status" className="mb-3 text-sm text-muted-foreground">{t('mySkills.ownerReadOnly')}</p>}
-                        {skill.managementState?.promotionRole && (
-                          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span>{t(`mySkills.promotionRoles.${skill.managementState.promotionRole}`)}</span>
-                            {relatedNamespace && relatedSlug && (
-                              <button data-analytics-id="skill.related.open" type="button" className="text-primary underline underline-offset-4"
-                                onClick={event => {
-                                  event.stopPropagation()
-                                  handleSkillClick(relatedNamespace, relatedSlug)
-                                }}>
-                                {t(skill.managementState.promotionRole === 'TEAM_SOURCE' ? 'mySkills.viewGlobalCopy' : 'mySkills.viewTeamSource')}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        {skill.status === 'ACTIVE' && filter !== 'HIDDEN' && <SkillAvatarManager namespace={skill.namespace} slug={skill.slug} previewOnly />}
-                        {summary && (
-                          <p className="mb-2 line-clamp-1 text-xs leading-relaxed text-muted-foreground xl:sr-only" title={summary}>{summary}</p>
-                        )}
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                          <span className="handle-tag max-w-full break-all">@{skill.namespace}</span>
-                          <span className="flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                            </svg>
-                            {formatCompactCount(skill.downloadCount)}
-                          </span>
-                        </div>
-                        {skill.managementState?.requestedVisibility && (
-                          <p role="status" className="mt-3 text-sm text-muted-foreground">
-                            {t('skillVisibility.pendingList', { visibility: t(`skillVisibility.${skill.managementState.requestedVisibility}`) })}
-                          </p>
-                        )}
+                    <span className="hidden text-[13px] tabular-nums text-muted-foreground xl:block xl:px-2">{page * PAGE_SIZE + idx + 1}</span>
+                    <div className="min-w-0 xl:px-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="xl:hidden"><SkillAvatar name={displayName} url={skill.avatarUrl} size="h-8 w-8" /></span>
+                        <h3 className="min-w-0 break-words font-heading text-sm font-medium text-blue-600 transition-colors group-hover:text-blue-700 dark:text-blue-400 xl:truncate xl:text-[15px]">
+                          {displayName}
+                        </h3>
                       </div>
-                      <div className="grid min-w-0 grid-cols-3 items-center gap-3 text-xs text-muted-foreground">
-                        <div>
-                          {preview && publishedVersion ? (
-                            <span>{t('mySkills.versionDifference', { version: preview.version, published: publishedVersion.version })}</span>
-                          ) : headlineVersion ? <span className="font-mono">v{headlineVersion.version}</span> : '—'}
+                      {ownerReadOnly && <p role="status" className="mt-1 text-xs text-muted-foreground">{t('mySkills.ownerReadOnly')}</p>}
+                      {skill.managementState?.promotionRole && (
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{t(`mySkills.promotionRoles.${skill.managementState.promotionRole}`)}</span>
+                          {relatedNamespace && relatedSlug && (
+                            <button data-analytics-id="skill.related.open" type="button" className="text-primary underline underline-offset-4"
+                              onClick={event => {
+                                event.stopPropagation()
+                                handleSkillClick(relatedNamespace, relatedSlug)
+                              }}>
+                              {t(skill.managementState.promotionRole === 'TEAM_SOURCE' ? 'mySkills.viewGlobalCopy' : 'mySkills.viewTeamSource')}
+                            </button>
+                          )}
                         </div>
-                        <div className="space-y-1">
-                          {mainStatus && <span className={resolveStatusClassName(mainStatus)}>
+                      )}
+                      {skill.status === 'ACTIVE' && filter !== 'HIDDEN' && <SkillAvatarManager namespace={skill.namespace} slug={skill.slug} previewOnly />}
+                      {summary && (
+                        <p className="mt-1 line-clamp-1 text-xs leading-relaxed text-muted-foreground xl:sr-only" title={summary}>{summary}</p>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground xl:hidden">
+                        <span className="handle-tag max-w-full break-all">@{skill.namespace}</span>
+                        <span className="flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                          </svg>
+                          {formatCompactCount(skill.downloadCount)}
+                        </span>
+                      </div>
+                      {skill.managementState?.requestedVisibility && (
+                        <p role="status" className="mt-1.5 text-xs text-muted-foreground">
+                          {t('skillVisibility.pendingList', { visibility: t(`skillVisibility.${skill.managementState.requestedVisibility}`) })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="grid min-w-0 grid-cols-2 items-center gap-x-4 gap-y-1.5 text-xs sm:grid-cols-4 xl:contents">
+                      <div className="flex min-w-0 items-center gap-1.5 xl:block xl:px-2">
+                        <span className="shrink-0 text-[11px] text-muted-foreground xl:hidden">{t('mySkills.table.version')}</span>
+                        <span className="block truncate text-[13px] text-foreground/85">
+                          {preview && publishedVersion ? (
+                            t('mySkills.versionDifference', { version: preview.version, published: publishedVersion.version })
+                          ) : headlineVersion ? `v${headlineVersion.version}` : '—'}
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-1 xl:block xl:px-2">
+                        <span className="text-[11px] text-muted-foreground xl:hidden">{t('mySkills.table.status')}</span>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          {mainStatus && <span className={`${resolveStatusClassName(mainStatus)} !ml-0 !rounded-md !px-2.5 !py-[3px] !text-xs !font-medium ${resolveStatusToneClassName(mainStatus)}`}>
                             {hasPendingPreview && publishedVersion && mainStatus === 'PENDING_REVIEW'
                               ? t('mySkills.statusUpdatePendingReview') : resolveStatusLabel(mainStatus)}
                           </span>}
-                          <p>{t('skillVisibility.current', { visibility: t(`skillVisibility.${skill.visibility ?? 'PUBLIC'}`) })}</p>
+                          <p className="text-[11px] text-muted-foreground xl:sr-only">{t('skillVisibility.current', { visibility: t(`skillVisibility.${skill.visibility ?? 'PUBLIC'}`) })}</p>
                         </div>
-                        <span>{formatLocalDateTime(skill.updatedAt, i18n.language)}</span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                      <div className="flex min-w-0 items-center gap-1.5 xl:block xl:px-2">
+                        <span className="shrink-0 text-[11px] text-muted-foreground xl:hidden">{t('suite.createdBy')}</span>
+                        <span className="block truncate text-[13px] text-foreground/85" title={skill.ownerDisplayName ?? undefined}>
+                          {skill.ownerDisplayName ?? '—'}
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 items-center gap-1.5 xl:block xl:px-2">
+                        <span className="shrink-0 text-[11px] text-muted-foreground xl:hidden">{t('mySkills.table.updated')}</span>
+                        <span className="block truncate text-[13px] text-muted-foreground">{formatLocalDateTime(skill.updatedAt, i18n.language)}</span>
+                      </div>
+                    </div>
+                      <div className="flex flex-wrap items-center gap-2 xl:justify-end xl:px-2">
                         {canRestoreHidden ? (
                           <Button data-analytics-id="skill.restore.request"
                             size="sm"
@@ -550,13 +593,7 @@ export function MySkillsPage() {
                             {t('mySkills.archive')}
                           </Button>
                         ) : null}
-                        {filter === 'HIDDEN' ? null : (
-                          <svg className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        )}
                       </div>
-                    </div>
                   </Card>
                 )
               })()
@@ -576,7 +613,15 @@ export function MySkillsPage() {
               <Button data-analytics-id="skill.owned.clear" size="lg" variant="outline" onClick={handleClearSearch}>
                 {t('mySkills.clearSearch')}
               </Button>
-            ) : undefined
+            ) : (
+              <Button size="lg"
+                className="h-9 rounded-full bg-foreground px-4 text-xs font-medium text-background shadow-none hover:bg-foreground/90 active:scale-100"
+                onClick={() => navigate({ to: '/dashboard/publish', search: {} })}
+              >
+                <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('mySkills.publishSkill')}
+              </Button>
+            )
           }
         />
       )}

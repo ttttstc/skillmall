@@ -29,7 +29,7 @@
     "login": "Вход"
   },
   "githubCatalog": {
-    "title": "Навыки с открытым кодом", "sourceLabel": "ОТКРЫТЫЕ РЕПОЗИТОРИИ GITHUB", "description": "Изучайте навыки из общедоступных репозиториев GitHub, проверенные и опубликованные в SkillHub. Для каждого навыка доступны источник, путь, коммит и сведения о лицензии.",
+    "title": "Навыки с открытым кодом", "sourceLabel": "ОТКРЫТЫЕ РЕПОЗИТОРИИ GITHUB", "description": "Изучайте навыки из общедоступных репозиториев GitHub, проверенные и опубликованные в SkillMall. Для каждого навыка доступны источник, путь, коммит и сведения о лицензии.",
     "explore": "Смотреть открытые навыки", "allSkills": "Все навыки", "publishedCount": "Опубликованные навыки GitHub",
     "countNote": "Учитываются только опубликованные общедоступные навыки в @github.", "resultsTitle": "Каталог навыков",
     "resultsDescription": "Поиск по названию и описанию навыков в @github.", "resultCount": "Результатов: {{count}}",
@@ -78,8 +78,8 @@
       "downloads": "Загрузки",
       "teams": "Команды"
     },
-    "whySkillHub": {
-      "title": "Почему SkillHub",
+    "whySkillMall": {
+      "title": "Почему SkillMall",
       "subtitle": "Частная платформа Agent-скиллов для корпоративных команд"
     },
     "badge": "Корпоративный реестр скиллов",
@@ -121,7 +121,7 @@
     "ctaTitle": "Готовы начать?",
     "ctaDescription": "Запустите локальное окружение одной командой и пройдите полный цикл управления скиллами",
     "ctaButton": "Попробовать",
-    "footerLicense": "© 2026 SkillHub. Apache License 2.0.",
+    "footerLicense": "© 2026 SkillMall. Apache License 2.0.",
     "footerDocs": "Документация",
     "footerGithub": "GitHub",
     "footerCommunity": "Сообщество",
@@ -136,23 +136,23 @@
         "cli": "CLI"
       },
       "cli": {
-        "description": "Установите SkillHub CLI локально, чтобы выполнять skillhub install для скиллов.",
+        "description": "Установите SkillMall CLI локально, чтобы выполнять skillhub install для скиллов.",
         "command": "npm i -g @astron-team/skillhub"
       },
       "agent": {
-        "description": "Отправьте промпт своему Agent, чтобы настроить SkillHub Registry",
-        "command": "Подключите SkillHub по инструкции https://www.example.com/registry/skill.md",
-        "commandTemplate": "Подключите SkillHub по инструкции {{url}}"
+        "description": "Отправьте промпт своему Agent, чтобы настроить SkillMall Registry",
+        "command": "Подключите SkillMall по инструкции https://www.example.com/registry/skill.md",
+        "commandTemplate": "Подключите SkillMall по инструкции {{url}}"
       },
       "human": {
-        "description": "Используйте SkillHub CLI для поиска и установки Skills",
+        "description": "Используйте SkillMall CLI для поиска и установки Skills",
         "command": "npx @astron-team/skillhub@latest search <keyword> --registry https://www.example.com",
         "commandTemplate": "npx @astron-team/skillhub@latest search <keyword> --registry {{url}}"
       },
       "steps": {
         "configureEnv": {
           "title": "1. Настройте переменные окружения",
-          "description": "Настройте ClawHub CLI для подключения к SkillHub"
+          "description": "Настройте ClawHub CLI для подключения к SkillMall"
         },
         "installSkills": {
           "title": "2. Установите скиллы",
@@ -191,44 +191,6 @@
         "title": "Полный жизненный цикл скилла — от регистрации до распространения",
         "description": "Единая платформа для публикации, ревью, распространения и управления, а не просто хранилище пакетов."
       },
-      "enterprise": {
-        "title": "Для команд и предприятий",
-        "description": "Self-hosting, контроль доступа, ревью и аудит в одном реестре.",
-        "clientLayer": "Клиенты",
-        "serviceLayer": "Сервис",
-        "storageLayer": "Хранилище",
-        "networkBoundary": "Развёртывайте внутри организации и контролируйте данные реестра",
-        "deployment": {
-          "title": "Self-hosted развёртывание",
-          "description": "Запускайте SkillHub в своей инфраструктуре через Docker Compose или предоставленные Kubernetes-манифесты с локальным либо S3-совместимым хранилищем."
-        },
-        "security": {
-          "title": "Проверка и ревью",
-          "description": "Проверка пакетов, сканирование безопасности и процессы ревью помогают оценивать скиллы до публикации."
-        },
-        "rbac": {
-          "title": "Многоуровневый RBAC",
-          "description": "Роли платформы и пространства имён разделяют глобальное администрирование и владение команды."
-        },
-        "access": {
-          "title": "Гибкий доступ",
-          "description": "OAuth2 и локальные аккаунты поддерживают вход в браузере, а API-токены — программный доступ."
-        },
-        "audit": {
-          "title": "Аудит",
-          "description": "Ключевые операции публикации, загрузки, удаления и авторизации сохраняются для последующего анализа."
-        },
-        "openSource": {
-          "title": "Открытый код",
-          "description": "Код доступен по лицензии Apache-2.0 для проверки, самостоятельного размещения и участия сообщества."
-        }
-      },
-      "cta": {
-        "title": "Создайте реестр скиллов своей команды",
-        "description": "Изучите исходный код и руководство по развёртыванию, затем запустите SkillHub в своей среде.",
-        "deploy": "Исходный код",
-        "docs": "Документация"
-      },
       "quickStart": {
         "title": "Выберите способ доступа",
         "description": "Используйте один реестр через Agent, CLI или веб-интерфейс.",
@@ -245,17 +207,17 @@
           "registryTab": "Настройка Registry",
           "discoveryTab": "Неявный поиск",
           "live": "Agent онлайн",
-          "instruction": "Прочитайте {{url}} и следуйте инструкции для настройки SkillHub Skills Registry",
+          "instruction": "Прочитайте {{url}} и следуйте инструкции для настройки SkillMall Skills Registry",
           "instructionLead": "Скопируйте инструкцию и отправьте её своему Agent",
           "instructionPrefix": "Прочитайте",
-          "instructionSuffix": "и следуйте ей для настройки SkillHub Skills Registry.",
+          "instructionSuffix": "и следуйте ей для настройки SkillMall Skills Registry.",
           "copyInstruction": "Копировать инструкцию",
           "copyErrorDescription": "Выделите и скопируйте инструкцию настройки Registry вручную.",
           "steps": { "read": "Прочитать руководство", "configure": "Настроить Registry", "discover": "Находить скиллы по запросу" },
           "prompt": "Какая сегодня погода в Хэфэе?",
           "discovery": {
             "intentTitle": "Определить задачу", "intentDescription": "Нужны погода и совет для поездки",
-            "searchTitle": "Поиск в SkillHub Registry", "searchDescription": "Найден @global/weather · v1.3.0",
+            "searchTitle": "Поиск в SkillMall Registry", "searchDescription": "Найден @global/weather · v1.3.0",
             "readTitle": "Прочитать инструкции", "readDescription": "Проверить входные данные и способ вызова"
           },
           "answerLead": "Сегодня в Хэфэе облачно, 26°C",
@@ -280,9 +242,36 @@
       }
     }
   },
+  "domainTree": {
+    "ascend": "Ascend",
+    "kunpeng": "Kunpeng",
+    "yueying": "Yueying",
+    "design": "Дизайн",
+    "testing": "Тестирование",
+    "itEquipment": "ИТ-оборудование",
+    "projectManagement": "Управление проектами",
+    "other": "Другое"
+  },
   "home": {
     "domainTitle": "Скиллы по областям",
     "domainUnavailable": "Разделение по областям пока недоступно",
+    "domain": {
+      "subtitle": "Самые полезные скиллы в каждой области",
+      "viewAll": "Смотреть все",
+      "tabs": {
+        "design": "Дизайн",
+        "development": "Разработка",
+        "testing": "Тестирование",
+        "engineering": "Инженерия",
+        "projectManagement": "Управление проектами",
+        "other": "Другое"
+      }
+    },
+    "popular": {
+      "title": "Популярные скиллы",
+      "tabs": { "recommend": "Для вас" },
+      "viewAll": "Смотреть все"
+    },
     "subtitle": "Реестр скиллов",
     "description": "Эффективная платформа управления, распространения и совместной работы со скиллами для разработчиков",
     "browseSkills": "Обзор скиллов",
@@ -323,12 +312,12 @@
     "quickStart": {
       "title": "Быстрый старт",
       "subtitle": "Быстрый старт",
-      "description": "Начните работу с SkillHub за несколько простых шагов",
+      "description": "Начните работу с SkillMall за несколько простых шагов",
       "tip": "💡 Совет: на странице скилла есть команды установки в один клик с переменными окружения",
       "steps": {
         "configureEnv": {
           "title": "1. Настройте переменные окружения",
-          "description": "Настройте ClawHub CLI для подключения к SkillHub"
+          "description": "Настройте ClawHub CLI для подключения к SkillMall"
         },
         "installSkills": {
           "title": "2. Установите скиллы",
@@ -380,7 +369,7 @@
     "clear": "Очистить поиск"
   },
   "login": {
-    "title": "Вход в SkillHub",
+    "title": "Вход в SkillMall",
     "subtitle": "Один аккаунт для удобной совместной работы с навыками",
     "eyebrow": "С возвращением",
     "tabEnterprise": "Вход через организацию",
@@ -391,7 +380,7 @@
     "enterpriseConfigHint": "Рабочие способы входа включает администратор.",
     "noEnterpriseMethods": "Рабочий вход пока недоступен. Используйте личный аккаунт или обратитесь к администратору.",
     "personalTitle": "Вход по паролю",
-    "personalHint": "Используйте имя пользователя и пароль SkillHub.",
+    "personalHint": "Используйте имя пользователя и пароль SkillMall.",
     "otherMethods": "Или войдите через",
     "orgLoginHint": "Для организаций с настроенным единым входом",
     "externalIdentityMethods": "Внешние источники идентификации",
@@ -413,7 +402,7 @@
     "register": "Зарегистрироваться",
     "oauthHint": "После аутентификации OAuth вы будете автоматически перенаправлены обратно на этот сайт.",
     "enterpriseSsoTitle": "Корпоративный SSO",
-    "enterpriseSsoHint": "В этом развёртывании включён слой совместимости. Если в браузере уже есть сессия {{name}}, можно попробовать сразу установить сессию SkillHub.",
+    "enterpriseSsoHint": "В этом развёртывании включён слой совместимости. Если в браузере уже есть сессия {{name}}, можно попробовать сразу установить сессию SkillMall.",
     "enterpriseSsoAutoHint": "В этом развёртывании включено автоматическое зондирование {{name}}. Если оно не сработает, продолжайте стандартными способами входа.",
     "enterpriseSsoAction": "Попробовать {{name}}",
     "enterpriseSsoSubmitting": "Пробуем {{name}}...",
@@ -1558,6 +1547,16 @@
     "tabInstall": "Установка",
     "tabVersionHistory": "История версий",
     "installUnavailable": "Команды установки ещё не проверены локально и пока недоступны.",
+    "installTabCommand": "Установка из командной строки",
+    "installTabManual": "Ручная установка",
+    "manualInstallExtractTitle": "Распаковать",
+    "manualInstallExtractDescription": "Распакуйте скачанный архив в локальную папку",
+    "manualInstallPlaceTitle": "Запуск",
+    "manualInstallPlaceDescription": "Поместите распакованную папку навыка в каталог навыков вашего агента",
+    "installHelperText": "Скопируйте инструкцию агенту — он установит этот навык",
+    "downloadZip": "Скачать .zip",
+    "filesPreviewEmpty": "Выберите файл слева, чтобы посмотреть содержимое",
+    "openFileFullscreen": "Открыть во весь экран",
     "tabOverview": "Обзор",
     "tabFiles": "Файлы",
     "tabVersions": "Версии",
@@ -1599,7 +1598,7 @@
     "suiteMembershipMore": "Показано {{shown}} из {{total}} наборов. Остальные результаты доступны через API с пагинацией.",
     "suiteMembershipUnavailable": "Сейчас недоступно",
     "installMethodClawhub": "ClawHub CLI",
-    "installMethodSkillhub": "SkillHub CLI",
+    "installMethodSkillhub": "SkillMall CLI",
     "installCommandUnsafeVersion": "Номер этой версии нельзя безопасно использовать в кроссплатформенной команде. Попросите автора исправить его.",
     "download": "Скачать",
     "labelsSectionTitle": "Метки",
@@ -1806,7 +1805,7 @@
     "installForAgent": {
       "button": "Установить для агента",
       "copied": "Инструкция скопирована",
-      "prompt": "Следуйте инструкции {{guideUrl}}, чтобы подключить SkillHub и установить {{skill}} версии {{version}} из этого SkillHub."
+      "prompt": "Следуйте инструкции {{guideUrl}}, чтобы подключить SkillMall и установить {{skill}} версии {{version}} из этого SkillMall."
     }
   },
   "skillCompare": {
@@ -2111,6 +2110,17 @@
     "close": "Закрыть"
   },
   "error": {
+    "gitcode": {
+      "url.invalid": "URL должен быть адресом репозитория GitCode, напр. https://gitcode.com/owner/repo",
+      "unreachable": "Не удалось подключиться к GitCode. Повторите позже.",
+      "rateLimited": "GitCode ограничивает частоту запросов. Повторите через минуту.",
+      "repo.notFound": "Репозиторий не найден или не является публичным.",
+      "skillMd.notFound": "В этом пути нет SKILL.md.",
+      "skillAmbiguous": "В репозитории несколько навыков. Выберите каталог для импорта.",
+      "version.invalid": "Версия может содержать только буквы, цифры, . - + _ и быть не длиннее 64 символов.",
+      "tooLarge": "Репозиторий превышает лимит размера для импорта.",
+      "tooManyFiles": "В репозитории больше файлов, чем допускает лимит импорта."
+    },
     "auth": {
       "local": {
         "invalidCredentials": "Неверное имя пользователя или пароль",
@@ -2160,7 +2170,7 @@
     "community": "Сообщество",
     "privacy": "Политика конфиденциальности",
     "terms": "Условия использования",
-    "copyright": "© 2026 SkillHub. Apache-2.0."
+    "copyright": "© 2026 SkillMall. Apache-2.0."
   },
   "layout": {
     "openNavigation": "Открыть меню навигации",
@@ -2173,13 +2183,13 @@
     "loginWith": "Войти через {{name}}"
   },
   "authShell": {
-    "eyebrow": "SkillHub",
+    "eyebrow": "SkillMall",
     "backHome": "На главную",
     "heroTitle": "Открывайте и сохраняйте\nнавыки вашей команды",
     "heroSubtitle": "Начните с SKILL.md.\nПревратите опыт в доступный команде навык.",
     "heroFooter": "Собирайте знания команды и раскрывайте ценность навыков",
     "shortTagline": "Навыки\nобъединяют\nкоманду",
-    "capabilities": "Возможности SkillHub",
+    "capabilities": "Возможности SkillMall",
     "discoverTitle": "Поиск навыков",
     "discoverDescription": "Находите навыки и практики, которые команда может использовать повторно.",
     "shareTitle": "Обмен знаниями",
@@ -2263,6 +2273,32 @@
     "goToPage": "Перейти на страницу {{page}}"
   },
   "publish": {
+    "source": {
+      "local": "Локальная загрузка",
+      "repo": "Импорт из репозитория"
+    },
+    "back": "Назад",
+    "repoAddress": "Адрес репозитория",
+    "repoAddressPlaceholder": "https://gitcode.com/owner/repo",
+    "repoInspectFailed": "Не удалось прочитать репозиторий. Проверьте адрес и повторите.",
+    "repoMultipleSkills": "В репозитории несколько навыков. Выберите каталог для импорта.",
+    "stepAddress": "Адрес",
+    "stepPreview": "Просмотр файлов",
+    "stepBasic": "Основная информация",
+    "next": "Далее",
+    "prev": "Назад",
+    "repoMetadata": "Метаданные скилла",
+    "repoName": "Название",
+    "repoDescription": "Описание",
+    "repoDirectory": "Каталог для импорта",
+    "repoSubmit": "Отправить на проверку",
+    "repoPreviewEmpty": "Не удалось прочитать SKILL.md этого каталога.",
+    "repoPreviewSkillMdOnly": "Здесь отображается только SKILL.md; остальные файлы смотрите в GitCode.",
+    "repoUrlRequired": "Введите адрес репозитория",
+    "repoUrlInvalid": "Неверный адрес, например https://gitcode.com/owner/repo",
+    "repoUrlHost": "Поддерживаются только публичные репозитории GitCode (gitcode.com).",
+    "repoVersion": "Версия",
+    "repoVersionHint": "В SKILL.md нет версии — укажите версию для публикации.",
     "retryPackagePreview": "Повторить",
     "packageName": "Имя в пакете",
     "displayName": "Отображаемое имя",
@@ -2277,7 +2313,7 @@
     "examplesInvalid": "Формат примеров не распознан. Файл сохранится как обычный файл; публикация доступна.",
     "packagePreviewFailed": "Не удалось прочитать пакет. Проверьте SKILL.md и выберите пакет снова или повторите попытку.",
     "title": "Опубликовать скилл",
-    "subtitle": "Загрузить пакет скилла в SkillHub",
+    "subtitle": "Загрузить пакет скилла в SkillMall",
     "directPublishNotice": {
       "title": "Прямая публикация",
       "description": "Пакеты, опубликованные как «Публичный» или «Только пространство имён», становятся доступны сразу после проверки пакета: их можно искать, просматривать и скачивать. Сканирование безопасности и проверка администратора больше не являются условием публикации."
@@ -2537,6 +2573,9 @@
       "INFO": "Инфо"
     },
     "notEvaluatedTitle": "Не оценено",
+    "statusSafe": "Безопасно",
+    "viewRiskReport": "Открыть отчёт о рисках",
+    "notEvaluatedHint": "В этом релизе автоматическая оценка безопасности недоступна",
     "notEvaluatedDescription": "В этом первом выпуске автоматическая оценка безопасности не предоставляется. «Не оценено» означает отсутствие результата, а не пройденную или непройденную проверку безопасности."
   },
   "skillCard": {
@@ -2983,7 +3022,7 @@
       },
       "noMembers": "Нет прогресса участников.",
       "cancelConfirmTitle": "Остановить создание набора?",
-      "cancelConfirmDescription": "SkillHub перестанет ждать участников и не создаст черновик набора. Уже созданные версии навыков и задачи проверки останутся и не будут отозваны.",
+      "cancelConfirmDescription": "SkillMall перестанет ждать участников и не создаст черновик набора. Уже созданные версии навыков и задачи проверки останутся и не будут отозваны.",
       "cancelConfirmAction": "Остановить создание набора",
       "cancelledTitle": "Создание набора остановлено",
       "cancelledDescription": "Задача сохранена в истории. Созданные версии навыков и проверки не отзываются и не удаляются.",

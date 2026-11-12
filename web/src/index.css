@@ -569,8 +569,8 @@
 
 /* ─── Upload zone ─── */
 .upload-zone {
-  border: 2px dashed hsl(var(--border));
-  background: hsl(var(--background));
+  border: 1px dashed hsl(var(--border));
+  background: hsl(var(--muted) / 0.35);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 

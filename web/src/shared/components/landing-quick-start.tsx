@@ -5,6 +5,7 @@ import { buildApiUrl, WEB_API_PREFIX } from '@/api/client'
 import { copyToClipboard, useCopyToClipboard } from '@/shared/lib/clipboard'
 import { resolvePublicRegistryUrl } from '@/shared/lib/registry-url'
 import { toast } from '@/shared/lib/toast'
+import { DecoratedSectionTitle } from '@/shared/components/section-title'
 
 type AccessMode = 'agent' | 'cli' | 'web'
 type AgentView = 'registry' | 'discovery'
@@ -357,10 +358,10 @@ export function LandingQuickStartSection() {
     <section id="quickstart" className="relative z-10 w-full overflow-hidden bg-secondary/70 px-6 py-16 md:py-20">
       <div className="absolute inset-0 bg-dots opacity-40" aria-hidden />
       <div className="relative mx-auto max-w-6xl">
-        <div className="mb-12 max-w-3xl">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t('landing.quickStart.title')}</p>
-          <h2 className="mb-4 text-3xl font-medium tracking-tight text-foreground md:text-4xl">{t('landing.experience.quickStart.title')}</h2>
-          <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">{t('landing.experience.quickStart.description')}</p>
+        <div className="mb-12">
+          <DecoratedSectionTitle title={t('landing.quickStart.title')} />
+          <h3 className="mt-4 text-center text-xl font-medium tracking-tight text-foreground md:text-2xl">{t('landing.experience.quickStart.title')}</h3>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed text-muted-foreground">{t('landing.experience.quickStart.description')}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-12">

@@ -2,6 +2,7 @@ import type { SkillSummary } from '@/api/types'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/use-auth'
 import { useStarredIdSet } from '@/features/social/use-star'
+import { cn } from '@/shared/lib/utils'
 import { Card } from '@/shared/ui/card'
 import { NamespaceBadge } from '@/shared/components/namespace-badge'
 import { SkillAvatar } from './skill-avatar'
@@ -39,8 +40,13 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
   return (
     <Card
       data-analytics-id={isInteractive ? analyticsId : undefined}
-      className="group relative h-full min-w-0 cursor-pointer overflow-hidden rounded-md border border-border/60 bg-card p-4 text-card-foreground transition-[transform,box-shadow,border-color] duration-150 ease-out card-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15"
-      style={{ borderColor: 'hsl(var(--border-card))', boxShadow: 'var(--shadow-card)' }}
+      className={cn(
+        'group relative h-full min-w-0 cursor-pointer overflow-hidden rounded-xl bg-card text-card-foreground transition-[transform,box-shadow,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15',
+        market
+          ? 'border border-border/40 p-5 shadow-[0_2px_6px_rgba(0,0,0,0.05)] hover:-translate-y-px hover:shadow-[0_8px_20px_rgba(0,0,0,0.10)]'
+          : 'card-hover border border-border/60 p-4',
+      )}
+      style={market ? undefined : { borderColor: 'hsl(var(--border-card))', boxShadow: 'var(--shadow-card)' }}
       onClick={onClick}
       onKeyDown={(event) => {
         if (!isInteractive) {
@@ -57,7 +63,7 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
     >
       <div className="flex h-full flex-col">
         <div className="mb-3 flex min-w-0 items-start gap-3">
-          <div className={market ? `${avatarTone} [&>span]:text-neutral-900` : undefined}><SkillAvatar name={skill.displayName} url={skill.avatarUrl} /></div>
+          <div className={market ? `${avatarTone} [&>span]:text-neutral-900` : undefined}><SkillAvatar name={skill.displayName} url={skill.avatarUrl} size={market ? 'h-[42px] w-[42px]' : undefined} /></div>
           <div className="min-w-0 flex-1">
             <h3
               className="line-clamp-2 text-base font-semibold [overflow-wrap:anywhere] group-hover:text-primary transition-colors duration-150"

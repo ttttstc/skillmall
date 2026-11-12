@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { Store } from 'lucide-react'
 import { SkillListRow } from '@/features/skill/skill-list-row'
 import { Pagination } from '@/shared/components/pagination'
 import { useMyStarsPage } from '@/shared/hooks/use-user-queries'
@@ -32,7 +33,7 @@ export function MyStarsPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-up">
+    <div className="space-y-6 animate-fade-up">
       <DashboardPageHeader title={t('stars.title')} subtitle={t('stars.subtitle')} />
 
       {isError ? (
@@ -41,11 +42,16 @@ export function MyStarsPage() {
       ) : !skills || skills.length === 0 ? (
         <EmptyState
           title={t('stars.empty')}
-          action={<Button data-analytics-id="navigation.skills.open" onClick={() => navigate({ to: '/search', search: { q: '', sort: 'relevance', page: 0, starredOnly: false } })}>{t('landing.hero.exploreSkills')}</Button>}
+          action={<Button data-analytics-id="navigation.skills.open"
+            className="h-9 rounded-full bg-foreground px-4 text-xs font-medium text-background shadow-none hover:bg-foreground/90 active:scale-100"
+            onClick={() => navigate({ to: '/search', search: { q: '', sort: 'relevance', page: 0, starredOnly: false } })}>
+            <Store className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('home.browseSkills')}
+          </Button>}
         />
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-border/70 bg-card divide-y divide-border/60">
+          <div className="overflow-hidden rounded-xl border border-border/70 bg-card divide-y divide-border/50">
             {skills.map((skill) => (
               <SkillListRow analyticsId="skill.card.open"
                 key={skill.id}

@@ -3,12 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { Shield } from 'lucide-react'
 import { Card } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/ui/dialog'
 import { toast } from '@/shared/lib/toast'
 import { useRetrySecurityScan, useSecurityAudits } from './use-security-audit'
 import { getSecurityAuditDisplayState } from './display-state'
 import { VerdictBadge } from './verdict-badge'
-import { SecurityAuditSection } from './security-audit-section'
+import { SecurityAuditDialog } from './security-audit-dialog'
 
 interface SecurityAuditSummaryProps {
   skillId: number
@@ -73,17 +72,13 @@ export function SecurityAuditSummary({ skillId, versionId, versionStatus, canRet
         </Button>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent closeAnalyticsId="security.scan.close" className="w-[min(calc(100vw-2rem),48rem)] max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>{t('securityAudit.title')}</DialogTitle>
-            <DialogDescription>{t('securityAudit.dialogDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="-mx-8 -mb-8 overflow-y-auto overscroll-contain px-8 pb-8">
-            <SecurityAuditSection skillId={skillId} versionId={versionId} versionStatus={versionStatus} bare />
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SecurityAuditDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        skillId={skillId}
+        versionId={versionId}
+        versionStatus={versionStatus}
+      />
     </>
   )
 }

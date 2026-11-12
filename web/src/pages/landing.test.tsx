@@ -17,10 +17,17 @@ vi.mock('react-i18next', async () => {
 
 vi.mock('lucide-react', () => ({
   ArrowRight: () => null,
+  Bookmark: () => null,
   CheckCircle2: () => null,
+  ClipboardList: () => null,
   Clock3: () => null,
+  Code2: () => null,
   Copy: () => null,
+  Download: () => null,
+  FlaskConical: () => null,
   PackageOpen: () => null,
+  Palette: () => null,
+  Shapes: () => null,
   Terminal: () => null,
   Shield: () => null,
   Users: () => null,
@@ -30,10 +37,17 @@ vi.mock('lucide-react', () => ({
   Search: () => null,
   Server: () => null,
   Settings: () => null,
+  Wrench: () => null,
 }))
 
 vi.mock('@/shared/components/landing-quick-start', () => ({
   LandingQuickStartSection: () => null,
+}))
+
+// The home discovery section owns its own data and interactions now, so the page only has to
+// place it.
+vi.mock('@/features/home/popular-skills', () => ({
+  PopularSkillsSection: () => <div>popular-skills-section</div>,
 }))
 
 vi.mock('@/features/skill/skill-card', () => ({
@@ -51,31 +65,9 @@ vi.mock('@/shared/hooks/use-home-discovery', () => ({
     isError: false,
     refetch: vi.fn(),
   }),
-  // The windowed ranking returns one row whose windowed count is unknown, so the page has to
-  // decide what to show for it: nothing, rather than a borrowed cumulative total.
-  useHomeRanking: (type: string) => ({
+  useHomeRanking: () => ({
     data: {
-      type,
-      items:
-        type === 'recent-popular'
-          ? [
-              {
-                skill: {
-                  id: 1,
-                  slug: 'slug-1',
-                  displayName: 'Alpha',
-                  namespace: 'team',
-                  downloadCount: 4200,
-                  starCount: 0,
-                  ratingCount: 0,
-                  updatedAt: '2026-11-01T00:00:00Z',
-                  canSubmitPromotion: false,
-                },
-                windowDownloadCount: null,
-                firstPublishedAt: null,
-              },
-            ]
-          : [],
+      items: [],
     },
     isLoading: false,
     isError: false,
@@ -109,13 +101,16 @@ describe('LandingPage', () => {
   it('renders the brand name in the hero section', () => {
     const html = renderToStaticMarkup(<LandingPage />)
 
-    expect(html).toContain('SkillHub')
+    expect(html).toContain('SkillMall')
     expect(html).toContain('landing.hero.mallSubtitle')
     expect(html).toContain('landing.hero.searchPlaceholder')
   })
 
-  it('shows the three rankings instead of the old popular and latest grids', () => {
+  it('delegates the popular skills block to its own section instead of hosting the grids and rankings', () => {
     const html = renderToStaticMarkup(<LandingPage />)
+
+    // "推荐 Skills" and the three side-by-side rankings moved into PopularSkillsSection.
+    expect(html).toContain('popular-skills-section')
 
     // The page used to spend this space on two grids titled "热门下载" / "最新发布".
     expect(html).not.toContain('home.popularTitle')
@@ -123,19 +118,38 @@ describe('LandingPage', () => {
     expect(html).not.toContain('discovery.popular.open')
     expect(html).not.toContain('discovery.latest.open')
 
-    expect(html).toContain('home.ranking.recent.title')
-    expect(html).toContain('home.ranking.cumulative.title')
-    expect(html).toContain('home.ranking.newest.title')
-    expect(html).toContain('discovery.ranking.recent')
-    expect(html).toContain('discovery.ranking.cumulative')
-    expect(html).toContain('discovery.ranking.newest')
+    expect(html).not.toContain('home.ranking.recent.title')
+    expect(html).not.toContain('home.ranking.cumulative.title')
+    expect(html).not.toContain('home.ranking.newest.title')
+    expect(html).not.toContain('discovery.ranking.recent')
+    expect(html).not.toContain('discovery.ranking.cumulative')
+    expect(html).not.toContain('discovery.ranking.newest')
+    // The windowed download figure lived on those rows, so it left with them.
+    expect(html).not.toContain('home.ranking.windowDownloads')
   })
 
-  it('renders no window figure for a row whose windowed count is unknown', () => {
+  it('renders the UCD domain tabs with sample rows instead of the unavailable placeholder', () => {
     const html = renderToStaticMarkup(<LandingPage />)
 
-    // The row has 4200 cumulative downloads; the 7-day number is unknown, so nothing is shown.
-    expect(html).toContain('Alpha')
-    expect(html).not.toContain('home.ranking.windowDownloads')
+    for (const domain of ['design', 'development', 'testing', 'engineering', 'projectManagement', 'other']) {
+      expect(html).toContain(`home.domain.tabs.${domain}`)
+    }
+    expect(html).toContain('home.domain.subtitle')
+    expect(html).toContain('home.domain.viewAll')
+    expect(html).toContain('discovery.domain.tab')
+    expect(html).not.toContain('home.domainUnavailable')
+    // The default tab is 设计, so its first sample row is on screen.
+    expect(html).toContain('delta-design-usecase-generator')
+  })
+
+  it('no longer renders the enterprise section or the chapters below it', () => {
+    const html = renderToStaticMarkup(<LandingPage />)
+
+    expect(html).not.toContain('landing.experience.enterprise')
+    expect(html).not.toContain('landing.experience.cta')
+    expect(html).not.toContain('navigation.repository.open')
+    expect(html).not.toContain('navigation.documentation.open')
+    // The capability grid and quick start sit above the removed sections and stay.
+    expect(html).toContain('landing.experience.capabilities.title')
   })
 })

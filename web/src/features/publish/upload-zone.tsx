@@ -74,39 +74,34 @@ export function UploadZone({ onFileSelect, onFolderSelect, disabled, analyticsId
         data-analytics-id={disabled ? undefined : analyticsId}
         data-analytics-event={!disabled && analyticsId ? 'click+keydown+drop' : undefined}
         className={cn(
-          'upload-zone flex min-h-[240px] flex-col justify-center rounded-xl p-10 text-center cursor-pointer transition-all duration-300 md:min-h-[360px]',
+          'upload-zone flex min-h-[260px] flex-col justify-center rounded-md p-10 text-center cursor-pointer transition-all duration-300 md:min-h-[420px]',
           className,
-          isDragActive && 'border-primary bg-primary/5 scale-[1.01]',
+          isDragActive && 'border-primary bg-primary/5',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
         <input {...getInputProps()} aria-label={t('upload.dragHint')} data-analytics-id={disabled ? undefined : analyticsId} />
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-secondary/60 flex items-center justify-center">
-            <svg
-              className={cn(
-                'w-7 h-7 upload-zone-icon transition-colors',
-                isDragActive && 'text-primary'
-              )}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
-          </div>
+        <div className="flex flex-col items-center gap-4">
+          <svg
+            className={cn(
+              'h-6 w-6 upload-zone-icon transition-colors',
+              isDragActive && 'text-primary'
+            )}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+          </svg>
           {isDragActive ? (
             <p className="text-sm text-primary font-medium">{t('upload.dropHint')}</p>
           ) : (
-            <>
+            <div className="space-y-1.5">
               <p className="text-sm font-medium text-foreground">{t('upload.dragHint')}</p>
               <p className="text-xs text-muted-foreground">{t('upload.formatHint')}</p>
-            </>
+            </div>
           )}
         </div>
       </div>

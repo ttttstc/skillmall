@@ -1,9 +1,10 @@
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Loader2, LayoutGrid, List } from 'lucide-react'
+import { Loader2, LayoutGrid, List, RefreshCw, X } from 'lucide-react'
 import type { SkillSummary } from '@/api/types'
 import { useAuth } from '@/features/auth/use-auth'
+import { DomainTree } from '@/features/search/domain-tree'
 import { SearchBar } from '@/features/search/search-bar'
 import { SkillCard } from '@/features/skill/skill-card'
 import { SkillListRow } from '@/features/skill/skill-list-row'
@@ -14,11 +15,27 @@ import { useSearchSkills } from '@/shared/hooks/use-skill-queries'
 import { useVisibleLabels } from '@/shared/hooks/use-label-queries'
 import { useMyStars } from '@/shared/hooks/use-user-queries'
 import { toRouterPath } from '@/shared/lib/base-path'
+import { cn } from '@/shared/lib/utils'
 import { formatNamespaceSearchInput, normalizeSearchQuery, parseNamespaceSearchInput } from '@/shared/lib/search-query'
 import { Button } from '@/shared/ui/button'
 import { APP_SHELL_PAGE_CLASS_NAME } from '@/app/page-shell-style'
 
 const PAGE_SIZE = 12
+
+/**
+ * Ordering tabs. Only the orderings the registry can actually serve are offered: relevance,
+ * install count and newest. The UCD comp also shows "all" and "popular" tabs, which would map to
+ * the same two orderings here, so they stay out until the search API can back them.
+ */
+const SORT_OPTIONS = [
+  { value: 'relevance', labelKey: 'search.sort.relevance' },
+  { value: 'downloads', labelKey: 'search.sort.downloads' },
+  { value: 'newest', labelKey: 'search.sort.newest' },
+] as const
+
+const RAIL_ITEM_CLASS_NAME = 'h-9 w-full justify-start rounded-lg px-2.5 text-sm font-normal'
+const RAIL_ITEM_ACTIVE_CLASS_NAME = 'border-transparent bg-muted text-foreground shadow-none hover:bg-muted hover:text-foreground'
+const CHIP_CLASS_NAME = 'h-7 min-w-0 gap-1 rounded-md border-0 bg-secondary px-2 text-xs font-normal text-secondary-foreground shadow-none hover:bg-secondary/70'
 
 function blurActiveElement() {
   if (typeof document === 'undefined' || typeof HTMLElement === 'undefined') {
@@ -234,188 +251,231 @@ export function SearchPage() {
   const resultCount = starredOnly
     ? filteredStarredSkills.length
     : (data?.total ?? 0)
+  const selectedLabelName = labels?.find((label) => label.slug === selectedLabel)?.displayName ?? selectedLabel
+  const hasActiveFilters = Boolean(selectedLabel || namespace || starredOnly)
 
   return (
     <div className={APP_SHELL_PAGE_CLASS_NAME}>
-      {/* Page Heading */}
+      {/* Page Heading: title + result count share one baseline, as in the UCD. */}
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
           {t('search.allSkillsTitle')}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           {resultCount > 0 ? t('search.results', { count: resultCount }) : t('search.allSkillsHint')}
         </p>
       </div>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[236px_minmax(0,1fr)]">
-        <aside className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-start lg:gap-1" aria-label={t('search.filters.label')}>
-          <span className="w-full px-3 py-2 text-sm font-medium text-muted-foreground">{t('search.filters.label')}</span>
-          <Button data-analytics-id="search.starred.filter"
-            className="justify-start lg:w-full"
-            variant={starredOnly ? 'default' : 'outline'}
-            size="sm"
-            onClick={handleStarredToggle}
-          >
-            {t('search.filterStarred')}
-          </Button>
-          {!starredOnly && labels?.map((label) => (
-            <Button data-analytics-id="search.label.filter"
-              className="justify-start lg:w-full"
-              key={label.slug}
-              variant={selectedLabel === label.slug ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleLabelToggle(label.slug)}
-            >
-              {label.displayName}
-            </Button>
-          ))}
-          {namespace ? (
-            <Button data-analytics-id="search.namespace.clear"
-              className="justify-start lg:w-full"
-              variant="default"
-              size="sm"
-              onClick={handleNamespaceClear}
-            >
-              {t('search.namespaceFilter', { namespace })}
-            </Button>
-          ) : null}
-          <div className="w-full border-t border-border/60 px-3 pt-4 lg:mt-3">
-            <p className="text-sm font-medium text-foreground">{t('home.domainTitle')}</p>
-            <p className="mt-2 text-xs text-muted-foreground">{t('home.domainUnavailable')}</p>
+      <div className="grid items-start gap-3 lg:grid-cols-[236px_minmax(0,1fr)]">
+        {/* Left column: domain tree on top, the filters the registry can actually serve below it. */}
+        <aside className="min-w-0 space-y-3" aria-label={t('home.domainTitle')}>
+          <DomainTree />
+
+          <div className="border-t border-border/60 pt-3" role="group" aria-label={t('search.filters.label')}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button data-analytics-id="search.starred.filter"
+                className={cn(RAIL_ITEM_CLASS_NAME, starredOnly && RAIL_ITEM_ACTIVE_CLASS_NAME)}
+                variant={starredOnly ? 'default' : 'outline'}
+                size="sm"
+                onClick={handleStarredToggle}
+              >
+                {t('search.filterStarred')}
+              </Button>
+              {!starredOnly && labels?.map((label) => (
+                <Button data-analytics-id="search.label.filter"
+                  className={cn(RAIL_ITEM_CLASS_NAME, selectedLabel === label.slug && RAIL_ITEM_ACTIVE_CLASS_NAME)}
+                  key={label.slug}
+                  variant={selectedLabel === label.slug ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleLabelToggle(label.slug)}
+                >
+                  {label.displayName}
+                </Button>
+              ))}
+            </div>
           </div>
         </aside>
 
-      <div className="min-w-0 space-y-4">
-      {/* Sort And Filters */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">{t('search.sort.label')}</span>
-            <div className="flex max-w-full flex-wrap gap-2">
-              <Button data-analytics-id="search.sort.relevance"
-                variant={sort === 'relevance' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleSortChange('relevance')}
-              >
-                {t('search.sort.relevance')}
-              </Button>
-              <Button data-analytics-id="search.sort.downloads"
-                variant={sort === 'downloads' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleSortChange('downloads')}
-              >
-                {t('search.sort.downloads')}
-              </Button>
-              <Button data-analytics-id="search.sort.newest"
-                variant={sort === 'newest' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleSortChange('newest')}
-              >
-                {t('search.sort.newest')}
-              </Button>
-            </div>
-          </div>
+        <div className="min-w-0 space-y-5">
+          {/* One toolbar row: ordering tabs, search field, applied-filter chips, view switch. */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <div className="flex max-w-full flex-wrap gap-2">
+                  {SORT_OPTIONS.map((option) => (
+                    <Button data-analytics-id={
+                      option.value === 'relevance'
+                        ? 'search.sort.relevance'
+                        : option.value === 'downloads'
+                          ? 'search.sort.downloads'
+                          : 'search.sort.newest'
+                    }
+                      key={option.value}
+                      className="rounded-full px-4"
+                      variant={sort === option.value ? 'default' : 'outline'}
+                      onClick={() => handleSortChange(option.value)}
+                    >
+                      {t(option.labelKey)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="w-64 max-w-full">
-            <SearchBar analyticsId="search.query.submit"
-              value={queryInput}
-              isSearching={isUpdatingResults}
-              onChange={setQueryInput}
-              onSearch={handleSearch}
-            />
-          </div>
-          <div
-            className="flex items-center gap-1 rounded-lg border border-border p-0.5"
-            role="group"
-            aria-label={t('search.viewToggleLabel')}
-          >
-            <Button data-analytics-id="search.view.grid"
-              variant={view === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              aria-pressed={view === 'grid'}
-              aria-label={t('search.viewGrid')}
-              title={t('search.viewGrid')}
-              onClick={() => handleViewChange('grid')}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button data-analytics-id="search.view.list"
-              variant={view === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              aria-pressed={view === 'list'}
-              aria-label={t('search.viewList')}
-              title={t('search.viewList')}
-              onClick={() => handleViewChange('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-          </div>
-        </div>
-
-        {isUpdatingResults ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>{t('search.loadingMore')}</span>
-          </div>
-        ) : null}
-
-      </div>
-
-      {/* Results */}
-      {resultsError ? (
-        <LoadError onRetry={retryResults} />
-      ) : isPageLoading ? (
-        <SkeletonList count={PAGE_SIZE} />
-      ) : displayItems.length > 0 ? (
-        <>
-          {view === 'list' ? (
-            <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-[var(--shadow-card)] [&>div+div]:border-t [&>div+div]:border-border/60" data-testid="skill-list-view">
-              {displayItems.map((skill, idx) => (
-                <div key={skill.id} className={`animate-fade-up delay-${Math.min(idx % 6 + 1, 6)}`}>
-                  <SkillListRow analyticsId="skill.card.open"
-                    skill={skill}
-                    highlightStarred
-                    onClick={() => handleSkillClick(skill.namespace, skill.slug)}
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <div className="w-[210px] max-w-full">
+                  <SearchBar analyticsId="search.query.submit"
+                    appearance="toolbar"
+                    value={queryInput}
+                    isSearching={isUpdatingResults}
+                    onChange={setQueryInput}
+                    onSearch={handleSearch}
                   />
                 </div>
-              ))}
+
+                {/* Applied filters, each removable in place. Rendered only when a filter is on:
+                    an always-visible but inert box would read as a dead control. */}
+                {hasActiveFilters ? (
+                  <div
+                    className="flex h-9 w-[208px] max-w-full items-center gap-1 overflow-hidden rounded-lg border border-border bg-card px-1.5"
+                    role="group"
+                    aria-label={t('search.filters.label')}
+                  >
+                    {namespace ? (
+                      <Button data-analytics-id="search.namespace.clear"
+                        className={CHIP_CLASS_NAME}
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleNamespaceClear}
+                      >
+                        <span className="truncate">{t('search.namespaceFilter', { namespace })}</span>
+                        <X aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
+                      </Button>
+                    ) : null}
+                    {selectedLabel ? (
+                      <Button className={CHIP_CLASS_NAME}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleLabelToggle(selectedLabel)}
+                      >
+                        <span className="truncate">{selectedLabelName}</span>
+                        <X aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
+                      </Button>
+                    ) : null}
+                    {starredOnly ? (
+                      <Button className={CHIP_CLASS_NAME}
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleStarredToggle}
+                      >
+                        <span className="truncate">{t('search.filterStarred')}</span>
+                        <X aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div
+                  className="ml-1 flex shrink-0 items-center gap-0.5 rounded-lg bg-muted p-0.5"
+                  role="group"
+                  aria-label={t('search.viewToggleLabel')}
+                >
+                  <Button data-analytics-id="search.view.list"
+                    className={cn(
+                      'h-8 w-8 rounded-md px-0',
+                      view === 'list' ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground hover:bg-background/60',
+                    )}
+                    variant="ghost"
+                    size="sm"
+                    aria-pressed={view === 'list'}
+                    aria-label={t('search.viewList')}
+                    title={t('search.viewList')}
+                    onClick={() => handleViewChange('list')}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button data-analytics-id="search.view.grid"
+                    className={cn(
+                      'h-8 w-8 rounded-md px-0',
+                      view === 'grid' ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground hover:bg-background/60',
+                    )}
+                    variant="ghost"
+                    size="sm"
+                    aria-pressed={view === 'grid'}
+                    aria-label={t('search.viewGrid')}
+                    title={t('search.viewGrid')}
+                    onClick={() => handleViewChange('grid')}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
+
+            {isUpdatingResults ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{t('search.loadingMore')}</span>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Results */}
+          {resultsError ? (
+            <LoadError onRetry={retryResults} />
+          ) : isPageLoading ? (
+            <SkeletonList count={PAGE_SIZE} />
+          ) : displayItems.length > 0 ? (
+            <>
+              {view === 'list' ? (
+                <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-[var(--shadow-card)] [&>div+div]:border-t [&>div+div]:border-border/60" data-testid="skill-list-view">
+                  {displayItems.map((skill, idx) => (
+                    <div key={skill.id} className={`animate-fade-up delay-${Math.min(idx % 6 + 1, 6)}`}>
+                      <SkillListRow analyticsId="skill.card.open"
+                        skill={skill}
+                        highlightStarred
+                        onClick={() => handleSkillClick(skill.namespace, skill.slug)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="skill-grid-view">
+                  {displayItems.map((skill, idx) => (
+                    <div key={skill.id} className={`h-full animate-fade-up delay-${Math.min(idx % 6 + 1, 6)}`}>
+                      <SkillCard analyticsId="skill.card.open"
+                        skill={skill}
+                        market
+                        highlightStarred
+                        onClick={() => handleSkillClick(skill.namespace, skill.slug)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {page + 1 < totalPages && (
+                <div className="flex justify-center">
+                  <Button className="gap-2 px-3 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    variant="ghost"
+                    onClick={handleLoadMore}
+                    disabled={isFetching || isFetchingStarred}
+                  >
+                    {isUpdatingResults ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    {t('search.loadMore')}
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="skill-grid-view">
-              {displayItems.map((skill, idx) => (
-                <div key={skill.id} className={`h-full animate-fade-up delay-${Math.min(idx % 6 + 1, 6)}`}>
-                  <SkillCard analyticsId="skill.card.open"
-                    skill={skill}
-                    market
-                    highlightStarred
-                    onClick={() => handleSkillClick(skill.namespace, skill.slug)}
-                  />
-                </div>
-              ))}
-            </div>
+            <EmptyState
+              title={starredOnly ? t('search.noStarredResults') : t('search.noResults')}
+              description={
+                starredOnly
+                  ? (q ? t('search.noStarredResultsFor', { q }) : t('search.noStarredSkills'))
+                  : (q ? t('search.noResultsFor', { q }) : undefined)
+              }
+            />
           )}
-          {page + 1 < totalPages && (
-            <div className="flex justify-center">
-              <Button variant="ghost" onClick={handleLoadMore} disabled={isFetching || isFetchingStarred}>
-                {isUpdatingResults && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t('search.loadMore')}
-              </Button>
-            </div>
-          )}
-        </>
-      ) : (
-        <EmptyState
-          title={starredOnly ? t('search.noStarredResults') : t('search.noResults')}
-          description={
-            starredOnly
-              ? (q ? t('search.noStarredResultsFor', { q }) : t('search.noStarredSkills'))
-              : (q ? t('search.noResultsFor', { q }) : undefined)
-          }
-        />
-      )}
-      </div>
+        </div>
       </div>
     </div>
   )
