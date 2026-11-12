@@ -318,6 +318,11 @@
     }
   },
   "home": {
+    "popular": {
+      "title": "인기 Skills",
+      "tabs": { "recommend": "추천" },
+      "viewAll": "더 보기"
+    },
     "domainTitle": "분야별 Skills",
     "domainViewAll": "전체 보기",
     "domainAll": "전체 분야",

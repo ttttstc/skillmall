@@ -37,6 +37,7 @@ vi.mock('lucide-react', () => ({
   Clock3: () => null,
   Copy: () => null,
   PackageOpen: () => null,
+  RefreshCw: () => null,
   Terminal: () => null,
   Shield: () => null,
   Users: () => null,
@@ -181,41 +182,35 @@ describe('LandingPage', () => {
     expect(html).toContain('landing.hero.searchPlaceholder')
   })
 
-  it('keeps the upstream registry label in the self-hosting diagram', () => {
+  it('shows the four switching tabs of the discovery block instead of stacked rankings', () => {
     resetRecommendationFixture()
     const html = renderToStaticMarkup(<LandingPage />)
 
-    // Deploying the SkillHub open-source project on your infrastructure is still SkillHub:
-    // the market brand must not be pasted over the project the market is built on.
-    expect(html).toContain('SkillHub<br/>Registry')
-    expect(html).toContain('https://github.com/iflytek/skillhub')
-  })
-
-  it('shows the three rankings instead of the old popular and latest grids', () => {
-    resetRecommendationFixture()
-    const html = renderToStaticMarkup(<LandingPage />)
-
-    // The page used to spend this space on two grids titled "热门下载" / "最新发布".
-    expect(html).not.toContain('home.popularTitle')
-    expect(html).not.toContain('home.latestTitle')
-    expect(html).not.toContain('discovery.popular.open')
-    expect(html).not.toContain('discovery.latest.open')
-
+    // The discovery block is one section with four tabs; the three rankings no longer render side
+    // by side, and the old "热门下载" / "最新发布" grids stay retired.
+    expect(html).toContain('home.popular.title')
+    expect(html).toContain('discovery.popular.tab')
+    expect(html).toContain('home.popular.tabs.recommend')
     expect(html).toContain('home.ranking.recent.title')
     expect(html).toContain('home.ranking.cumulative.title')
     expect(html).toContain('home.ranking.newest.title')
-    expect(html).toContain('discovery.ranking.recent')
-    expect(html).toContain('discovery.ranking.cumulative')
-    expect(html).toContain('discovery.ranking.newest')
+    expect(html).toContain('home.popular.viewAll')
+
+    expect(html).not.toContain('discovery.ranking.recent')
+    expect(html).not.toContain('discovery.ranking.cumulative')
+    expect(html).not.toContain('discovery.ranking.newest')
+    expect(html).not.toContain('home.popularTitle')
+    expect(html).not.toContain('home.latestTitle')
   })
 
-  it('renders no window figure for a row whose windowed count is unknown', () => {
+  it('keeps the ranking figures out of the default recommendation tab', () => {
     resetRecommendationFixture()
     const html = renderToStaticMarkup(<LandingPage />)
 
-    // The row has 4200 cumulative downloads; the 7-day number is unknown, so nothing is shown.
-    expect(html).toContain('Alpha')
+    // Rankings render only when their tab is selected, so no download-window figure leaks into the
+    // default view; the row-level formatting is owned by the discovery hook contracts.
     expect(html).not.toContain('home.ranking.windowDownloads')
+    expect(html).not.toContain('home.ranking.totalDownloads')
   })
 
   it('keeps the SkillMall brand while recommendations are loading', () => {
