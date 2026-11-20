@@ -281,6 +281,11 @@
     }
   },
   "home": {
+    "popular": {
+      "title": "Популярные скиллы",
+      "tabs": { "recommend": "Для вас" },
+      "viewAll": "Смотреть все"
+    },
     "domainTitle": "Скиллы по областям",
     "domainViewAll": "Смотреть все",
     "domainAll": "Все области",

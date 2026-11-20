@@ -281,6 +281,11 @@
     }
   },
   "home": {
+    "popular": {
+      "title": "热门 Skills",
+      "tabs": { "recommend": "为你推荐" },
+      "viewAll": "查看更多"
+    },
     "domainTitle": "领域 Skills",
     "domainViewAll": "查看更多",
     "domainAll": "全部领域",

@@ -281,6 +281,11 @@
     }
   },
   "home": {
+    "popular": {
+      "title": "Popular Skills",
+      "tabs": { "recommend": "For you" },
+      "viewAll": "View all"
+    },
     "domainTitle": "Skills by domain",
     "domainViewAll": "View all",
     "domainAll": "All domains",
