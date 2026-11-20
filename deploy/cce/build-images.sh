@@ -44,6 +44,9 @@ OUTPUT_FLAG=""
 REGISTRY=""
 TAG="${TAG:-}"
 MAVEN_SETTINGS_FILE="${MAVEN_SETTINGS:-}"
+# 基础镜像仓库前缀。默认走 docker.io；国内/私有环境改成 SWR 前缀即可，
+# 因为四个 Dockerfile 都已用 `ARG BASE_REGISTRY` 声明并用于 FROM。
+BASE_REGISTRY="${BASE_REGISTRY:-docker.io/library}"
 WEB_VITE_BASE_PATH_VALUE="${WEB_VITE_BASE_PATH:-}"
 IMAGE_SOURCE="${IMAGE_SOURCE:-https://github.com/iflytek/skillhub}"
 PROVENANCE="${BUILD_PROVENANCE:-false}"
@@ -51,6 +54,9 @@ IMAGE_REVISION=""
 IMAGE_REFERENCE=""
 COMPONENTS=()
 BUILD_ARGS=()
+# buildx = 支持多平台/--push/--provenance；classic = 只有经典 docker build + docker push。
+# 由 check_prerequisites 探测后决定，保证没有 buildx 的构建机（如 CodeArts）也能出镜像。
+BUILDER_KIND=""
 
 info() { printf '%s\n' "$*"; }
 warn() { printf '警告: %s\n' "$*" >&2; }
@@ -73,8 +79,12 @@ usage() {
                       docker login -u <region>@<AK> --password-stdin <registry>。
                       密码是登录密钥 hex(HMAC-SHA256(key=SK, msg=AK))，需要 openssl，
                       不落盘、不回显。未提供时沿用本机已有 docker 凭证（先手工 docker login）。
-  MAVEN_SETTINGS      可选。server 用的 Maven settings.xml 路径，以
-                      --secret id=maven_settings,src=<文件> 传给构建（server/Dockerfile 已支持）。
+  BASE_REGISTRY       可选。基础镜像仓库前缀，默认 docker.io/library。
+                      四个 Dockerfile 都用 ARG BASE_REGISTRY 声明并用于 FROM，
+                      国内/私有环境改成 swr.<region>.myhuaweicloud.com/<org> 即可
+                      （先从 docker.io 镜像化一次，见 runtime-mirror-images.cce.txt）。
+  MAVEN_SETTINGS      **已不再生效**：server/Dockerfile 为此兼容经典 builder 去掉了
+                      --mount=type=secret，传了只会告警。内网 Maven 请改用制品前置方案。
   WEB_VITE_BASE_PATH  可选。web 的 VITE_BASE_PATH 构建参数；不设则保留镜像内占位值。
   IMAGE_SOURCE        可选。镜像 org.opencontainers.image.source 标签，默认仓库地址。
   BUILD_PROVENANCE    可选。buildx provenance（证明）开关，默认 false：
@@ -324,9 +334,13 @@ check_prerequisites() {
 
   if ((DRY_RUN == 1)); then
     if ! require_command docker; then
-      warn "未找到 docker：--dry-run 仍会打印命令，但真实构建需要 docker CLI + buildx 插件"
-    elif ! docker buildx version >/dev/null 2>&1; then
-      warn "docker buildx 不可用：真实构建会失败（Docker Desktop 自带，Linux 需安装 buildx 插件）"
+      warn "未找到 docker：--dry-run 仍会打印命令，但真实构建需要 docker CLI"
+      BUILDER_KIND=buildx
+    elif docker buildx version >/dev/null 2>&1; then
+      BUILDER_KIND=buildx
+    else
+      BUILDER_KIND=classic
+      warn "docker buildx 不可用：将使用经典 docker build（单平台、无 attestation）"
     fi
     return 0
   fi
@@ -334,9 +348,16 @@ check_prerequisites() {
   require_command docker || die "未找到 docker CLI：请安装 Docker 并确认 docker info 可用"
   docker info >/dev/null 2>&1 \
     || die "docker daemon 不可用（docker info 失败）：请启动 Docker Desktop / dockerd，并确认当前用户有访问权限"
-  docker buildx version >/dev/null 2>&1 \
-    || die "docker buildx 不可用：请安装 buildx 插件（Docker Desktop 自带；Linux 见 https://docs.docker.com/build/install-buildx/）"
-  if ((PLATFORM_COUNT > 1)); then
+  if docker buildx version >/dev/null 2>&1; then
+    BUILDER_KIND=buildx
+  else
+    BUILDER_KIND=classic
+    if ((PLATFORM_COUNT > 1)); then
+      die "未安装 buildx：经典 docker build 只支持单平台，但 PLATFORMS=${PLATFORMS}。请只用单平台，或安装 buildx"
+    fi
+    warn "docker buildx 不可用，改用经典 docker build + docker push（单平台、无 attestation、无缓存挂载）"
+  fi
+  if ((PLATFORM_COUNT > 1)) && [[ "$BUILDER_KIND" == "buildx" ]]; then
     check_builder_driver || true
   fi
 }
@@ -397,14 +418,22 @@ build_args() {
   repository="$(component_repository "$component")"
   image="$(image_reference "$component")"
 
-  BUILD_ARGS=(docker buildx build)
+  BUILD_ARGS=()
+  if [[ "$BUILDER_KIND" == "classic" ]]; then
+    BUILD_ARGS+=(docker build)
+  else
+    BUILD_ARGS+=(docker buildx build)
+  fi
   BUILD_ARGS+=(--file "$dockerfile")
   BUILD_ARGS+=(--tag "$image")
-  BUILD_ARGS+=(--platform "$PLATFORMS")
-  if [[ "$PROVENANCE" != "skip" ]]; then
-    BUILD_ARGS+=(--provenance "$PROVENANCE")
+  BUILD_ARGS+=(--build-arg "BASE_REGISTRY=${BASE_REGISTRY}")
+  if [[ "$BUILDER_KIND" != "classic" ]]; then
+    BUILD_ARGS+=(--platform "$PLATFORMS")
+    if [[ "$PROVENANCE" != "skip" ]]; then
+      BUILD_ARGS+=(--provenance "$PROVENANCE")
+    fi
+    BUILD_ARGS+=("$OUTPUT_FLAG")
   fi
-  BUILD_ARGS+=("$OUTPUT_FLAG")
   BUILD_ARGS+=(--label "org.opencontainers.image.title=${repository}")
   BUILD_ARGS+=(--label "org.opencontainers.image.version=${TAG}")
   BUILD_ARGS+=(--label "org.opencontainers.image.source=${IMAGE_SOURCE}")
@@ -415,7 +444,10 @@ build_args() {
   case "$component" in
     server)
       if [[ -n "$MAVEN_SETTINGS_FILE" ]]; then
-        BUILD_ARGS+=(--secret "id=maven_settings,src=${MAVEN_SETTINGS_FILE}")
+        # server/Dockerfile 已去 BuildKit 化（不再有 RUN --mount=type=secret），
+        # 传 --secret 不会生效；这里显式告警而不是静默丢弃，避免误以为内网仓库已生效。
+        warn "MAVEN_SETTINGS 已不再生效：server/Dockerfile 去掉了 --mount secret（为兼容经典 builder）"
+        warn "  如需内网 Maven，请改用「制品前置」：宿主/CI 先 mvn package，再让镜像只 COPY 产物"
       fi
       ;;
     web)
@@ -447,7 +479,7 @@ print_failure_hints() {
     printf '  6. 磁盘/缓存：docker system df；必要时 docker buildx prune\n'
     case "$component" in
       server)
-        printf '  7. server：Maven 依赖下载失败时用 MAVEN_SETTINGS=<settings.xml> 传入私有仓库配置\n'
+        printf '  7. server：Maven 依赖下载失败时，先用 BASE_REGISTRY 指向 SWR 基础镜像；\n      MAVEN_SETTINGS 已不再生效（见 help），内网仓库需改用制品前置方案\n'
         ;;
       web)
         printf '  7. web：pnpm 安装失败时配置 npm 镜像或代理；只改前端基路径时用 WEB_VITE_BASE_PATH 复用缓存层\n'
@@ -473,15 +505,32 @@ build_image() {
     return 0
   fi
 
+  local output_desc
+  if [[ "$BUILDER_KIND" == "classic" ]]; then
+    if ((PUSH == 1)); then output_desc="docker push"; else output_desc="仅本地（不推送）"; fi
+  else
+    output_desc="$OUTPUT_FLAG"
+  fi
+
   info ""
   info "==> [${component}] ${image}"
-  info "    Dockerfile: $(component_dockerfile "$component")  上下文: $(component_context "$component")/  平台: ${PLATFORMS}  输出: ${OUTPUT_FLAG}"
+  info "    Dockerfile: $(component_dockerfile "$component")  上下文: $(component_context "$component")/  平台: ${PLATFORMS}  构建器: ${BUILDER_KIND}  输出: ${output_desc}"
 
   started=$SECONDS
   if ! "${BUILD_ARGS[@]}"; then
     print_failure_hints "$component" "$image"
     return 1
   fi
+
+  # 经典 builder 没有 --push，需要单独推送
+  if [[ "$BUILDER_KIND" == "classic" ]] && ((PUSH == 1)); then
+    info "    ==> 推送 ${image}"
+    if ! docker push "$image"; then
+      print_failure_hints "$component" "$image"
+      return 1
+    fi
+  fi
+
   info "    ✓ 完成（$((SECONDS - started))s）"
 }
 
@@ -528,8 +577,9 @@ main() {
   else
     info "  推送: 否（--load 到本地 docker）"
   fi
+  info "  基础镜像前缀: ${BASE_REGISTRY}"
   if [[ -n "$MAVEN_SETTINGS_FILE" ]]; then
-    info "  Maven settings: ${MAVEN_SETTINGS_FILE}（以 --secret 传入，不打印内容）"
+    info "  Maven settings: ${MAVEN_SETTINGS_FILE}（注意：已不再传入，见告警）"
   fi
 
   if ((DRY_RUN == 1)); then

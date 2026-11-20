@@ -141,6 +141,15 @@ export SWR_REGION=cn-north-4 SWR_ORGANIZATION=<org> TAG=v0.2.14
 ./deploy/cce/build-images.sh --only github-sync
 ```
 
+> **基础镜像**：四个 Dockerfile 都用 `ARG BASE_REGISTRY` 声明基础镜像前缀，默认
+> `docker.io/library`。国内构建机常拉不到 docker.io，先把基础镜像同步到 SWR
+> （`runtime-mirror-images.cce.txt` 已列出 7 个），然后：
+> `export BASE_REGISTRY=swr.<REGION>.myhuaweicloud.com/<ORG>`。
+>
+> **不需要 buildx**：四个 Dockerfile 已去掉 `FROM --platform` 与 `RUN --mount`
+> （CodeArts 的经典 builder 不认这些），脚本检测不到 buildx 时会自动退回
+> `docker build` + `docker push`（单平台）。代价见 [codearts/README.md](codearts/README.md#41-经典-builder-兼容刻意不用-buildkit)。
+
 OBS 存储是后端新增能力，**必须用本分支代码构建的 server 镜像**，历史发布镜像不支持 `provider=obs`。
 
 第三方镜像（busybox，内置库路径还需要 Bitnami PG/Redis）镜像化到 SWR：

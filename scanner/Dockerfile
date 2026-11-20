@@ -1,4 +1,6 @@
-FROM python:3.11-slim-bookworm
+# 基础镜像可用 --build-arg BASE_REGISTRY=... 覆盖以从 SWR 拉取（经典 builder 兼容）。
+ARG BASE_REGISTRY=docker.io/library
+FROM ${BASE_REGISTRY}/python:3.11-slim-bookworm
 
 WORKDIR /app
 

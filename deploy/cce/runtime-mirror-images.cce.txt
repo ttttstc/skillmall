@@ -44,6 +44,25 @@
 
 # source_image target_image
 
+# --- 必选：构建期基础镜像（国内构建机常拉不到 docker.io）----------------------
+# 四个 Dockerfile 都用 `ARG BASE_REGISTRY` 声明基础镜像前缀；先同步到 SWR，构建时传：
+#   BASE_REGISTRY=swr.<region>.myhuaweicloud.com/<org>
+# 这里用 tag 而不是 digest：Dockerfile 里引用的就是 tag，两边必须一致；
+# 若要锁死不可变引用，请同时把 Dockerfile 的 tag 改成 digest。
+docker.io/library/eclipse-temurin:21-jdk-alpine eclipse-temurin:21-jdk-alpine
+
+docker.io/library/eclipse-temurin:21-jre-noble eclipse-temurin:21-jre-noble
+
+docker.io/library/node:22-alpine node:22-alpine
+
+docker.io/library/nginx:alpine nginx:alpine
+
+docker.io/library/python:3.11-slim-bookworm python:3.11-slim-bookworm
+
+docker.io/library/golang:1.27.3-alpine3.24 golang:1.27.3-alpine3.24
+
+docker.io/library/alpine:3.24.2 alpine:3.24.2
+
 # --- 必选：server 的依赖等待 initContainer（CCE 节点通常无法直连 docker.io）----
 docker.io/library/busybox:1.37@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec busybox:1.37
 

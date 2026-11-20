@@ -99,6 +99,40 @@ CodeArts 支持把构建任务写成仓库内的配置文件（代码化构建�
 `bash deploy/cce/codearts/build.sh`）作为对应步骤的内容即可，脚本本身就是唯一事实来源；
 需要我补 YAML 的话，给我一份你们实例的官方示例或文档链接即可对齐。
 
+## 4.1 经典 builder 兼容（刻意不用 BuildKit）
+
+CodeArts 的「镜像构建」步骤（`external_docker_builder`）用的是**经典 docker builder**，
+不认识 `FROM --platform` 和 `RUN --mount=type=secret`，会直接报
+`Dockerfile parse error: Unknown flag: mount`。
+
+因此四个 Dockerfile 已改为不使用任何 BuildKit 专有语法：
+
+- 去掉 `FROM --platform=$BUILDPLATFORM`（构建机架构即镜像架构）
+- 去掉 `RUN --mount=type=secret`（内网 Maven settings 不再注入）
+- 基础镜像统一写成 `ARG BASE_REGISTRY=docker.io/library` + `FROM ${BASE_REGISTRY}/...`
+
+于是 `docker build`（经典 builder）可以直接构建，**不需要 buildx**。
+
+国内/私有环境建议先把基础镜像同步到 SWR（清单见
+[`../runtime-mirror-images.cce.txt`](../runtime-mirror-images.cce.txt)），再传：
+
+```bash
+docker build --build-arg BASE_REGISTRY=swr.<region>.myhuaweicloud.com/<org> ...
+```
+
+`build-images.sh` 与 `codearts/build.sh` 会自动带上这个 build-arg（环境变量 `BASE_REGISTRY`）。
+
+### 副作用（必须知道）
+
+| 能力 | 改造前 | 改造后 |
+|---|---|---|
+| 多架构（如 arm64） | 支持 | **不支持**；需要 buildx 并恢复 `--platform` |
+| 内网 Maven settings 注入 | BuildKit secret | **不支持**；`MAVEN_SETTINGS` 只会告警（改用制品前置） |
+| 构建缓存 | 依赖 `--mount` 缓存 | 每次全量执行 `mvnw` / `pnpm build` |
+
+如果以后必须恢复多架构或内网 Maven，正确做法是回到 buildx（`build-images.sh` 本来就支持），
+而不是把 BuildKit 语法加回这四个 Dockerfile——那会让 CodeArts 的镜像构建步骤再次失败。
+
 ## 5. 常见失败与排查
 
 | 现象 | 原因与处理 |
