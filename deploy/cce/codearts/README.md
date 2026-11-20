@@ -120,3 +120,43 @@ CodeArts 支持把构建任务写成仓库内的配置文件（代码化构建�
 3. 用目标镜像跑一次 `kubectl -n skillhub set image` 滚动更新，并确认
    `kubectl -n skillhub rollout status deployment/skillhub-server` 完成；
 4. 再做业务闭环（登录 → 发布 → 扫描 → 下载）。
+
+## 7. 用「镜像构建」步骤时的字段填法
+
+CodeArts 的「制作镜像并推送到 SWR」步骤里，**Dockerfile 路径按「工作目录」解析**，
+两个字段最容易被配成「目录 + 目录」，拼出不存在的路径。两种等价写法，任选其一。
+
+**写法 A（推荐）：工作目录为仓库根，Dockerfile 相对仓库根**
+
+| 镜像 | 工作目录 | Dockerfile 路径 | 构建上下文 |
+|---|---|---|---|
+| `skillmall-server` | `.`（或留空＝仓库根） | `server/Dockerfile` | `server` |
+| `skillmall-web` | `.`（或留空） | `web/Dockerfile` | `web` |
+| `skillmall-scanner` | `.`（或留空） | `scanner/Dockerfile` | `scanner` |
+
+**写法 B：工作目录为组件目录，Dockerfile 只写文件名**
+
+| 镜像 | 工作目录 | Dockerfile 路径 | 构建上下文 |
+|---|---|---|---|
+| `skillmall-server` | `server` | `Dockerfile` | `.` |
+| `skillmall-web` | `web` | `Dockerfile` | `.` |
+| `skillmall-scanner` | `scanner` | `Dockerfile` | `.` |
+
+两个必须守住的不变式：
+
+1. **Dockerfile 路径必须以 `Dockerfile` 结尾**（docker 的 `-f` 要的是文件，不是目录）；
+2. **构建上下文必须是组件子目录**（`server/`、`web/`、`scanner/`），不能是仓库根
+   —— 三个 Dockerfile 的 `COPY` 都相对组件目录写（`COPY pom.xml .`、`COPY package.json ...`、
+   `COPY skillhub_scanner_app.py ...`）。
+
+### 对应报错
+
+| 报错 | 含义与修法 |
+|---|---|
+| `unable to prepare context: unable to evaluate symlinks in Dockerfile path: lstat .../server/server: no such file or directory` | 工作目录已在 `server/` 内，Dockerfile 路径又填了 `server` → 拼成 `server/server`。改成写法 B 的 `Dockerfile`，或改用写法 A |
+| `failed to compute cache key: "/pom.xml" not found` | 上下文填成了仓库根。上下文必须填 `server` |
+| `"/package.json" not found` / `"/pnpm-lock.yaml" not found` | 同上，web 的上下文必须是 `web` |
+| `failed to read dockerfile: open /var/lib/docker/tmp/...: no such file` | Dockerfile 路径写错或大小写不符（Linux 区分大小写） |
+
+**更省事的方式**：不用「镜像构建」步骤，改用「执行shell命令」跑
+`bash deploy/cce/codearts/build.sh`，工作目录保持默认，路径全部由脚本处理（见第 3 节）。
