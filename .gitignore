@@ -32,6 +32,11 @@ yarn-error.log*
 .memory/
 *.local.json
 
+# CCE deployment — real secrets and local-only values never get committed
+deploy/cce/secrets-cce.yaml
+deploy/cce/*.local.yaml
+deploy/cce/*.local.secret.yaml
+
 # Java / Spring Boot
 .gradle/
 build/

@@ -10,7 +10,7 @@ spec:
   replicas: {{ .Values.server.replicaCount }}
   {{- end }}
   strategy:
-    {{- if and (not .Values.s3.enabled) (ne .Values.server.storage.accessMode "ReadWriteMany") }}
+    {{- if and (not .Values.s3.enabled) (not .Values.obs.enabled) (ne .Values.server.storage.accessMode "ReadWriteMany") }}
     type: Recreate
     {{- else }}
     type: RollingUpdate
@@ -63,7 +63,7 @@ spec:
               echo "Redis is ready!"
       containers:
         - name: server
-          image: {{ .Values.server.image.registry | default .Values.images.registry }}/skillhub-server:{{ .Values.server.image.tag | default .Values.images.tag | default (printf "v%s" .Chart.AppVersion) }}
+          image: {{ .Values.server.image.registry | default .Values.images.registry }}/skillmall-server:{{ .Values.server.image.tag | default .Values.images.tag | default (printf "v%s" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.images.pullPolicy }}
           ports:
             - containerPort: {{ .Values.server.service.port }}
@@ -278,6 +278,61 @@ spec:
                   optional: true
             {{- end }}
 
+            {{- if .Values.obs.enabled }}
+            - name: SKILLHUB_STORAGE_OBS_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-bucket
+            - name: SKILLHUB_STORAGE_OBS_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-endpoint
+            - name: SKILLHUB_STORAGE_OBS_PUBLIC_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-public-endpoint
+            - name: SKILLHUB_STORAGE_OBS_PRESIGN_EXPIRY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-presign-expiry
+            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-credential-mode
+            - name: SKILLHUB_STORAGE_OBS_METADATA_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-metadata-url
+            - name: SKILLHUB_STORAGE_OBS_METADATA_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-metadata-timeout
+            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_TTL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "skillhub.fullname" . }}-config
+                  key: obs-credential-ttl
+            - name: SKILLHUB_STORAGE_OBS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "skillhub.secretName" . }}
+                  key: skillhub-storage-obs-access-key
+                  optional: true
+            - name: SKILLHUB_STORAGE_OBS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "skillhub.secretName" . }}
+                  key: skillhub-storage-obs-secret-key
+                  optional: true
+            {{- end }}
+
             # Scanner
             - name: SKILLHUB_SECURITY_SCANNER_ENABLED
               valueFrom:
@@ -451,7 +506,7 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
-          {{- if and .Values.server.enabled (not .Values.s3.enabled) }}
+          {{- if and .Values.server.enabled (not .Values.s3.enabled) (not .Values.obs.enabled) }}
           volumeMounts:
             - name: skillhub-storage
               mountPath: /var/lib/skillhub/storage
@@ -467,7 +522,7 @@ spec:
           livenessProbe:
             {{- toYaml .Values.server.probes.liveness | nindent 12 }}
 
-      {{- if and .Values.server.enabled (not .Values.s3.enabled) }}
+      {{- if and .Values.server.enabled (not .Values.s3.enabled) (not .Values.obs.enabled) }}
       volumes:
         - name: skillhub-storage
           persistentVolumeClaim:

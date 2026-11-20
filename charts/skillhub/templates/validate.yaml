@@ -75,7 +75,7 @@
 {{- if .Values.server.autoscaling.enabled -}}
 {{- $localStorageReplicas = .Values.server.autoscaling.maxReplicas | int -}}
 {{- end -}}
-{{- if and (not .Values.s3.enabled) (gt $localStorageReplicas 1) -}}
+{{- if and (not .Values.s3.enabled) (not .Values.obs.enabled) (gt $localStorageReplicas 1) -}}
 {{- if not .Values.server.storage.accessMode -}}
 {{- fail "local storage with multiple server replicas requires server.storage.accessMode=ReadWriteMany and an RWX-capable StorageClass; use S3 otherwise" -}}
 {{- end -}}
@@ -119,6 +119,34 @@
 {{- end -}}
 {{- if and .Values.s3.publicEndpoint (not (regexMatch $absoluteHttpUrlPattern .Values.s3.publicEndpoint)) -}}
 {{- fail "s3.publicEndpoint must be an absolute HTTP(S) URL" -}}
+{{- end -}}
+
+{{- if and .Values.s3.enabled .Values.obs.enabled -}}
+{{- fail "s3.enabled and obs.enabled are mutually exclusive: choose one object storage provider" -}}
+{{- end -}}
+{{- if .Values.obs.enabled -}}
+{{- if not .Values.obs.bucket -}}
+{{- fail "obs.enabled=true requires obs.bucket (the OBS bucket must be pre-created; the application does not create buckets)" -}}
+{{- end -}}
+{{- if not .Values.obs.endpoint -}}
+{{- fail "obs.enabled=true requires obs.endpoint, e.g. https://obs.cn-north-4.myhuaweicloud.com" -}}
+{{- end -}}
+{{- if not (regexMatch $absoluteHttpUrlPattern .Values.obs.endpoint) -}}
+{{- fail "obs.endpoint must be an absolute HTTP(S) URL" -}}
+{{- end -}}
+{{- if and .Values.obs.publicEndpoint (not (regexMatch $absoluteHttpUrlPattern .Values.obs.publicEndpoint)) -}}
+{{- fail "obs.publicEndpoint must be an absolute HTTP(S) URL" -}}
+{{- end -}}
+{{- if eq .Values.obs.credentialMode "static" -}}
+{{- if and (not .Values.obs.accessKey) (not .Values.existingSecret) -}}
+{{- fail "obs.credentialMode=static requires obs.accessKey/obs.secretKey or existingSecret containing skillhub-storage-obs-access-key and skillhub-storage-obs-secret-key" -}}
+{{- end -}}
+{{- end -}}
+{{- if ne .Values.obs.credentialMode "static" -}}
+{{- if not (regexMatch $absoluteHttpUrlPattern .Values.obs.metadataUrl) -}}
+{{- fail "obs.metadataUrl must be an absolute HTTP(S) URL when temporary credentials are used" -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{- if .Values.githubSync.enabled -}}

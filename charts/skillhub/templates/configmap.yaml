@@ -15,8 +15,14 @@ data:
   # 存储路径
   storage-base-path: "/var/lib/skillhub/storage"
 
-  # 存储提供者: local | s3
-  skillhub-storage-provider: {{ if .Values.s3.enabled }}"s3"{{ else }}"local"{{ end }}
+  # 存储提供者: local | s3 | obs（s3 与 obs 互斥）
+  {{- $storageProvider := "local" }}
+  {{- if .Values.obs.enabled }}
+  {{- $storageProvider = "obs" }}
+  {{- else if .Values.s3.enabled }}
+  {{- $storageProvider = "s3" }}
+  {{- end }}
+  skillhub-storage-provider: {{ $storageProvider | quote }}
 
   {{- if .Values.s3.enabled }}
   # S3 配置
@@ -28,6 +34,18 @@ data:
   s3-disable-chunked-encoding: {{ .Values.s3.disableChunkedEncoding | quote }}
   s3-auto-create-bucket: {{ .Values.s3.autoCreateBucket | quote }}
   s3-presign-expiry: {{ .Values.s3.presignExpiry | quote }}
+  {{- end }}
+
+  {{- if .Values.obs.enabled }}
+  # 华为云 OBS 配置（原生 SDK；桶需预创建）
+  obs-bucket: {{ .Values.obs.bucket | quote }}
+  obs-endpoint: {{ .Values.obs.endpoint | quote }}
+  obs-public-endpoint: {{ .Values.obs.publicEndpoint | quote }}
+  obs-presign-expiry: {{ .Values.obs.presignExpiry | quote }}
+  obs-credential-mode: {{ .Values.obs.credentialMode | quote }}
+  obs-metadata-url: {{ .Values.obs.metadataUrl | quote }}
+  obs-metadata-timeout: {{ .Values.obs.metadataTimeout | quote }}
+  obs-credential-ttl: {{ .Values.obs.credentialTtl | quote }}
   {{- end }}
 
   # 技能扫描器

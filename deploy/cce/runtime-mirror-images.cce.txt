@@ -1,0 +1,71 @@
+# =============================================================================
+# SkillHub on CCE —— 第三方运行时镜像映射表
+#
+# 用法（由 deploy/cce/mirror-images.sh 读取，不直接执行）：
+#   SWR_REGION=cn-north-4 SWR_ORGANIZATION=skillhub ./deploy/cce/mirror-images.sh --dry-run
+#   SWR_REGION=cn-north-4 SWR_ORGANIZATION=skillhub ./deploy/cce/mirror-images.sh
+#
+# 格式与 scripts/mirror-runtime-images.sh、deploy/runtime-mirror-images.txt 一致：
+#   每行「源镜像 目标镜像」两列，空格分隔；# 开头为注释；空行忽略。
+#   目标列会展开为 ${MIRROR_REGISTRY}/${MIRROR_NAMESPACE}/<目标镜像>，例如
+#     bitnami/postgresql:db2312d9b243
+#     → swr.cn-north-4.myhuaweicloud.com/<ORG>/bitnami/postgresql:db2312d9b243
+#   （目标列保留 bitnami/、library/ 之类路径，只替换 registry/org，
+#     这样 Helm values 里只需覆盖 image.registry 就能指向 SWR。）
+#
+# 为什么 digest 不能省（Bitnami 相关行必填）：
+#   * 这些 digest 来自 charts/skillhub/values.yaml（postgresql 18.6.10 / redis 25.5.3
+#     的 chart 默认镜像），是「安装与回滚可复现」的唯一锚点；
+#     bitnami 的 tag 会随上游重建而漂移，只有 digest 能保证同步到与 chart 校验过的同一份字节。
+#   * digest 可用 `docker buildx imagetools inspect <源镜像>` 或 `regctl manifest head <源镜像>` 复核。
+#   * busybox 在 chart 中按 tag 引用（server.dependencyWait.image.tag=1.37），
+#     这里仍写成 tag@digest：目标 tag 保持 1.37 供 chart 引用，内容由 digest 锁定。
+#
+# 镜像同步是发布操作（会写入 SWR），不是只读检查：
+#   * 验收要比对「源 → 目标」的 manifest digest，并逐平台核对，不能只看命令退出码；
+#     参考命令：regctl manifest head <目标镜像>；docker buildx imagetools inspect <目标镜像>
+#   * 多平台 index 会被 scripts/mirror-runtime-images.sh 重建（它刻意丢弃 attestation
+#     子清单，避免部分仓库拒绝 application/vnd.oci.empty.v1+json 配置），因此目标 digest
+#     可能与源 digest 不同——busybox 携带 attestation 子清单，digest 必然变化。
+#     需要按 digest 固定引用时（如 values-cce-incluster-db.yaml 的 image.digest），
+#     请以同步后实测到的目标 digest 为准；不确定就改用本文件里的目标 tag。
+#   * 跨架构可用性（2026-11 实测上游 index）：
+#       busybox:1.37                      linux/amd64, arm/v5-v7, arm64/v8, 386, ppc64le, riscv64, s390x
+#       bitnami/postgresql|redis|*exporter linux/amd64, linux/arm64
+#     同步脚本会复制 index 下全部可运行平台，CCE 的 amd64 节点与 arm64 节点都能用；
+#     只用单平台的场景也无需裁剪（多平台只是占用更多 SWR 空间）。
+#
+# 不在本表的内容：
+#   * skillmall-server / web / scanner（github-sync 仍为 skillhub-github-sync）：由 deploy/cce/build-images.sh 自行构建推送。
+#   * nginx、prometheus、grafana、minio/silo、rustfs：docker-compose 交付用的镜像，
+#     CCE 场景不需要（web 镜像自带 nginx，监控走 AOM/托管服务）；
+#     如果要在 CCE 上跑 compose 形态，复用 deploy/runtime-mirror-images.txt。
+# =============================================================================
+
+# source_image target_image
+
+# --- 必选：server 的依赖等待 initContainer（CCE 节点通常无法直连 docker.io）----
+docker.io/library/busybox:1.37@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec busybox:1.37
+
+# --- 必选（仅启用 chart 内置数据层时）：Bitnami PostgreSQL / Redis 及其 exporter
+# 对应 charts/skillhub/Chart.yaml 的 postgresql 18.6.10 / redis 25.5.3 依赖，
+# 目标仓库名与 values 中 image.repository 完全一致（bitnami/xxx）。
+docker.io/bitnami/postgresql@sha256:db2312d9b243afa8c3b3f5496e478d17d0dff9791d06f3b93b9567abd86ae92f bitnami/postgresql:db2312d9b243
+
+docker.io/bitnami/redis@sha256:08863c2c3f4e051fb6139b38fa223e9c13be5033326a59bead182860d899bf98 bitnami/redis:08863c2c3f4e
+
+# 指标 exporter（values 中 metrics.enabled 打开时才需要；默认关闭，但建议一起同步，
+# 否则打开监控时会因为拉不到镜像而 CrashLoopBackOff）。
+docker.io/bitnami/postgres-exporter@sha256:53ab72a1b940d7637e91619f1000da9ebef14bc7dad74321a78731d65c79f55b bitnami/postgres-exporter:53ab72a1b940
+
+docker.io/bitnami/redis-exporter@sha256:fb1dae6add1e1104989d086d9407f7d65f58968550aa5fddea20637a758c0773 bitnami/redis-exporter:fb1dae6add1e
+
+# 可选：只有把 redis.architecture 切成 sentinel HA 时才需要（values 默认 sentinel.enabled=false）。
+# docker.io/bitnami/redis-sentinel@sha256:ae75dd69c192a632bdeb21baa6721080be5b12347e52add922036398b47631da bitnami/redis-sentinel:ae75dd69c192
+
+# --- 可选：集群内数据层之外的排障镜像（kubectl run 临时 pod 时用）-------------
+# 与 deploy/runtime-mirror-images.txt 保持同名 tag，便于复用既有运维命令；
+# 只在确实需要排障时启用（注释掉可减少同步量）。
+docker.io/library/postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857 postgres:16-alpine
+
+docker.io/library/redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe redis:7-alpine
