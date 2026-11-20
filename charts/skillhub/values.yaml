@@ -76,6 +76,29 @@ s3:
   secretKey: ""
 
 # ============================================================================
+# 华为云 OBS 对象存储配置（provider=obs，原生 OBS SDK）
+# 与 s3 互斥；启用后不挂载本机存储 PVC，走滚动更新
+# ============================================================================
+obs:
+  enabled: false
+  bucket: ""
+  # 例如 https://obs.cn-north-4.myhuaweicloud.com
+  endpoint: ""
+  # 浏览器/下载方可达的签名主机；留空表示与 endpoint 相同
+  publicEndpoint: ""
+  presignExpiry: PT10M
+  # auto: 配了 accessKey/secretKey 用静态凭证，否则取元数据服务临时凭证
+  # metadata: 强制使用 CCE/ECS 元数据服务临时凭证（推荐，配合 IAM 委托）
+  # static: 仅使用静态 AK/SK
+  credentialMode: auto
+  accessKey: ""
+  secretKey: ""
+  metadataUrl: http://169.254.169.254/openstack/latest/securitykey
+  metadataTimeout: PT5S
+  # 临时凭证刷新周期，应小于凭证有效期（通常 1 小时）
+  credentialTtl: PT50M
+
+# ============================================================================
 # Session 配置
 # ============================================================================
 session:

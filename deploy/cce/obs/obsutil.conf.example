@@ -1,0 +1,39 @@
+# =============================================================================
+# SkillHub —— obsutil 配置文件模板（OBS 桶初始化 / 连通性自检）
+#
+# 用途：给 deploy/cce/obs/setup-bucket.sh 和 verify-obs.sh 提供凭证与端点。
+# 本文件只是**模板**，请勿提交真实密钥；仓库里这份就保持占位值。
+#
+# 默认位置：~/.obsutilconfig
+#   * setup-bucket.sh 默认**不写**这个文件，而是把同样的内容写进一次运行的
+#     临时 HOME（<临时目录>/home/.obsutilconfig，权限 0600），退出即删，
+#     以免污染同机其它使用者/其它工具的 obsutil 配置。
+#   * 只有显式 `--write-config` 才会写真实的 ~/.obsutilconfig（会先备份旧文件）。
+#   * 也可以把自己的配置文件交给脚本：`--config-file /path/to/conf`
+#     （脚本会复制进临时 HOME 使用，原文件不会被修改）。
+#
+# 字段来源：
+#   ak / sk      IAM → 用户 → 我的凭证 → 访问密钥（Access Key Id / Secret Access Key）
+#                或 IAM 委托/STS 临时凭证的 access / secret
+#   token        仅"临时凭证"需要，对应 securitykey 里的 securitytoken；
+#                永久 AK/SK 时**不要**写这一行
+#   endpoint     obs.<region>.myhuaweicloud.com
+#                不带 https://、不带桶名前缀、不带路径
+#                例：obs.cn-north-4.myhuaweicloud.com
+#
+# 需按所用 obsutil 版本核对（重要）：
+#   1) 字段名是否就是 ak / sk / token / endpoint；
+#   2) 是否要求分节（例如 [Credentials]）；
+#   3) 临时凭证 token 的字段名（有的文档写 securityToken）。
+#   拿不准时最稳的做法是让工具自己写规范格式：
+#       obsutil config -i=<AK> -k=<SK> -e=obs.<region>.myhuaweicloud.com
+#   或直接用脚本的 `--creds=cli`（不落地任何文件）。
+#
+# 权限：真实配置文件请 chmod 600（脚本会自动收紧权限并校验；
+#       在 Windows NTFS/noacl 等无法表达 Unix 权限的文件系统上会告警）。
+# =============================================================================
+
+ak=YOUR_ACCESS_KEY_ID
+sk=YOUR_SECRET_ACCESS_KEY
+# token=YOUR_SECURITY_TOKEN
+endpoint=obs.cn-north-4.myhuaweicloud.com

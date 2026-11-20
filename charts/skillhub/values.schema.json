@@ -164,6 +164,24 @@
         "secretKey": { "type": "string" }
       }
     },
+    "obs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "bucket", "endpoint", "publicEndpoint", "presignExpiry", "credentialMode", "accessKey", "secretKey", "metadataUrl", "metadataTimeout", "credentialTtl"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "bucket": { "type": "string" },
+        "endpoint": { "type": "string", "pattern": "^(|https?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?)(:[0-9]{1,5})?([/?#]\\S*)?)$" },
+        "publicEndpoint": { "type": "string", "pattern": "^(|https?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?)(:[0-9]{1,5})?([/?#]\\S*)?)$" },
+        "presignExpiry": { "type": "string", "pattern": "^P" },
+        "credentialMode": { "enum": ["auto", "static", "metadata"] },
+        "accessKey": { "type": "string" },
+        "secretKey": { "type": "string" },
+        "metadataUrl": { "type": "string", "pattern": "^(|https?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?)(:[0-9]{1,5})?([/?#]\\S*)?)$" },
+        "metadataTimeout": { "type": "string", "pattern": "^P" },
+        "credentialTtl": { "type": "string", "pattern": "^P" }
+      }
+    },
     "session": {
       "type": "object",
       "additionalProperties": false,

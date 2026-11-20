@@ -1,4 +1,4 @@
-{{- if and .Values.server.enabled (not .Values.s3.enabled) }}
+{{- if and .Values.server.enabled (not .Values.s3.enabled) (not .Values.obs.enabled) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
