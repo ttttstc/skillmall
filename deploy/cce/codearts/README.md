@@ -191,6 +191,9 @@ CodeArts 的「制作镜像并推送到 SWR」步骤里，**Dockerfile 路径按
 | `failed to compute cache key: "/pom.xml" not found` | 上下文填成了仓库根。上下文必须填 `server` |
 | `"/package.json" not found` / `"/pnpm-lock.yaml" not found` | 同上，web 的上下文必须是 `web` |
 | `failed to read dockerfile: open /var/lib/docker/tmp/...: no such file` | Dockerfile 路径写错或大小写不符（Linux 区分大小写） |
+| `./mvnw: Permission denied`（exit 126） | `server/mvnw` 在仓库里缺少可执行位。已修正 git 模式为 100755，并在 Dockerfile 里加 `chmod +x` 兜底 |
+| `./mvnw: not found`（exit 127） | 脚本带 CRLF 行尾（Windows 检出 / ZIP 导出），`#!/bin/sh\r` 找不到解释器。已加 `.gitattributes` 强制 LF，并在 Dockerfile 里 `sed -i 's/\r$//'` 兜底 |
+| `COPY` 后 `mvnw` 又失效 | 批量 `COPY` 会把修好的 `mvnw` 覆盖回上下文版本；Dockerfile 已在 bulk COPY 之后的 `RUN` 里再修一次 |
 
 **更省事的方式**：不用「镜像构建」步骤，改用「执行shell命令」跑
 `bash deploy/cce/codearts/build.sh`，工作目录保持默认，路径全部由脚本处理（见第 3 节）。
