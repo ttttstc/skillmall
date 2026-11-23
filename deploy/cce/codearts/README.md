@@ -194,3 +194,34 @@ CodeArts 的「制作镜像并推送到 SWR」步骤里，**Dockerfile 路径按
 
 **更省事的方式**：不用「镜像构建」步骤，改用「执行shell命令」跑
 `bash deploy/cce/codearts/build.sh`，工作目录保持默认，路径全部由脚本处理（见第 3 节）。
+
+### 7.1 如果上下文被固定为「仓库根」（CodeArts 实测如此）
+
+上面两种写法都要求**构建上下文 = 组件子目录**。但 CodeArts 的
+`external_docker_builder` 实测行为是：
+
+- **Dockerfile 路径相对「工作目录」解析**
+- **构建上下文固定为代码检出根目录，不可配置**
+
+于是会陷入连环报错：
+
+| 配置 | 报错 |
+|---|---|
+| 工作目录=`.`、Dockerfile=`server/Dockerfile` | `COPY failed: stat .../pom.xml: no such file or directory`（上下文是根，根下没有 pom.xml） |
+| 工作目录=`server`、Dockerfile=`server` | `unable to evaluate symlinks in Dockerfile path: lstat .../server/server`（把目录当文件） |
+| 工作目录=`server`、Dockerfile=`Dockerfile` | Dockerfile 找到了，但上下文仍是根 → 又是 `COPY failed: pom.xml` |
+
+这种情况用仓库自带的**根上下文 Dockerfile 变体**（逻辑与组件版一致，只是 COPY 源路径带组件前缀）：
+
+| 镜像 | Dockerfile 路径 | 工作目录 |
+|---|---|---|
+| `skillmall-server` | `server/Dockerfile.root-context` | 留空 / `.` |
+| `skillmall-web` | `web/Dockerfile.root-context` | 留空 / `.` |
+| `skillmall-scanner` | `scanner/Dockerfile.root-context` | 留空 / `.` |
+
+配套的根目录 `.dockerignore` 已排除 `node_modules`（实测 ~364MB）、`.tmp`（~203MB）、
+`.git`、`target`、`dist` 等，否则上下文上传会非常大甚至超时。
+
+> 为什么不干脆让组件版 Dockerfile 兼容根上下文：那样 `server/Dockerfile` 的
+> `COPY pom.xml` 必须改成 `COPY server/pom.xml`，会让「上下文=server/」的 buildx
+> 路径（`build-images.sh`、本地开发）失效。两套变体各自明确，改一处不会互相破坏。
