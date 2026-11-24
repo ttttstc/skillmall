@@ -134,27 +134,22 @@ spec:
               value: "upload"
 
             # ---------- 对外地址 / 子路径 ----------
-            # 当前阶段：根路径 + 端口转发验证（最省事，先排掉链路问题）
+            # 测试环境走 APISIX 子路径：https://beta.hicann.cn/skillmall
+            # 必须与 web 的 SKILLHUB_PUBLIC_BASE_URL 完全一致。
             - name: SKILLHUB_PUBLIC_BASE_URL
-              value: "http://localhost:8080"
+              value: "https://beta.hicann.cn/skillmall"
             - name: DEVICE_AUTH_VERIFICATION_URI
-              value: "http://localhost:8080/device"
-            # 这两行给 web 用（server 忽略）；根路径部署留空
+              value: "https://beta.hicann.cn/skillmall/device"
+            # 这两行给 web 用（server 忽略）；此处与 02-web.yaml 保持一致便于统一管理
             - name: SKILLHUB_WEB_BASE_PATH
-              value: ""
+              value: "/skillmall/"
             - name: SKILLHUB_WEB_API_BASE_URL
-              value: ""
-            #
-            # 接入 APISIX 子路径后（目标形态），把上面四行换成：
-            #   SKILLHUB_PUBLIC_BASE_URL: "https://beta.hicann.cn/skillmall"
-            #   DEVICE_AUTH_VERIFICATION_URI: "https://beta.hicann.cn/skillmall/device"
-            #   SKILLHUB_WEB_BASE_PATH: "/skillmall/"
-            #   SKILLHUB_WEB_API_BASE_URL: "/skillmall"
+              value: "/skillmall"
 
             # ---------- 会话 ----------
-            # 验证阶段（http/端口转发）用 false；上 HTTPS 后必须改 true
+            # 已经挂到 https 域名（APISIX 终止 TLS），必须 true，否则 cookie 缺少 Secure 标记
             - name: SESSION_COOKIE_SECURE
-              value: "false"
+              value: "true"
 
             # ---------- 认证 ----------
             - name: SKILLHUB_AUTH_DIRECT_ENABLED

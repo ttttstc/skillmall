@@ -65,9 +65,10 @@ spec:
             - name: SKILLHUB_API_UPSTREAM
               value: "http://skillmall-server.cannbot-beta.svc.cluster.local:8080"
 
-            # ---------- 对外地址（必须与 server 的 SKILLHUB_PUBLIC_BASE_URL 一致）----------
+            # ---------- 对外地址（必须与 server 的 SKILLHUB_PUBLIC_BASE_URL 完全一致）----------
+            # 测试环境走 APISIX 子路径：https://beta.hicann.cn/skillmall
             - name: SKILLHUB_PUBLIC_BASE_URL
-              value: "http://localhost:8080"
+              value: "https://beta.hicann.cn/skillmall"
 
             # ---------- 认证开关：决定登录页显示哪些方式 ----------
             - name: SKILLHUB_WEB_AUTH_DIRECT_ENABLED
@@ -75,15 +76,15 @@ spec:
             - name: SKILLHUB_WEB_AUTH_DIRECT_PROVIDER
               value: "local"
 
-            # ---------- 子路径部署：根路径留空 ----------
-            # 接 APISIX 子路径 /skillmall 时改成：
-            #   SKILLHUB_WEB_BASE_PATH:     "/skillmall/"
-            #   SKILLHUB_WEB_API_BASE_URL:  "/skillmall"
-            # 前端 Nginx 会自己剥掉该前缀再转给 /api 与静态文件。
+            # ---------- 子路径部署 ----------
+            # BASE_PATH 必须首尾都带斜杠；API_BASE_URL 是去掉尾部斜杠的同一个值
+            # （web/docker-entrypoint.d/20-base-path.sh 会校验这层关系）
+            # 生成的 Nginx 规则：location ^~ /skillmall/ { rewrite ^/skillmall/(.*)$ /$1 last; }
+            # 即前端自己剥前缀，故 APISIX 只做原样转发，不要再 rewrite。
             - name: SKILLHUB_WEB_BASE_PATH
-              value: ""
+              value: "/skillmall/"
             - name: SKILLHUB_WEB_API_BASE_URL
-              value: ""
+              value: "/skillmall"
 
             # ---------- 前端统计（不用就留空，但变量要存在）----------
             - name: SKILLHUB_WEB_ANALYTICS_CONFIG
