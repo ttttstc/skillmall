@@ -103,7 +103,7 @@ spec:
             - name: SKILLHUB_STORAGE_PROVIDER
               value: "obs"
             - name: SKILLHUB_STORAGE_OBS_BUCKET
-              value: "skillmall-obs-beta"             # 建议新建桶；桶必须预创建
+              value: "agenthub-obs-beta"               # 与 agent-hub 共用同一桶（注意前缀冲突，见文件尾）
             - name: SKILLHUB_STORAGE_OBS_ENDPOINT
               value: "https://obs.cn-north-4.myhuaweicloud.com"
             - name: SKILLHUB_STORAGE_OBS_PUBLIC_ENDPOINT
@@ -201,6 +201,24 @@ spec:
             httpGet: { path: /actuator/health, port: http }
             initialDelaySeconds: 30
             periodSeconds: 15
+# =============================================================================
+# ⚠️ 与 agent-hub 共用同一个桶（agenthub-obs-beta）的注意事项
+# =============================================================================
+# SkillHub 写入的对象键固定为三类前缀（skillId / versionId 是数据库自增整数）：
+#   packages/<skillId>/<versionId>/bundle.zip      技能包
+#   skills/<skillId>/<versionId>/<file>            包内单文件
+#   skill-avatars/<skillId>/<uuid>.png             头像
+#
+# 因为 ID 从 1 开始，若 agent-hub 也用 packages/ 或 skills/ 前缀，两边键会重叠
+# （例如 packages/1/1/bundle.zip），可能互相覆盖。
+#
+# 部署前请先确认 agent-hub 实际写的前缀：
+#   obsutil ls obs://agenthub-obs-beta -limit=50
+# 若它写在别的顶级前缀下（如 agenthub/、agent-hub/），则互不影响，可直接共用。
+# 若确实重叠，二选一：
+#   a) 让 SkillHub 用独立桶（最干净，改这一行即可）
+#   b) 给 SkillHub 加可配置 key 前缀（需改代码：在 ObsStorageService 里
+#      put/get/presign 统一加 prefix，属小改动）
 # =============================================================================
 # 后续步骤（本文件不含）：
 #   1. scanner：加 Deployment+Service skillmall-scanner，并把
