@@ -1,0 +1,124 @@
+# =============================================================================
+# 第 2 步：部署 web（前端 Nginx）
+# =============================================================================
+# 包含：Service(skillmall-web) + Deployment(skillmall-web)
+# 依赖：skillmall-server 已就绪（同命名空间的 Service skillmall-server:8080）
+#
+# 镜像说明：web 是纯静态产物 + Nginx，无状态，不需要 DB/Redis/OBS 任何凭证。
+#
+# 用法：替换 3 处 REPLACE-ME → kubectl -n cannbot-beta apply -f 02-web.yaml
+#
+# 与本文件配套：SKILLHUB_API_UPSTREAM 必须指向 server 的 Service FQDN。
+# nginx 用变量 + resolver 做运行时解析（web/nginx.conf.template:5-6），
+# 所以 server Pod 重建换 IP 也不会导致 502。
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillmall-web
+  namespace: cannbot-beta
+  labels:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: web
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillmall-web
+  namespace: cannbot-beta
+  labels:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: skillmall
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: skillmall
+        app.kubernetes.io/component: web
+    spec:
+      imagePullSecrets:
+        - name: default-secret        # CCE 自动创建，用于拉 SWR 镜像
+      containers:
+        - name: web
+          image: "swr.cn-north-4.myhuaweicloud.com/REPLACE-ME-ORG/skillmall-web:REPLACE-ME-TAG"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            # ---------- 最关键：后端上游地址 ----------
+            # 必须是 server 的 Service FQDN（同命名空间也可用 skillmall-server:8080）
+            - name: SKILLHUB_API_UPSTREAM
+              value: "http://skillmall-server.cannbot-beta.svc.cluster.local:8080"
+
+            # ---------- 对外地址（必须与 server 的 SKILLHUB_PUBLIC_BASE_URL 一致）----------
+            - name: SKILLHUB_PUBLIC_BASE_URL
+              value: "http://localhost:8080"
+
+            # ---------- 认证开关：决定登录页显示哪些方式 ----------
+            - name: SKILLHUB_WEB_AUTH_DIRECT_ENABLED
+              value: "true"
+            - name: SKILLHUB_WEB_AUTH_DIRECT_PROVIDER
+              value: "local"
+
+            # ---------- 子路径部署：根路径留空 ----------
+            # 接 APISIX 子路径 /skillmall 时改成：
+            #   SKILLHUB_WEB_BASE_PATH:     "/skillmall/"
+            #   SKILLHUB_WEB_API_BASE_URL:  "/skillmall"
+            # 前端 Nginx 会自己剥掉该前缀再转给 /api 与静态文件。
+            - name: SKILLHUB_WEB_BASE_PATH
+              value: ""
+            - name: SKILLHUB_WEB_API_BASE_URL
+              value: ""
+
+            # ---------- 前端统计（不用就留空，但变量要存在）----------
+            - name: SKILLHUB_WEB_ANALYTICS_CONFIG
+              value: ""
+            - name: SKILLHUB_WEB_ANALYTICS_UPSTREAM
+              value: ""
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
+          readinessProbe:
+            httpGet: { path: /nginx-health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /nginx-health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+# =============================================================================
+# 验证方式（server 已在跑的情况下）：
+#
+#   1. 看 Pod 就绪
+#      kubectl -n cannbot-beta get pods -l app.kubernetes.io/component=web
+#
+#   2. 容器内自测静态页与反代
+#      kubectl -n cannbot-beta exec -it deploy/skillmall-web -- \
+#        wget -qO- http://127.0.0.1/nginx-health
+#      kubectl -n cannbot-beta exec -it deploy/skillmall-web -- \
+#        wget -qO- http://127.0.0.1/api/v1/health
+#
+#   3. 本机端口转发后浏览器打开
+#      kubectl -n cannbot-beta port-forward svc/skillmall-web 8081:80
+#      浏览器访问 http://127.0.0.1:8081
+#      用 admin / 你设的 BOOTSTRAP_ADMIN_PASSWORD 登录
+#
+# 注意：SKILLHUB_PUBLIC_BASE_URL 现在是 http://localhost:8080（配合 server 的
+# 端口转发验证）。等接上 APISIX + 真实域名后，server 与 web 必须同时改成
+# https://beta.hicann.cn/skillmall，并启用上面注释里的两个子路径变量。
+# =============================================================================
