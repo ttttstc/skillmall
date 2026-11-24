@@ -1,0 +1,42 @@
+# =============================================================================
+# web 入口：CCE ELB Ingress，同域名子路径 /skillmall
+# =============================================================================
+# 前提：beta.hicann.cn 的 DNS 必须指向这个 Ingress 创建的 ELB。
+#       如果它现在还指向 APISIX，那 ELB 收不到流量（一个域名只能有一个入口）。
+#
+# 用法：先在控制台创建（会自动补 elb.class / elb.id / 证书等注解），
+#       或替换 REPLACE-ME 后 kubectl apply。
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: skillmall
+  namespace: cannbot-beta
+  annotations:
+    # 独享型 ELB；共享型写 union
+    kubernetes.io/elb.class: performance
+    # 绑定已有 ELB 时填它的 ID，留空则自动创建
+    # kubernetes.io/elb.id: REPLACE-ME-elb-id
+    # 后端超时上限 300s（ELB 限制）。上 scanner 后扫描约 900s 会 504，
+    # 届时改用 nginx-ingress。
+    kubernetes.io/elb.health-check-flag: "on"
+spec:
+  ingressClassName: cce
+  tls:
+    - hosts:
+        - beta.hicann.cn
+      secretName: skillmall-tls      # 需先在命名空间创建该证书 Secret
+  rules:
+    - host: beta.hicann.cn
+      http:
+        paths:
+          # 原样转发 /skillmall/* 给 web，web 的 Nginx 自己剥前缀
+          # （20-base-path.sh 生成 rewrite ^/skillmall/(.*)$ /$1 last），
+          # 所以这里绝对不能配 rewrite 类注解，否则双重剥离。
+          - path: /skillmall
+            pathType: Prefix
+            backend:
+              service:
+                name: skillmall-web
+                port:
+                  number: 80
