@@ -1,26 +1,27 @@
 # =============================================================================
-# web + API 分离入口（业界标准形态）
+# 单入口：所有流量走 /skillmall（短期方案）
 # =============================================================================
-#            https://beta.hicann.cn/skillmall/*      -> skillmall-web:80   (页面 + 静态资源)
-#            https://beta.hicann.cn/api/*            -> skillmall-server:8080 (页面 XHR + CLI/Agent)
-#            https://beta.hicann.cn/oauth2/*         -> skillmall-server:8080
-#            https://beta.hicann.cn/login/oauth2/*   -> skillmall-server:8080
-#            https://beta.hicann.cn/.well-known/*    -> skillmall-server:8080 (Agent 能力发现)
+#   https://beta.hicann.cn/skillmall/*  ->  skillmall-web:80
 #
-# 为什么这样分：
-#   1. web 的 Nginx 把 client_max_body_size 写死 100M、反代默认 60s 超时，
-#      且都不可用环境变量调整（web/nginx.conf.template:10）。
-#      CLI 发布大包 / 长扫描必须绕开它，否则 413 / 504。
-#   2. 下载（.../download）返回 302 跳到 OBS 预签名地址，字节不经过这里，
-#      因此无需为下载做任何额外放行。
-#   3. 页面与 API 同域不同路径 -> 仍是同源，Cookie 正常，不需要 CORS。
+# web 的 Nginx 负责：
+#   - 提供静态页面
+#   - 剥掉 /skillmall 前缀，把 /skillmall/api/... 反代到 skillmall-server:8080
 #
-# 配套变量（必须一起改，否则前端会去错地址）：
-#   server: SKILLHUB_PUBLIC_BASE_URL     = https://beta.hicann.cn        (根，不带 /skillmall)
-#   server: DEVICE_AUTH_VERIFICATION_URI = https://beta.hicann.cn/skillmall/device
-#   web:    SKILLHUB_WEB_BASE_PATH       = /skillmall/
-#   web:    SKILLHUB_WEB_API_BASE_URL    = https://beta.hicann.cn        (绝对地址，绕过 web 反代)
-#   web:    SKILLHUB_PUBLIC_BASE_URL     = https://beta.hicann.cn/skillmall
+# 因此**不需要**为 /api、/oauth2、/.well-known 单独加规则。
+# 反例：如果额外把 /api 指给 server，会绕过 web 的前缀剥离，
+#       server 只认 /api 不认 /skillmall/api -> 全站 404。
+#
+# 已知上限（短期接受）：
+#   - web Nginx client_max_body_size = 100M 且写死在镜像里（nginx.conf.template:10），
+#     所以**经 web 发布的技能包必须 < 100MB（含 multipart 封装开销）**，
+#     实际建议打包 < 98MB。
+#   - web 反代未设 proxy_read_timeout，走 Nginx 默认 60s。发布若同步等待扫描
+#     且超过 60s，会在此处 504（早于 ELB 的 300s 上限）。
+#   - 下载不受影响：下载端点返回 302 跳到 OBS 预签名地址，字节不经过这里。
+#
+# 后续若要支持"正好 100MB 的包"或"扫描 >60s"，改为页面/API 分离入口：
+#   /skillmall -> web:80 ；/api、/oauth2、/login/oauth2、/.well-known -> server:8080
+#   并把 web 的 SKILLHUB_WEB_API_BASE_URL 改成绝对地址 https://beta.hicann.cn
 # =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -32,10 +33,7 @@ metadata:
     kubernetes.io/elb.class: performance
     # 绑定已有 ELB 时填 ID，不填则自动创建
     # kubernetes.io/elb.id: REPLACE-ME-elb-id
-    # 长连接保持（秒）
     kubernetes.io/elb.keepalive_timeout: "300"
-    # 允许同时挂多个 Service（本 Ingress 有 web 与 server 两个后端）
-    kubernetes.io/elb.health-check-flag: "on"
 spec:
   ingressClassName: cce
   tls:
@@ -46,9 +44,7 @@ spec:
     - host: beta.hicann.cn
       http:
         paths:
-          # ---------- 页面（web）----------
-          # 只这一条。前端 Nginx 自己剥 /skillmall 前缀，
-          # 所以此路径必须原样转发，不能配 rewrite。
+          # 只这一条。web 自己剥前缀，此处必须原样转发，不能配 rewrite。
           - path: /skillmall
             pathType: Prefix
             backend:
@@ -56,55 +52,19 @@ spec:
                 name: skillmall-web
                 port:
                   number: 80
-
-          # ---------- API（直连 server，绕过 web 的 60s/100MB）----------
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: skillmall-server
-                port:
-                  number: 8080
-          - path: /oauth2
-            pathType: Prefix
-            backend:
-              service:
-                name: skillmall-server
-                port:
-                  number: 8080
-          - path: /login/oauth2
-            pathType: Prefix
-            backend:
-              service:
-                name: skillmall-server
-                port:
-                  number: 8080
-          - path: /.well-known
-            pathType: Prefix
-            backend:
-              service:
-                name: skillmall-server
-                port:
-                  number: 8080
 # =============================================================================
-# ELB 侧还要单独配（不在 Ingress 注解里，控制台「后端服务器组」页面）：
-#
-#   web 后端组  健康检查路径 /skillmall/nginx-health   期望 200
-#   server 后端组 健康检查路径 /actuator/health        期望 200
-#   server 后端组 后端超时 member_timeout = 300s（上限）
-#   监听器       请求体上限 >= 110MB（若有该参数）
-#
-# 注意后端组是按 Service 分的，所以两个健康检查路径可以不同。
+# ELB 侧（控制台「后端服务器组」，不在 Ingress 注解里）：
+#   健康检查路径 /skillmall/nginx-health    期望 200
+#   后端超时 member_timeout = 300s（ELB 上限）
+#   请求体上限（若有该参数）>= 110MB
 # =============================================================================
-# 验证（DNS 指向本 Ingress 的 ELB 之后）：
+# 验证：
+#   curl -I  https://beta.hicann.cn/skillmall/
+#   curl -s  https://beta.hicann.cn/skillmall/registry/skill.md | head -3
+#   curl -s  https://beta.hicann.cn/skillmall/.well-known/skillhub
+#   curl -sI https://beta.hicann.cn/skillmall/api/v1/skills | head -3
 #
-#   curl -I https://beta.hicann.cn/skillmall/                # 期望 200/301 到 /skillmall/
-#   curl -s https://beta.hicann.cn/skillmall/registry/skill.md | head -5
-#   curl -s https://beta.hicann.cn/.well-known/skillhub      # Agent 能力发现
-#   curl -sI https://beta.hicann.cn/api/v1/skills | head -3  # 401/200 均可，说明打到 server
-#
-# 下载是 302，验证要看 Location：
-#   curl -sI "https://beta.hicann.cn/api/v1/skills/<ns>/<slug>/versions/<ver>/download" \
+# 下载验证（看 Location 是否指向 OBS）：
+#   curl -sI "https://beta.hicann.cn/skillmall/api/v1/skills/<ns>/<slug>/versions/<ver>/download" \
 #     | grep -i location
-# 期望 Location: https://cannbot-obs.obs.cn-north-4.myhuaweicloud.com/...&Signature=...
 # =============================================================================

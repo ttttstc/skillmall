@@ -77,14 +77,14 @@ spec:
               value: "local"
 
             # ---------- 子路径部署 ----------
-            # BASE_PATH 必须首尾都带斜杠；API_BASE_URL 用【绝对地址】指向同域根路径，
-            # 前端 XHR 直接打 /api（Ingress 直连 server），绕过 web 反代。
-            # 20-base-path.sh 允许绝对 URL 与 base path 不同；若填相对值则必须相等。
+            # 短期方案：全部走 web，API_BASE_URL 用相对值，且必须等于 BASE_PATH 去掉尾斜杠
+            # （20-base-path.sh 会校验这条规则）。
             # 生成的 Nginx 规则：location ^~ /skillmall/ { rewrite ^/skillmall/(.*)$ /$1 last; }
+            # 前端请求 /skillmall/api/... -> web 剥前缀 -> 反代到 skillmall-server:8080/api/...
             - name: SKILLHUB_WEB_BASE_PATH
               value: "/skillmall/"
             - name: SKILLHUB_WEB_API_BASE_URL
-              value: "https://beta.hicann.cn"
+              value: "/skillmall"
 
             # ---------- 前端统计（不用就留空，但变量要存在）----------
             - name: SKILLHUB_WEB_ANALYTICS_CONFIG

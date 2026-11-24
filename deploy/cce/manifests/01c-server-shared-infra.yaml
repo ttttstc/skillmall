@@ -133,20 +133,27 @@ spec:
             - name: SKILLHUB_SECURITY_SCANNER_MODE
               value: "upload"
 
-            # ---------- 对外地址 / 子路径 ----------
-            # 页面走 /skillmall（web），API 走根路径 /api（直连 server）。
-            # server 的 public base 用【根】，这样 CLI/OAuth 回调都落在 /api、/login/oauth2，
-            # 与 Ingress 的直连规则一致，且不受 web 的 60s/100MB 限制。
+            # ---------- 对外地址 / 子路径（短期：全部走 web 的 /skillmall）----------
+            # 页面与 API 都从同一个前缀出去，web 会剥掉前缀再反代到本服务。
             - name: SKILLHUB_PUBLIC_BASE_URL
-              value: "https://beta.hicann.cn"
-            # 设备码登录页是前端路由，仍在 web 的 /skillmall 下
+              value: "https://beta.hicann.cn/skillmall"
             - name: DEVICE_AUTH_VERIFICATION_URI
               value: "https://beta.hicann.cn/skillmall/device"
-            # 这两行给 web 用（server 忽略），保持与 02-web.yaml 同值便于统一管理
+            # 这两行给 web 用（server 忽略），值与 02-web.yaml 保持一致
             - name: SKILLHUB_WEB_BASE_PATH
               value: "/skillmall/"
             - name: SKILLHUB_WEB_API_BASE_URL
-              value: "https://beta.hicann.cn"
+              value: "/skillmall"
+
+            # ---------- 上传上限 ----------
+            # 注：业务上限 max-package-size 固定 100MB（application.yml:265，无 env）。
+            # 这两个值放大后，Spring 侧不再是最紧的约束；经 web 时真正的上限是
+            # web Nginx 写死的 client_max_body_size=100M（无 env 可调）。
+            # 因此实际可传包大小 ≈ 100MB 减去 multipart 封装开销，建议打包 < 98MB。
+            - name: SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE
+              value: "110MB"
+            - name: SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE
+              value: "120MB"
 
             # ---------- 会话 ----------
             # 已经挂到 https 域名（APISIX 终止 TLS），必须 true，否则 cookie 缺少 Secure 标记
