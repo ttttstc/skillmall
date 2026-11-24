@@ -1,0 +1,535 @@
+# =============================================================================
+# SkillMall on CCE —— 手工部署清单（不使用 Helm 时用这个）
+# =============================================================================
+# 用法：
+#   1. 先按 skillmall-secret.example.yaml 创建真实 Secret（不要提交真实值）
+#   2. 把本文件里的 REPLACE-ME / <...> 全部替换
+#   3. kubectl apply -f skillmall.yaml
+#
+# 命名约定（三个 Service 名不能改，web 通过 DNS 找 server）：
+#   skillhub-server  :8080   skillhub-web :80   skillhub-scanner :8000
+#
+# 与 charts/skillhub 的关系：本文件是 chart 渲染结果的等价手写版，
+# 环境变量名与 chart 模板完全一致（改这里时请同时核对 chart，避免两套漂移）。
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# ConfigMap：非敏感配置（server + web 共用）
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skillhub-config
+  namespace: skillhub
+data:
+  # 托管 PostgreSQL（RDS）。拆成 host 与 url 两个键：
+  # host 给 initContainer 做连通性探测，url 给 Spring 用。
+  datasource-host: "REPLACE-ME-rds.myhuaweicloud.com"
+  datasource-url: "jdbc:postgresql://REPLACE-ME-rds.myhuaweicloud.com:5432/skillhub?sslmode=require"
+
+  # 托管 Redis（DCS）。Proxy 主备/集群版填实例地址即可；
+  # 若是 DCS Cluster 版，改用 SPRING_DATA_REDIS_CLUSTER_NODES（见文末说明）
+  redis-host: "REPLACE-ME-dcs.myhuaweicloud.com"
+  redis-port: "6379"
+
+  # 本地存储路径（OBS 模式下不写本地，但变量仍需存在）
+  storage-base-path: "/var/lib/skillhub/storage"
+
+  # 存储提供者：obs（华为云 OBS，原生 SDK）
+  skillhub-storage-provider: "obs"
+
+  # 华为云 OBS
+  obs-bucket: "REPLACE-ME-bucket"
+  obs-endpoint: "https://obs.REPLACE-ME.myhuaweicloud.com"
+  obs-public-endpoint: ""            # 留空＝与 endpoint 相同
+  obs-presign-expiry: "PT10M"
+  obs-credential-mode: "auto"        # auto|static|metadata
+  obs-metadata-url: "http://169.254.169.254/openstack/latest/securitykey"
+  obs-metadata-timeout: "PT5S"
+  obs-credential-ttl: "PT50M"
+
+  # 扫描器（server 通过这个地址调用 scanner Service）
+  skill-scanner-enabled: "true"
+  skill-scanner-url: "http://skillhub-scanner:8000"
+  skill-scanner-mode: "upload"
+
+  # 对外地址：必须与 Ingress 的 host 完全一致，不能带结尾斜杠
+  public-base-url: "https://REPLACE-ME.example.com"
+  device-auth-verification-uri: "https://REPLACE-ME.example.com/device"
+
+  # 会话 Cookie：HTTPS 环境必须为 true
+  session-cookie-secure: "true"
+
+  # 认证
+  auth-direct-enabled: "true"
+  auth-direct-provider: "local"
+  auth-initial-password-login-enabled: "true"
+  auth-initial-self-registration-enabled: "true"
+
+  # 子路径部署留空（根路径部署）
+  web-base-path: ""
+  web-api-base-url: ""
+
+  # 内置官方 Skills
+  builtin-skills-enabled: "true"
+
+  # 初始管理员（非敏感部分；密码在 Secret 里）
+  bootstrap-admin-enabled: "true"
+  bootstrap-admin-user-id: "docker-admin"
+  bootstrap-admin-username: "admin"
+  bootstrap-admin-display-name: "Platform Admin"
+  bootstrap-admin-email: "admin@REPLACE-ME.example.com"
+---
+# -----------------------------------------------------------------------------
+# ConfigMap：web 专用（web 的 env 会引用它，缺了会 CreateContainerConfigError）
+# 即使不使用前端统计，也要存在这两个键
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skillhub-web-analytics
+  namespace: skillhub
+data:
+  config: ""
+  upstream: ""
+---
+# -----------------------------------------------------------------------------
+# Service：后端
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillhub-server
+  namespace: skillhub
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/component: server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# -----------------------------------------------------------------------------
+# Service：前端
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillhub-web
+  namespace: skillhub
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/component: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# -----------------------------------------------------------------------------
+# Service：扫描器
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillhub-scanner
+  namespace: skillhub
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/component: scanner
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+# -----------------------------------------------------------------------------
+# Deployment：后端（Spring Boot）
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillhub-server
+  namespace: skillhub
+  labels:
+    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1                      # 先 1 个跑通，稳定后再调大（OBS 模式下可水平扩）
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: skillhub
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: skillhub
+        app.kubernetes.io/component: server
+    spec:
+      imagePullSecrets:
+        - name: default-secret     # CCE 自动创建并轮换，不要自建
+      initContainers:
+        # 等 RDS / DCS 就绪，避免启动即失败刷重启
+        - name: wait-for-dependencies
+          image: "swr.REPLACE-ME.myhuaweicloud.com/REPLACE-ME-ORG/busybox:1.37"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: datasource-host }
+            - name: DB_PORT
+              value: "5432"
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: redis-host }
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: redis-port }
+          command:
+            - sh
+            - -c
+            - |
+              echo "waiting PostgreSQL..."; until nc -z -w 2 "$DB_HOST" "$DB_PORT"; do sleep 3; done
+              echo "waiting Redis...";      until nc -z -w 2 "$REDIS_HOST" "$REDIS_PORT"; do sleep 3; done
+      containers:
+        - name: server
+          image: "swr.REPLACE-ME.myhuaweicloud.com/REPLACE-ME-ORG/skillmall-server:REPLACE-ME-TAG"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "docker"
+            - name: SKILLHUB_SUITE_REVIEW_WRITES_ENABLED
+              value: "true"
+            # 内存按 limit 比例分配（镜像入口固定 -XX:MaxRAMPercentage=75）
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError"
+
+            # ---- 数据库：RDS for PostgreSQL ----
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: datasource-url }
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "skillhub"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: spring-datasource-password }
+
+            # ---- 缓存：DCS for Redis ----
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: redis-host }
+            - name: SPRING_DATA_REDIS_PORT
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: redis-port }
+            - name: SPRING_DATA_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: redis-password, optional: true }
+
+            # ---- 存储：OBS ----
+            - name: STORAGE_BASE_PATH
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: storage-base-path }
+            - name: SKILLHUB_STORAGE_PROVIDER
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: skillhub-storage-provider }
+            - name: SKILLHUB_STORAGE_OBS_BUCKET
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-bucket }
+            - name: SKILLHUB_STORAGE_OBS_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-endpoint }
+            - name: SKILLHUB_STORAGE_OBS_PUBLIC_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-public-endpoint }
+            - name: SKILLHUB_STORAGE_OBS_PRESIGN_EXPIRY
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-presign-expiry }
+            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_MODE
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-credential-mode }
+            - name: SKILLHUB_STORAGE_OBS_METADATA_URL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-metadata-url }
+            - name: SKILLHUB_STORAGE_OBS_METADATA_TIMEOUT
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-metadata-timeout }
+            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_TTL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: obs-credential-ttl }
+            # 只在 obs-credential-mode=static 时需要；metadata/auto 模式可留空
+            - name: SKILLHUB_STORAGE_OBS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: skillhub-storage-obs-access-key, optional: true }
+            - name: SKILLHUB_STORAGE_OBS_SECRET_KEY
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: skillhub-storage-obs-secret-key, optional: true }
+
+            # ---- 扫描器 ----
+            - name: SKILLHUB_SECURITY_SCANNER_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: skill-scanner-enabled }
+            - name: SKILLHUB_SECURITY_SCANNER_URL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: skill-scanner-url }
+            - name: SKILLHUB_SECURITY_SCANNER_MODE
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: skill-scanner-mode }
+
+            # ---- 会话 / 对外地址 / 认证 ----
+            - name: SESSION_COOKIE_SECURE
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: session-cookie-secure }
+            - name: SKILLHUB_PUBLIC_BASE_URL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: public-base-url }
+            - name: DEVICE_AUTH_VERIFICATION_URI
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: device-auth-verification-uri }
+            - name: SKILLHUB_AUTH_DIRECT_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: auth-direct-enabled }
+            - name: SKILLHUB_AUTH_INITIAL_PASSWORD_LOGIN_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: auth-initial-password-login-enabled }
+            - name: SKILLHUB_AUTH_INITIAL_SELF_REGISTRATION_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: auth-initial-self-registration-enabled }
+            - name: SKILLHUB_BUILTIN_SKILLS_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: builtin-skills-enabled }
+
+            # ---- 匿名下载签名密钥（必填，至少 32 字符）----
+            - name: SKILLHUB_DOWNLOAD_ANON_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: skillhub-download-anon-cookie-secret }
+
+            # ---- 初始管理员 ----
+            - name: BOOTSTRAP_ADMIN_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-enabled }
+            - name: BOOTSTRAP_ADMIN_USER_ID
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-user-id }
+            - name: BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-username }
+            - name: BOOTSTRAP_ADMIN_DISPLAY_NAME
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-display-name }
+            - name: BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-email }
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: bootstrap-admin-password, optional: true }
+          resources:
+            requests: { cpu: "1000m", memory: "2Gi" }
+            limits:   { cpu: "2000m", memory: "4Gi" }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30        # 首次启动要跑 Flyway 迁移，给足 5 分钟
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+---
+# -----------------------------------------------------------------------------
+# Deployment：前端（Nginx）
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillhub-web
+  namespace: skillhub
+  labels:
+    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/component: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: skillhub
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: skillhub
+        app.kubernetes.io/component: web
+    spec:
+      imagePullSecrets:
+        - name: default-secret
+      containers:
+        - name: web
+          image: "swr.REPLACE-ME.myhuaweicloud.com/REPLACE-ME-ORG/skillmall-web:REPLACE-ME-TAG"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            # 关键：Nginx 运行时把 /api 反代到后端（不需要 Service 的 search 后缀）
+            - name: SKILLHUB_API_UPSTREAM
+              value: "http://skillhub-server.skillhub.svc.cluster.local:8080"
+            - name: SKILLHUB_PUBLIC_BASE_URL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: public-base-url }
+            - name: SKILLHUB_WEB_AUTH_DIRECT_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: auth-direct-enabled }
+            - name: SKILLHUB_WEB_AUTH_DIRECT_PROVIDER
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: auth-direct-provider }
+            - name: SKILLHUB_WEB_BASE_PATH
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: web-base-path }
+            - name: SKILLHUB_WEB_API_BASE_URL
+              valueFrom:
+                configMapKeyRef: { name: skillhub-config, key: web-api-base-url }
+            - name: SKILLHUB_WEB_ANALYTICS_CONFIG
+              valueFrom:
+                configMapKeyRef: { name: skillhub-web-analytics, key: config }
+            - name: SKILLHUB_WEB_ANALYTICS_UPSTREAM
+              valueFrom:
+                configMapKeyRef: { name: skillhub-web-analytics, key: upstream }
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
+          readinessProbe:
+            httpGet: { path: /nginx-health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /nginx-health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+# -----------------------------------------------------------------------------
+# Deployment：扫描器（Python）
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillhub-scanner
+  namespace: skillhub
+  labels:
+    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/component: scanner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: skillhub
+      app.kubernetes.io/component: scanner
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: skillhub
+        app.kubernetes.io/component: scanner
+    spec:
+      imagePullSecrets:
+        - name: default-secret
+      containers:
+        - name: scanner
+          image: "swr.REPLACE-ME.myhuaweicloud.com/REPLACE-ME-ORG/skillmall-scanner:REPLACE-ME-TAG"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            # 与 server 的 skill-scanner-max-upload-size-bytes 保持一致（约 105MiB）
+            - name: SKILLHUB_SCANNER_MAX_UPLOAD_SIZE_BYTES
+              value: "110100480"
+            # 可选：LLM 辅助审核，不配则跳过该环节
+            - name: SKILL_SCANNER_LLM_API_KEY
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: skill-scanner-llm-api-key, optional: true }
+            - name: SKILL_SCANNER_LLM_BASE_URL
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: skill-scanner-llm-base-url, optional: true }
+            - name: SKILL_SCANNER_LLM_MODEL
+              valueFrom:
+                secretKeyRef: { name: skillhub-app-secrets, key: skill-scanner-llm-model, optional: true }
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits:   { cpu: "2000m", memory: "4Gi" }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+---
+# -----------------------------------------------------------------------------
+# Ingress：必须是 nginx（CCE 不写 ingressClassName 时默认 cce=ELB，
+# ELB 的 member_timeout 上限 300s，而扫描最长约 900s 会 504）
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: skillhub
+  namespace: skillhub
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "110m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - REPLACE-ME.example.com
+      secretName: skillhub-tls      # 需预先在命名空间创建
+  rules:
+    - host: REPLACE-ME.example.com
+      http:
+        paths:
+          # 后端直连路径（与 chart 一致）
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: skillhub-server
+                port: { number: 8080 }
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: skillhub-server
+                port: { number: 8080 }
+          - path: /login/oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: skillhub-server
+                port: { number: 8080 }
+          - path: /.well-known
+            pathType: Prefix
+            backend:
+              service:
+                name: skillhub-server
+                port: { number: 8080 }
+          # 其余走前端
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: skillhub-web
+                port: { number: 80 }
