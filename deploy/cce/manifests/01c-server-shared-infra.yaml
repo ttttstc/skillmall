@@ -1,0 +1,212 @@
+# =============================================================================
+# 第 1 步（复用 agent-hub 基础设施版）：只部署 server，全部配置内联环境变量
+# =============================================================================
+# 场景：
+#   - 复用 cannbot-beta 命名空间的既有 Redis / OBS / 网关（APISIX）
+#   - 当前账号没有创建 Secret 的权限，因此敏感值直接写进环境变量
+#   - 先只起 server，验证 PostgreSQL + Redis + OBS 三条链路
+#
+# ⚠️ 风险：密码/AK-SK 以明文出现在 Deployment spec 与变更历史中。
+#    仅用于测试环境；拿到 Secret 权限后改回 01-server-only.yaml（envFrom）。
+#
+# ⚠️ 与 agent-hub 的三个关键差异（不要照抄它的变量）：
+#   1. 数据库必须是 PostgreSQL，**不能复用 mysql-service**
+#   2. Redis 用 SPRING_DATA_REDIS_HOST/PORT/PASSWORD/DATABASE 四件套，
+#      代码不解析 REDIS_URL；且换 db 号（agent-hub 用 1，这里用 2）避免 key 冲突
+#   3. 没有 APP_ROOT_PATH 这个变量；子路径拆成 4 个 SKILLHUB_* 变量
+#
+# 用法：替换所有 REPLACE-ME → kubectl -n cannbot-beta apply -f 01c-server-shared-infra.yaml
+#
+# 验证顺序建议：
+#   A. 先用根路径跑通（把下面「子路径」四行改成根路径值，见注释）
+#   B. 链路 OK 后再开子路径，并在 APISIX 加路由
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillmall-server
+  namespace: cannbot-beta
+  labels:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: server
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillmall-server
+  namespace: cannbot-beta
+  labels:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: skillmall
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: skillmall
+        app.kubernetes.io/component: server
+    spec:
+      imagePullSecrets:
+        - name: default-secret        # CCE 自动创建，用于拉 SWR 镜像
+      containers:
+        - name: server
+          image: "swr.cn-north-4.myhuaweicloud.com/REPLACE-ME-ORG/skillmall-server:REPLACE-ME-TAG"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # ---------- 运行形态 ----------
+            - name: SPRING_PROFILES_ACTIVE
+              value: "docker"
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError"
+            - name: SKILLHUB_SUITE_REVIEW_WRITES_ENABLED
+              value: "true"
+
+            # ---------- PostgreSQL（必须新建，不能复用 agent-hub 的 MySQL）----------
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://REPLACE-ME-pg-host:5432/skillmall?sslmode=disable"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "skillmall"
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "REPLACE-ME-pg-password"        # ⚠️ 明文
+
+            # ---------- Redis：复用 agent-hub 那套实例，但换 db 号 ----------
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis.cannbot-beta.svc.cluster.local"
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+            - name: SPRING_DATA_REDIS_PASSWORD
+              value: "REPLACE-ME-redis-password"     # ⚠️ 明文；与 agent-hub 同一实例密码
+            - name: SPRING_DATA_REDIS_DATABASE
+              value: "2"                             # agent-hub 用 1，这里用 2 避免冲突
+
+            # ---------- OBS ----------
+            - name: STORAGE_BASE_PATH
+              value: "/var/lib/skillhub/storage"      # 镜像内路径，不要改（Dockerfile 写死）
+            - name: SKILLHUB_STORAGE_PROVIDER
+              value: "obs"
+            - name: SKILLHUB_STORAGE_OBS_BUCKET
+              value: "skillmall-obs-beta"             # 建议新建桶；桶必须预创建
+            - name: SKILLHUB_STORAGE_OBS_ENDPOINT
+              value: "https://obs.cn-north-4.myhuaweicloud.com"
+            - name: SKILLHUB_STORAGE_OBS_PUBLIC_ENDPOINT
+              value: ""                               # 空＝与 endpoint 相同
+            - name: SKILLHUB_STORAGE_OBS_PRESIGN_EXPIRY
+              value: "PT10M"
+            # static：直接用下面的 AK/SK（agent-hub 也是这么配的）
+            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_MODE
+              value: "static"
+            - name: SKILLHUB_STORAGE_OBS_ACCESS_KEY
+              value: "REPLACE-ME-ak"                  # ⚠️ 明文
+            - name: SKILLHUB_STORAGE_OBS_SECRET_KEY
+              value: "REPLACE-ME-sk"                  # ⚠️ 明文
+            # 用元数据临时凭证时改回 "auto"，并删掉上面两行
+            - name: SKILLHUB_STORAGE_OBS_METADATA_URL
+              value: "http://169.254.169.254/openstack/latest/securitykey"
+            - name: SKILLHUB_STORAGE_OBS_METADATA_TIMEOUT
+              value: "PT5S"
+            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_TTL
+              value: "PT50M"
+
+            # ---------- 扫描器：第 1 步关掉，起来后再加 ----------
+            - name: SKILLHUB_SECURITY_SCANNER_ENABLED
+              value: "false"
+            - name: SKILLHUB_SECURITY_SCANNER_URL
+              value: "http://skillmall-scanner:8000"
+            - name: SKILLHUB_SECURITY_SCANNER_MODE
+              value: "upload"
+
+            # ---------- 对外地址 / 子路径 ----------
+            # 走 APISIX 子路径时（目标形态）：
+            - name: SKILLHUB_PUBLIC_BASE_URL
+              value: "https://beta.hicann.cn/skillmall"
+            - name: DEVICE_AUTH_VERIFICATION_URI
+              value: "https://beta.hicann.cn/skillmall/device"
+            # 这两行给 web 用（server 忽略）：开子路径后 web 自己剥前缀
+            - name: SKILLHUB_WEB_BASE_PATH
+              value: "/skillmall/"
+            - name: SKILLHUB_WEB_API_BASE_URL
+              value: "/skillmall"
+            #
+            # 若先用端口转发在根路径验证，把上面四行换成：
+            #   SKILLHUB_PUBLIC_BASE_URL: "http://localhost:8080"
+            #   DEVICE_AUTH_VERIFICATION_URI: "http://localhost:8080/device"
+            #   SKILLHUB_WEB_BASE_PATH: ""
+            #   SKILLHUB_WEB_API_BASE_URL: ""
+
+            # ---------- 会话 ----------
+            # 验证阶段（http/端口转发）用 false；上 HTTPS 后必须改 true
+            - name: SESSION_COOKIE_SECURE
+              value: "false"
+
+            # ---------- 认证 ----------
+            - name: SKILLHUB_AUTH_DIRECT_ENABLED
+              value: "true"
+            - name: SKILLHUB_AUTH_INITIAL_PASSWORD_LOGIN_ENABLED
+              value: "true"
+            - name: SKILLHUB_AUTH_INITIAL_SELF_REGISTRATION_ENABLED
+              value: "true"
+
+            # ---------- 内置技能 ----------
+            - name: SKILLHUB_BUILTIN_SKILLS_ENABLED
+              value: "true"
+
+            # ---------- 初始管理员 ----------
+            - name: BOOTSTRAP_ADMIN_ENABLED
+              value: "true"
+            - name: BOOTSTRAP_ADMIN_USER_ID
+              value: "docker-admin"
+            - name: BOOTSTRAP_ADMIN_USERNAME
+              value: "admin"
+            - name: BOOTSTRAP_ADMIN_DISPLAY_NAME
+              value: "Platform Admin"
+            - name: BOOTSTRAP_ADMIN_EMAIL
+              value: "admin@hicann.cn"
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              value: "REPLACE-ME-admin-password"      # ⚠️ 明文
+
+            # ---------- 匿名下载签名密钥（必填，≥32 字符）----------
+            - name: SKILLHUB_DOWNLOAD_ANON_COOKIE_SECRET
+              value: "REPLACE-ME-32-chars-min-random"  # ⚠️ 明文；openssl rand -base64 32 生成
+          resources:
+            requests: { cpu: "1000m", memory: "2Gi" }
+            limits:   { cpu: "2000m", memory: "4Gi" }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30        # 首次启动跑 Flyway 迁移，给足 5 分钟
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+# =============================================================================
+# 后续步骤（本文件不含）：
+#   1. scanner：加 Deployment+Service skillmall-scanner，并把
+#      SKILLHUB_SECURITY_SCANNER_ENABLED 改 "true"
+#   2. web：加 Deployment+Service skillmall-web，env 里加
+#      SKILLHUB_API_UPSTREAM=http://skillmall-server.cannbot-beta.svc.cluster.local:8080
+#   3. APISIX：新增路由 /skillmall → skillmall-web:80（**不要 rewrite**，
+#      前端 Nginx 内部会剥掉 /skillmall 前缀再转给 /api 与静态文件），并放开：
+#        - 请求体上限 ≥ 110m（默认 1m，大技能包会 413）
+#        - 代理读超时 ≥ 900s（默认 60s，扫描最长约 900s 会 504）
+# =============================================================================
