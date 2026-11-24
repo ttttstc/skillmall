@@ -77,13 +77,15 @@ spec:
             - name: SKILLHUB_SUITE_REVIEW_WRITES_ENABLED
               value: "true"
 
-            # ---------- PostgreSQL（必须新建，不能复用 agent-hub 的 MySQL）----------
+            # ---------- PostgreSQL：集群内自建（由 00-pg-test.yaml 创建）----------
+            # 同命名空间用短名 skillmall-pg；
+            # 跨命名空间用 skillmall-pg.cannbot-beta.svc.cluster.local
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://REPLACE-ME-pg-host:5432/skillmall?sslmode=disable"
+              value: "jdbc:postgresql://skillmall-pg:5432/skillmall?sslmode=disable"
             - name: SPRING_DATASOURCE_USERNAME
               value: "skillmall"
             - name: SPRING_DATASOURCE_PASSWORD
-              value: "REPLACE-ME-pg-password"        # ⚠️ 明文
+              value: "REPLACE-ME-pg-password"        # ⚠️ 明文；与 POSTGRES_PASSWORD 相同
 
             # ---------- Redis：复用 agent-hub 那套实例，但换 db 号 ----------
             - name: SPRING_DATA_REDIS_HOST
@@ -132,22 +134,22 @@ spec:
               value: "upload"
 
             # ---------- 对外地址 / 子路径 ----------
-            # 走 APISIX 子路径时（目标形态）：
+            # 当前阶段：根路径 + 端口转发验证（最省事，先排掉链路问题）
             - name: SKILLHUB_PUBLIC_BASE_URL
-              value: "https://beta.hicann.cn/skillmall"
+              value: "http://localhost:8080"
             - name: DEVICE_AUTH_VERIFICATION_URI
-              value: "https://beta.hicann.cn/skillmall/device"
-            # 这两行给 web 用（server 忽略）：开子路径后 web 自己剥前缀
+              value: "http://localhost:8080/device"
+            # 这两行给 web 用（server 忽略）；根路径部署留空
             - name: SKILLHUB_WEB_BASE_PATH
-              value: "/skillmall/"
+              value: ""
             - name: SKILLHUB_WEB_API_BASE_URL
-              value: "/skillmall"
+              value: ""
             #
-            # 若先用端口转发在根路径验证，把上面四行换成：
-            #   SKILLHUB_PUBLIC_BASE_URL: "http://localhost:8080"
-            #   DEVICE_AUTH_VERIFICATION_URI: "http://localhost:8080/device"
-            #   SKILLHUB_WEB_BASE_PATH: ""
-            #   SKILLHUB_WEB_API_BASE_URL: ""
+            # 接入 APISIX 子路径后（目标形态），把上面四行换成：
+            #   SKILLHUB_PUBLIC_BASE_URL: "https://beta.hicann.cn/skillmall"
+            #   DEVICE_AUTH_VERIFICATION_URI: "https://beta.hicann.cn/skillmall/device"
+            #   SKILLHUB_WEB_BASE_PATH: "/skillmall/"
+            #   SKILLHUB_WEB_API_BASE_URL: "/skillmall"
 
             # ---------- 会话 ----------
             # 验证阶段（http/端口转发）用 false；上 HTTPS 后必须改 true
