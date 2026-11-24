@@ -4,18 +4,18 @@
 # 设计要点：ConfigMap / Secret 的**键名就是环境变量名**，
 # 因此 Deployment 用 envFrom 一次性导入，控制台里不需要逐个映射变量名。
 #
-# 包含：ConfigMap(skillhub-config) + Service(skillhub-server) + Deployment(skillhub-server)
+# 包含：ConfigMap(skillmall-config) + Service(skillmall-server) + Deployment(skillmall-server)
 # 不含：web、scanner、Ingress（后续步骤再加）
 #
 # 第 1 步的让步：skill-scanner-enabled=false（不依赖 scanner）、无 initContainer、1 副本。
 #
-# 用法：替换所有 REPLACE-ME → kubectl -n skillhub apply -f 01-server-only.yaml
+# 用法：替换所有 REPLACE-ME → kubectl -n skillmall apply -f 01-server-only.yaml
 # =============================================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: skillhub-config
-  namespace: skillhub
+  name: skillmall-config
+  namespace: skillmall
 data:
   # ---- 运行形态 ----
   SPRING_PROFILES_ACTIVE: "docker"
@@ -46,7 +46,7 @@ data:
 
   # ---- 扫描器：第 1 步先关，起来后再改成 true ----
   SKILLHUB_SECURITY_SCANNER_ENABLED: "false"
-  SKILLHUB_SECURITY_SCANNER_URL: "http://skillhub-scanner:8000"
+  SKILLHUB_SECURITY_SCANNER_URL: "http://skillmall-scanner:8000"
   SKILLHUB_SECURITY_SCANNER_MODE: "upload"
 
   # ---- 对外地址 / 会话 ----
@@ -76,12 +76,12 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: skillhub-server
-  namespace: skillhub
+  name: skillmall-server
+  namespace: skillmall
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/name: skillmall
     app.kubernetes.io/component: server
   ports:
     - name: http
@@ -91,21 +91,21 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: skillhub-server
-  namespace: skillhub
+  name: skillmall-server
+  namespace: skillmall
   labels:
-    app.kubernetes.io/name: skillhub
+    app.kubernetes.io/name: skillmall
     app.kubernetes.io/component: server
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: skillhub
+      app.kubernetes.io/name: skillmall
       app.kubernetes.io/component: server
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: skillhub
+        app.kubernetes.io/name: skillmall
         app.kubernetes.io/component: server
     spec:
       imagePullSecrets:
@@ -120,9 +120,9 @@ spec:
           # 键名即变量名，一次性导入全部配置与非敏感项
           envFrom:
             - configMapRef:
-                name: skillhub-config
+                name: skillmall-config
             - secretRef:
-                name: skillhub-app-secrets
+                name: skillmall-app-secrets
           resources:
             requests: { cpu: "1000m", memory: "2Gi" }
             limits:   { cpu: "2000m", memory: "4Gi" }
