@@ -1,17 +1,13 @@
 # =============================================================================
-# 第 1 步：只部署 server（最小可运行集）
+# 第 1 步：只部署 server（最小可运行集）—— 控制台友好版
 # =============================================================================
+# 设计要点：ConfigMap / Secret 的**键名就是环境变量名**，
+# 因此 Deployment 用 envFrom 一次性导入，控制台里不需要逐个映射变量名。
+#
 # 包含：ConfigMap(skillhub-config) + Service(skillhub-server) + Deployment(skillhub-server)
-# 不包含：web、scanner、Ingress（后面步骤再加）
+# 不含：web、scanner、Ingress（后续步骤再加）
 #
-# 与完整清单的差异（为了先跑通）：
-#   1. skill-scanner-enabled = "false"  → 不依赖 scanner，发布技能时不做安全扫描
-#   2. 去掉 initContainer（它要拉 SWR 里的 busybox；没镜像化就先不要）
-#   3. replicas = 1
-#
-# 前置：先创建 Secret skillhub-app-secrets（只需 4 个键，见 skillmall-secret.example.yaml）
-#   spring-datasource-password / redis-password /
-#   bootstrap-admin-password / skillhub-download-anon-cookie-secret
+# 第 1 步的让步：skill-scanner-enabled=false（不依赖 scanner）、无 initContainer、1 副本。
 #
 # 用法：替换所有 REPLACE-ME → kubectl -n skillhub apply -f 01-server-only.yaml
 # =============================================================================
@@ -21,51 +17,61 @@ metadata:
   name: skillhub-config
   namespace: skillhub
 data:
-  # RDS for PostgreSQL：host 用于探测，url 给 Spring
-  datasource-host: "REPLACE-ME-rds.myhuaweicloud.com"
-  datasource-url: "jdbc:postgresql://REPLACE-ME-rds.myhuaweicloud.com:5432/skillhub?sslmode=require"
+  # ---- 运行形态 ----
+  SPRING_PROFILES_ACTIVE: "docker"
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError"
+  SKILLHUB_SUITE_REVIEW_WRITES_ENABLED: "true"
 
-  # DCS for Redis
-  redis-host: "REPLACE-ME-dcs.myhuaweicloud.com"
-  redis-port: "6379"
+  # ---- RDS for PostgreSQL ----
+  # host 单独一份给 initContainer/排障用，url 给 Spring
+  DATASOURCE_HOST: "REPLACE-ME-rds.myhuaweicloud.com"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://REPLACE-ME-rds.myhuaweicloud.com:5432/skillhub?sslmode=require"
+  SPRING_DATASOURCE_USERNAME: "skillhub"
 
-  # 存储：华为云 OBS
-  storage-base-path: "/var/lib/skillhub/storage"
-  skillhub-storage-provider: "obs"
-  obs-bucket: "REPLACE-ME-bucket"
-  obs-endpoint: "https://obs.REPLACE-ME.myhuaweicloud.com"
-  obs-public-endpoint: ""
-  obs-presign-expiry: "PT10M"
-  obs-credential-mode: "auto"
-  obs-metadata-url: "http://169.254.169.254/openstack/latest/securitykey"
-  obs-metadata-timeout: "PT5S"
-  obs-credential-ttl: "PT50M"
+  # ---- DCS for Redis ----
+  SPRING_DATA_REDIS_HOST: "REPLACE-ME-dcs.myhuaweicloud.com"
+  SPRING_DATA_REDIS_PORT: "6379"
 
-  # 第 1 步先关扫描器；起完 server 再加 scanner 并改回 "true"
-  skill-scanner-enabled: "false"
-  skill-scanner-url: "http://skillhub-scanner:8000"
-  skill-scanner-mode: "upload"
+  # ---- 存储：华为云 OBS ----
+  STORAGE_BASE_PATH: "/var/lib/skillhub/storage"
+  SKILLHUB_STORAGE_PROVIDER: "obs"
+  SKILLHUB_STORAGE_OBS_BUCKET: "REPLACE-ME-bucket"
+  SKILLHUB_STORAGE_OBS_ENDPOINT: "https://obs.REPLACE-ME.myhuaweicloud.com"
+  SKILLHUB_STORAGE_OBS_PUBLIC_ENDPOINT: ""
+  SKILLHUB_STORAGE_OBS_PRESIGN_EXPIRY: "PT10M"
+  SKILLHUB_STORAGE_OBS_CREDENTIAL_MODE: "auto"
+  SKILLHUB_STORAGE_OBS_METADATA_URL: "http://169.254.169.254/openstack/latest/securitykey"
+  SKILLHUB_STORAGE_OBS_METADATA_TIMEOUT: "PT5S"
+  SKILLHUB_STORAGE_OBS_CREDENTIAL_TTL: "PT50M"
 
-  # 对外地址（还没配 Ingress 时先填域名，验证阶段不影响 health）
-  public-base-url: "https://REPLACE-ME.example.com"
-  device-auth-verification-uri: "https://REPLACE-ME.example.com/device"
+  # ---- 扫描器：第 1 步先关，起来后再改成 true ----
+  SKILLHUB_SECURITY_SCANNER_ENABLED: "false"
+  SKILLHUB_SECURITY_SCANNER_URL: "http://skillhub-scanner:8000"
+  SKILLHUB_SECURITY_SCANNER_MODE: "upload"
 
-  session-cookie-secure: "true"
+  # ---- 对外地址 / 会话 ----
+  SKILLHUB_PUBLIC_BASE_URL: "https://REPLACE-ME.example.com"
+  DEVICE_AUTH_VERIFICATION_URI: "https://REPLACE-ME.example.com/device"
+  SESSION_COOKIE_SECURE: "true"
 
-  auth-direct-enabled: "true"
-  auth-direct-provider: "local"
-  auth-initial-password-login-enabled: "true"
-  auth-initial-self-registration-enabled: "true"
+  # ---- 认证 ----
+  SKILLHUB_AUTH_DIRECT_ENABLED: "true"
+  SKILLHUB_AUTH_INITIAL_PASSWORD_LOGIN_ENABLED: "true"
+  SKILLHUB_AUTH_INITIAL_SELF_REGISTRATION_ENABLED: "true"
 
-  web-base-path: ""
-  web-api-base-url: ""
-  builtin-skills-enabled: "true"
+  # ---- 前端子路径（根路径部署留空） ----
+  WEB_BASE_PATH: ""
+  WEB_API_BASE_URL: ""
 
-  bootstrap-admin-enabled: "true"
-  bootstrap-admin-user-id: "docker-admin"
-  bootstrap-admin-username: "admin"
-  bootstrap-admin-display-name: "Platform Admin"
-  bootstrap-admin-email: "admin@REPLACE-ME.example.com"
+  # ---- 内置官方 Skills ----
+  SKILLHUB_BUILTIN_SKILLS_ENABLED: "true"
+
+  # ---- 初始管理员（密码在 Secret 里）----
+  BOOTSTRAP_ADMIN_ENABLED: "true"
+  BOOTSTRAP_ADMIN_USER_ID: "docker-admin"
+  BOOTSTRAP_ADMIN_USERNAME: "admin"
+  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Platform Admin"
+  BOOTSTRAP_ADMIN_EMAIL: "admin@REPLACE-ME.example.com"
 ---
 apiVersion: v1
 kind: Service
@@ -111,132 +117,12 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "docker"
-            - name: JAVA_TOOL_OPTIONS
-              value: "-XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError"
-            - name: SKILLHUB_SUITE_REVIEW_WRITES_ENABLED
-              value: "true"
-
-            # 数据库
-            - name: SPRING_DATASOURCE_URL
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: datasource-url }
-            - name: SPRING_DATASOURCE_USERNAME
-              value: "skillhub"
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef: { name: skillhub-app-secrets, key: spring-datasource-password }
-
-            # Redis
-            - name: SPRING_DATA_REDIS_HOST
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: redis-host }
-            - name: SPRING_DATA_REDIS_PORT
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: redis-port }
-            - name: SPRING_DATA_REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef: { name: skillhub-app-secrets, key: redis-password, optional: true }
-
-            # OBS
-            - name: STORAGE_BASE_PATH
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: storage-base-path }
-            - name: SKILLHUB_STORAGE_PROVIDER
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: skillhub-storage-provider }
-            - name: SKILLHUB_STORAGE_OBS_BUCKET
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-bucket }
-            - name: SKILLHUB_STORAGE_OBS_ENDPOINT
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-endpoint }
-            - name: SKILLHUB_STORAGE_OBS_PUBLIC_ENDPOINT
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-public-endpoint }
-            - name: SKILLHUB_STORAGE_OBS_PRESIGN_EXPIRY
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-presign-expiry }
-            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_MODE
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-credential-mode }
-            - name: SKILLHUB_STORAGE_OBS_METADATA_URL
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-metadata-url }
-            - name: SKILLHUB_STORAGE_OBS_METADATA_TIMEOUT
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-metadata-timeout }
-            - name: SKILLHUB_STORAGE_OBS_CREDENTIAL_TTL
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: obs-credential-ttl }
-            # 仅 static 模式需要；auto/metadata 模式保持注释即可
-            # - name: SKILLHUB_STORAGE_OBS_ACCESS_KEY
-            #   valueFrom:
-            #     secretKeyRef: { name: skillhub-app-secrets, key: skillhub-storage-obs-access-key }
-            # - name: SKILLHUB_STORAGE_OBS_SECRET_KEY
-            #   valueFrom:
-            #     secretKeyRef: { name: skillhub-app-secrets, key: skillhub-storage-obs-secret-key }
-
-            # 扫描器（第 1 步关闭）
-            - name: SKILLHUB_SECURITY_SCANNER_ENABLED
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: skill-scanner-enabled }
-            - name: SKILLHUB_SECURITY_SCANNER_URL
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: skill-scanner-url }
-            - name: SKILLHUB_SECURITY_SCANNER_MODE
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: skill-scanner-mode }
-
-            # 会话 / 地址 / 认证
-            - name: SESSION_COOKIE_SECURE
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: session-cookie-secure }
-            - name: SKILLHUB_PUBLIC_BASE_URL
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: public-base-url }
-            - name: DEVICE_AUTH_VERIFICATION_URI
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: device-auth-verification-uri }
-            - name: SKILLHUB_AUTH_DIRECT_ENABLED
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: auth-direct-enabled }
-            - name: SKILLHUB_AUTH_INITIAL_PASSWORD_LOGIN_ENABLED
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: auth-initial-password-login-enabled }
-            - name: SKILLHUB_AUTH_INITIAL_SELF_REGISTRATION_ENABLED
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: auth-initial-self-registration-enabled }
-            - name: SKILLHUB_BUILTIN_SKILLS_ENABLED
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: builtin-skills-enabled }
-
-            # 匿名下载签名密钥（必填，≥32 字符）
-            - name: SKILLHUB_DOWNLOAD_ANON_COOKIE_SECRET
-              valueFrom:
-                secretKeyRef: { name: skillhub-app-secrets, key: skillhub-download-anon-cookie-secret }
-
-            # 初始管理员
-            - name: BOOTSTRAP_ADMIN_ENABLED
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-enabled }
-            - name: BOOTSTRAP_ADMIN_USER_ID
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-user-id }
-            - name: BOOTSTRAP_ADMIN_USERNAME
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-username }
-            - name: BOOTSTRAP_ADMIN_DISPLAY_NAME
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-display-name }
-            - name: BOOTSTRAP_ADMIN_EMAIL
-              valueFrom:
-                configMapKeyRef: { name: skillhub-config, key: bootstrap-admin-email }
-            - name: BOOTSTRAP_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef: { name: skillhub-app-secrets, key: bootstrap-admin-password, optional: true }
+          # 键名即变量名，一次性导入全部配置与非敏感项
+          envFrom:
+            - configMapRef:
+                name: skillhub-config
+            - secretRef:
+                name: skillhub-app-secrets
           resources:
             requests: { cpu: "1000m", memory: "2Gi" }
             limits:   { cpu: "2000m", memory: "4Gi" }
@@ -244,7 +130,7 @@ spec:
             httpGet: { path: /actuator/health, port: http }
             initialDelaySeconds: 10
             periodSeconds: 10
-            failureThreshold: 30
+            failureThreshold: 30     # 首次启动要跑 Flyway 迁移，给足 5 分钟
           readinessProbe:
             httpGet: { path: /actuator/health, port: http }
             initialDelaySeconds: 20
