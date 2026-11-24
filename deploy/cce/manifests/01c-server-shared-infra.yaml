@@ -134,17 +134,19 @@ spec:
               value: "upload"
 
             # ---------- 对外地址 / 子路径 ----------
-            # 测试环境走 APISIX 子路径：https://beta.hicann.cn/skillmall
-            # 必须与 web 的 SKILLHUB_PUBLIC_BASE_URL 完全一致。
+            # 页面走 /skillmall（web），API 走根路径 /api（直连 server）。
+            # server 的 public base 用【根】，这样 CLI/OAuth 回调都落在 /api、/login/oauth2，
+            # 与 Ingress 的直连规则一致，且不受 web 的 60s/100MB 限制。
             - name: SKILLHUB_PUBLIC_BASE_URL
-              value: "https://beta.hicann.cn/skillmall"
+              value: "https://beta.hicann.cn"
+            # 设备码登录页是前端路由，仍在 web 的 /skillmall 下
             - name: DEVICE_AUTH_VERIFICATION_URI
               value: "https://beta.hicann.cn/skillmall/device"
-            # 这两行给 web 用（server 忽略）；此处与 02-web.yaml 保持一致便于统一管理
+            # 这两行给 web 用（server 忽略），保持与 02-web.yaml 同值便于统一管理
             - name: SKILLHUB_WEB_BASE_PATH
               value: "/skillmall/"
             - name: SKILLHUB_WEB_API_BASE_URL
-              value: "/skillmall"
+              value: "https://beta.hicann.cn"
 
             # ---------- 会话 ----------
             # 已经挂到 https 域名（APISIX 终止 TLS），必须 true，否则 cookie 缺少 Secure 标记

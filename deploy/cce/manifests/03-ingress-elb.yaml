@@ -1,11 +1,26 @@
 # =============================================================================
-# web 入口：CCE ELB Ingress，同域名子路径 /skillmall
+# web + API 分离入口（业界标准形态）
 # =============================================================================
-# 前提：beta.hicann.cn 的 DNS 必须指向这个 Ingress 创建的 ELB。
-#       如果它现在还指向 APISIX，那 ELB 收不到流量（一个域名只能有一个入口）。
+#            https://beta.hicann.cn/skillmall/*      -> skillmall-web:80   (页面 + 静态资源)
+#            https://beta.hicann.cn/api/*            -> skillmall-server:8080 (页面 XHR + CLI/Agent)
+#            https://beta.hicann.cn/oauth2/*         -> skillmall-server:8080
+#            https://beta.hicann.cn/login/oauth2/*   -> skillmall-server:8080
+#            https://beta.hicann.cn/.well-known/*    -> skillmall-server:8080 (Agent 能力发现)
 #
-# 用法：先在控制台创建（会自动补 elb.class / elb.id / 证书等注解），
-#       或替换 REPLACE-ME 后 kubectl apply。
+# 为什么这样分：
+#   1. web 的 Nginx 把 client_max_body_size 写死 100M、反代默认 60s 超时，
+#      且都不可用环境变量调整（web/nginx.conf.template:10）。
+#      CLI 发布大包 / 长扫描必须绕开它，否则 413 / 504。
+#   2. 下载（.../download）返回 302 跳到 OBS 预签名地址，字节不经过这里，
+#      因此无需为下载做任何额外放行。
+#   3. 页面与 API 同域不同路径 -> 仍是同源，Cookie 正常，不需要 CORS。
+#
+# 配套变量（必须一起改，否则前端会去错地址）：
+#   server: SKILLHUB_PUBLIC_BASE_URL     = https://beta.hicann.cn        (根，不带 /skillmall)
+#   server: DEVICE_AUTH_VERIFICATION_URI = https://beta.hicann.cn/skillmall/device
+#   web:    SKILLHUB_WEB_BASE_PATH       = /skillmall/
+#   web:    SKILLHUB_WEB_API_BASE_URL    = https://beta.hicann.cn        (绝对地址，绕过 web 反代)
+#   web:    SKILLHUB_PUBLIC_BASE_URL     = https://beta.hicann.cn/skillmall
 # =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -13,26 +28,27 @@ metadata:
   name: skillmall
   namespace: cannbot-beta
   annotations:
-    # 独享型 ELB；共享型写 union
+    # 独享型 ELB；共享型改写 union
     kubernetes.io/elb.class: performance
-    # 绑定已有 ELB 时填它的 ID，留空则自动创建
+    # 绑定已有 ELB 时填 ID，不填则自动创建
     # kubernetes.io/elb.id: REPLACE-ME-elb-id
-    # 后端超时上限 300s（ELB 限制）。上 scanner 后扫描约 900s 会 504，
-    # 届时改用 nginx-ingress。
+    # 长连接保持（秒）
+    kubernetes.io/elb.keepalive_timeout: "300"
+    # 允许同时挂多个 Service（本 Ingress 有 web 与 server 两个后端）
     kubernetes.io/elb.health-check-flag: "on"
 spec:
   ingressClassName: cce
   tls:
     - hosts:
         - beta.hicann.cn
-      secretName: skillmall-tls      # 需先在命名空间创建该证书 Secret
+      secretName: skillmall-tls
   rules:
     - host: beta.hicann.cn
       http:
         paths:
-          # 原样转发 /skillmall/* 给 web，web 的 Nginx 自己剥前缀
-          # （20-base-path.sh 生成 rewrite ^/skillmall/(.*)$ /$1 last），
-          # 所以这里绝对不能配 rewrite 类注解，否则双重剥离。
+          # ---------- 页面（web）----------
+          # 只这一条。前端 Nginx 自己剥 /skillmall 前缀，
+          # 所以此路径必须原样转发，不能配 rewrite。
           - path: /skillmall
             pathType: Prefix
             backend:
@@ -40,3 +56,55 @@ spec:
                 name: skillmall-web
                 port:
                   number: 80
+
+          # ---------- API（直连 server，绕过 web 的 60s/100MB）----------
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: skillmall-server
+                port:
+                  number: 8080
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: skillmall-server
+                port:
+                  number: 8080
+          - path: /login/oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: skillmall-server
+                port:
+                  number: 8080
+          - path: /.well-known
+            pathType: Prefix
+            backend:
+              service:
+                name: skillmall-server
+                port:
+                  number: 8080
+# =============================================================================
+# ELB 侧还要单独配（不在 Ingress 注解里，控制台「后端服务器组」页面）：
+#
+#   web 后端组  健康检查路径 /skillmall/nginx-health   期望 200
+#   server 后端组 健康检查路径 /actuator/health        期望 200
+#   server 后端组 后端超时 member_timeout = 300s（上限）
+#   监听器       请求体上限 >= 110MB（若有该参数）
+#
+# 注意后端组是按 Service 分的，所以两个健康检查路径可以不同。
+# =============================================================================
+# 验证（DNS 指向本 Ingress 的 ELB 之后）：
+#
+#   curl -I https://beta.hicann.cn/skillmall/                # 期望 200/301 到 /skillmall/
+#   curl -s https://beta.hicann.cn/skillmall/registry/skill.md | head -5
+#   curl -s https://beta.hicann.cn/.well-known/skillhub      # Agent 能力发现
+#   curl -sI https://beta.hicann.cn/api/v1/skills | head -3  # 401/200 均可，说明打到 server
+#
+# 下载是 302，验证要看 Location：
+#   curl -sI "https://beta.hicann.cn/api/v1/skills/<ns>/<slug>/versions/<ver>/download" \
+#     | grep -i location
+# 期望 Location: https://cannbot-obs.obs.cn-north-4.myhuaweicloud.com/...&Signature=...
+# =============================================================================

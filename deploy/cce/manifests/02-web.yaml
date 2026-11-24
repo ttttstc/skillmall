@@ -77,14 +77,14 @@ spec:
               value: "local"
 
             # ---------- 子路径部署 ----------
-            # BASE_PATH 必须首尾都带斜杠；API_BASE_URL 是去掉尾部斜杠的同一个值
-            # （web/docker-entrypoint.d/20-base-path.sh 会校验这层关系）
+            # BASE_PATH 必须首尾都带斜杠；API_BASE_URL 用【绝对地址】指向同域根路径，
+            # 前端 XHR 直接打 /api（Ingress 直连 server），绕过 web 反代。
+            # 20-base-path.sh 允许绝对 URL 与 base path 不同；若填相对值则必须相等。
             # 生成的 Nginx 规则：location ^~ /skillmall/ { rewrite ^/skillmall/(.*)$ /$1 last; }
-            # 即前端自己剥前缀，故 APISIX 只做原样转发，不要再 rewrite。
             - name: SKILLHUB_WEB_BASE_PATH
               value: "/skillmall/"
             - name: SKILLHUB_WEB_API_BASE_URL
-              value: "/skillmall"
+              value: "https://beta.hicann.cn"
 
             # ---------- 前端统计（不用就留空，但变量要存在）----------
             - name: SKILLHUB_WEB_ANALYTICS_CONFIG
