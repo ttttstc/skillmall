@@ -103,23 +103,25 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 15
 # =============================================================================
-# 验证方式（server 已在跑的情况下）：
+# 部署后验证：
 #
-#   1. 看 Pod 就绪
+#   1. Pod 就绪
 #      kubectl -n cannbot-beta get pods -l app.kubernetes.io/component=web
 #
-#   2. 容器内自测静态页与反代
+#   2. 容器内自测（路径必须带子路径前缀，因为前端 Nginx 按 /skillmall/ 生成 location）
 #      kubectl -n cannbot-beta exec -it deploy/skillmall-web -- \
-#        wget -qO- http://127.0.0.1/nginx-health
+#        wget -qO- http://127.0.0.1/skillmall/nginx-health
 #      kubectl -n cannbot-beta exec -it deploy/skillmall-web -- \
-#        wget -qO- http://127.0.0.1/api/v1/health
+#        wget -qO- http://127.0.0.1/skillmall/api/v1/health
 #
-#   3. 本机端口转发后浏览器打开
-#      kubectl -n cannbot-beta port-forward svc/skillmall-web 8081:80
-#      浏览器访问 http://127.0.0.1:8081
+#   3. 对外访问（需 03-ingress-elb.yaml 的 Ingress 生效且 DNS 指向其 ELB）
+#      https://beta.hicann.cn/skillmall
 #      用 admin / 你设的 BOOTSTRAP_ADMIN_PASSWORD 登录
 #
-# 注意：SKILLHUB_PUBLIC_BASE_URL 现在是 http://localhost:8080（配合 server 的
-# 端口转发验证）。等接上 APISIX + 真实域名后，server 与 web 必须同时改成
-# https://beta.hicann.cn/skillmall，并启用上面注释里的两个子路径变量。
+# 一致性要求（缺一不可）：
+#   - server 与 web 的 SKILLHUB_PUBLIC_BASE_URL 必须完全相同
+#   - server 的 SESSION_COOKIE_SECURE=true（TLS 在 ELB 终止）
+#   - ELB 必须把 X-Forwarded-Proto: https 传给后端
+#     （application.yml 已设 server.forward-headers-strategy=framework）
+#   - Ingress 只做原样转发，不得再 rewrite，否则会双重剥前缀
 # =============================================================================
