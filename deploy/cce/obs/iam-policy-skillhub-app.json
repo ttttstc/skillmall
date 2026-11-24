@@ -1,0 +1,49 @@
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Sid": "SkillHubObjectReadWriteInBucket",
+      "Effect": "Allow",
+      "Action": [
+        "obs:object:GetObject",
+        "obs:object:PutObject",
+        "obs:object:DeleteObject",
+        "obs:object:ListMultipartUploadParts",
+        "obs:object:AbortMultipartUpload"
+      ],
+      "Resource": [
+        "obs:*:*:object:REPLACE-WITH-OBS-BUCKET/*"
+      ]
+    },
+    {
+      "Sid": "SkillHubBucketListAndLocation",
+      "Effect": "Allow",
+      "Action": [
+        "obs:bucket:ListBucket",
+        "obs:bucket:GetBucketLocation"
+      ],
+      "Resource": [
+        "obs:*:*:bucket:REPLACE-WITH-OBS-BUCKET"
+      ]
+    },
+    {
+      "Sid": "DenyDangerousBucketAdministration",
+      "Effect": "Deny",
+      "Action": [
+        "obs:bucket:DeleteBucket",
+        "obs:bucket:PutBucketAcl",
+        "obs:bucket:PutBucketPolicy",
+        "obs:bucket:DeleteBucketPolicy",
+        "obs:bucket:PutLifecycleConfiguration",
+        "obs:bucket:PutBucketVersioning",
+        "obs:bucket:PutEncryptionConfiguration",
+        "obs:bucket:PutBucketWebsite",
+        "obs:bucket:ListAllMyBuckets"
+      ],
+      "Resource": [
+        "obs:*:*:bucket:REPLACE-WITH-OBS-BUCKET",
+        "obs:*:*:object:REPLACE-WITH-OBS-BUCKET/*"
+      ]
+    }
+  ]
+}

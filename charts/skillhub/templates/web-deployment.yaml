@@ -28,7 +28,7 @@ spec:
       {{- end }}
       containers:
         - name: web
-          image: {{ .Values.web.image.registry | default .Values.images.registry }}/skillhub-web:{{ .Values.web.image.tag | default .Values.images.tag | default (printf "v%s" .Chart.AppVersion) }}
+          image: {{ .Values.web.image.registry | default .Values.images.registry }}/skillmall-web:{{ .Values.web.image.tag | default .Values.images.tag | default (printf "v%s" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.images.pullPolicy }}
           env:
             - name: SKILLHUB_API_UPSTREAM

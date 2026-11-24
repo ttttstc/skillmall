@@ -1,0 +1,25 @@
+# 统一行尾，避免 Windows 检出（core.autocrlf=true）把 shell 脚本写成 CRLF，
+# 导致 Linux 容器里 `#!/bin/sh\r` 找不到解释器（"not found"）或脚本执行异常。
+#
+# 现象对照：
+#   - ./mvnw: not found          → 脚本带 CRLF
+#   - ./mvnw: Permission denied  → 脚本没有可执行位（见 git 模式 100755）
+
+* text=auto
+
+# Shell 脚本与无扩展名可执行文件强制 LF
+*.sh text eol=lf
+mvnw text eol=lf
+*.bash text eol=lf
+
+# Windows 批处理强制 CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 容器与编排文件保持 LF
+Dockerfile* text eol=lf
+*.dockerignore text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.conf text eol=lf
+*.template text eol=lf

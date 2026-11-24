@@ -1,0 +1,47 @@
+# 仓库根构建上下文的排除清单。
+#
+# 什么时候用：某些构建服务的镜像构建步骤把**构建上下文固定为仓库根**，
+# 且不可配置（华为云 CodeArts 的 external_docker_builder 即如此）。
+# 此时用 `*-root-context` Dockerfile 构建，必须靠本文件把无关的大目录挡掉，
+# 否则上下文会把 node_modules / .git / 构建产物一起上传（本仓库实测 600MB+）。
+#
+# 什么时候不影响：以组件子目录为上下文的构建（server/、web/、scanner/）
+# 用的是各自目录下的 .dockerignore（如 server/.dockerignore），与本文件无关。
+
+# 版本控制与本地工具
+.git
+.gitignore
+.dev
+.nimo
+.trellis
+.claude
+.codex
+
+# 本地临时产物（本仓库实测 200MB+）
+.tmp
+tmp
+
+# 依赖与构建产物（node_modules 实测 360MB+）
+**/node_modules
+**/target
+**/dist
+**/build
+**/.next
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.playwright
+**/playwright-report
+**/test-results
+**/coverage
+**/*.tsbuildinfo
+
+# 日志与编辑器
+*.log
+.idea
+.vscode
+
+# 文档站与调研材料不参与镜像构建
+docs
+openspec
+weekly

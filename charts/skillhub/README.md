@@ -512,6 +512,40 @@ helm -n skillhub upgrade -i skillhub ./charts/skillhub \
   --set s3.secretKey=your-secret-key
 ```
 
+### 华为云 OBS 对象存储
+
+`obs.enabled=true` 时，不创建 PVC，应用使用华为云 OBS 作为存储后端（provider=`obs`，
+原生 OBS SDK）。它走 OBS 自己的签名协议（HMAC-SHA1 + 虚拟主机式寻址），不经过 S3 兼容层；
+`s3.enabled` 与 `obs.enabled` 互斥。
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `obs.enabled` | 启用 OBS | `false` |
+| `obs.bucket` | 桶名称，必须已存在（chart 不建桶） | `""` |
+| `obs.endpoint` | OBS 端点，非空时必须是绝对 HTTP(S) URL | `""` |
+| `obs.publicEndpoint` | 浏览器可达的签名主机，留空表示与 `endpoint` 相同 | `""` |
+| `obs.presignExpiry` | 预签名有效期 | `PT10M` |
+| `obs.credentialMode` | `auto` / `static` / `metadata` | `auto` |
+| `obs.accessKey` | 静态 Access Key，仅 `static` 需要 | `""` |
+| `obs.secretKey` | 静态 Secret Key，仅 `static` 需要 | `""` |
+| `obs.metadataUrl` | CCE/ECS 元数据服务地址（临时凭证） | `http://169.254.169.254/openstack/latest/securitykey` |
+| `obs.metadataTimeout` | 元数据请求超时 | `PT5S` |
+| `obs.credentialTtl` | 临时凭证刷新周期，须小于凭证有效期 | `PT50M` |
+
+```bash
+helm -n skillhub upgrade -i skillhub ./charts/skillhub \
+  -f values-production.yaml \
+  --set obs.enabled=true \
+  --set obs.bucket=your-bucket \
+  --set obs.endpoint=https://obs.cn-north-4.myhuaweicloud.com
+```
+
+`credentialMode=auto` 时：配置了 `obs.accessKey`/`obs.secretKey`（或预创建 Secret 中的
+`skillhub-storage-obs-access-key`/`skillhub-storage-obs-secret-key`）就使用静态凭证，
+否则从元数据服务取 IAM 委托的临时凭证并按 `obs.credentialTtl` 刷新，预签名 URL 自动携带
+`x-obs-security-token`。CCE 完整部署方式（SWR 镜像、Secret、Ingress、托管 RDS/DCS）见
+[deploy/cce/README.md](../../deploy/cce/README.md)。
+
 ### Ingress + TLS
 
 ```bash

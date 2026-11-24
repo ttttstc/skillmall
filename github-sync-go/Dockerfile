@@ -1,4 +1,7 @@
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine3.24 AS build
+# 与其它 Dockerfile 一致：不使用 BuildKit 专有语法（经典 builder 可直接构建），
+# 基础镜像可用 --build-arg BASE_REGISTRY=... 覆盖以从 SWR 拉取。
+ARG BASE_REGISTRY=docker.io/library
+FROM ${BASE_REGISTRY}/golang:1.27.3-alpine3.24 AS build
 
 WORKDIR /src
 COPY go.mod ./
@@ -10,7 +13,7 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
     go build -trimpath -ldflags="-s -w" -o /github-sync ./cmd/github-sync
 
-FROM alpine:3.24.2
+FROM ${BASE_REGISTRY}/alpine:3.24.2
 RUN apk add --no-cache ca-certificates git tini && \
     addgroup -S -g 10001 skillhub && \
     adduser -S -D -u 10001 -G skillhub skillhub && \

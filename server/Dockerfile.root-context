@@ -1,0 +1,60 @@
+# =============================================================================
+# server 镜像（构建上下文 = **仓库根目录**）
+# =============================================================================
+# 用途：某些构建服务的「制作镜像并推送到SWR仓库」步骤把构建上下文**固定为代码检出根目录**，
+# 不可配置（华为云 CodeArts 的 external_docker_builder 即如此）。此时 server/Dockerfile
+# 用不了，因为它期望上下文是 server/（`COPY pom.xml .`）。
+#
+# 与 server/Dockerfile 的唯一差别：所有 COPY 的源路径都带 `server/` 前缀。
+# 同样不使用 BuildKit 专有语法（经典 builder 可直接构建）。
+#
+# 用法（上下文=仓库根）：
+#   docker build -f server/Dockerfile.root-context -t <镜像> .
+# =============================================================================
+ARG BASE_REGISTRY=docker.io/library
+FROM ${BASE_REGISTRY}/eclipse-temurin:21-jdk-alpine AS build
+# 同上：Maven 下载依赖时优先 IPv4，避免双栈环境下 IPv6 不可达导致超时。
+ENV MAVEN_OPTS="-Djava.net.preferIPv4Stack=true"
+WORKDIR /app
+
+# 先只拷 pom，利用层缓存下载依赖
+COPY server/pom.xml .
+COPY server/skillhub-domain/pom.xml skillhub-domain/
+COPY server/skillhub-auth/pom.xml skillhub-auth/
+COPY server/skillhub-search/pom.xml skillhub-search/
+COPY server/skillhub-infra/pom.xml skillhub-infra/
+COPY server/skillhub-storage/pom.xml skillhub-storage/
+COPY server/skillhub-notification/pom.xml skillhub-notification/
+COPY server/skillhub-github-sync/pom.xml skillhub-github-sync/
+COPY server/skillhub-app/pom.xml skillhub-app/
+COPY server/mvnw .
+COPY server/.mvn .mvn
+# 防御：Windows 检出/ZIP 导出可能给 mvnw 带来 CRLF 或丢失可执行位。
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw && ./mvnw dependency:go-offline -B
+
+# 再拷全部源码（根 .dockerignore 已排除 target/、node_modules 等）
+COPY server/ ./
+# COPY 会把上面修过的 mvnw 覆盖回上下文里的版本（Windows 检出为 CRLF），这里再修一次。
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw && ./mvnw clean package -DskipTests -B
+
+# ---- Runtime Stage ----
+FROM ${BASE_REGISTRY}/eclipse-temurin:21-jre-noble
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends wget && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --system --gid 101 app && \
+    useradd --system --uid 100 --gid app --create-home app
+WORKDIR /app
+
+COPY --from=build /app/skillhub-app/target/*.jar app.jar
+
+RUN mkdir -p /var/lib/skillhub/storage && \
+    chown -R app:app /app /var/lib/skillhub/storage
+
+USER app
+
+EXPOSE 8080
+HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=12 \
+  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]

@@ -35,6 +35,43 @@
             <artifactId>sts</artifactId>
             <version>2.20.26</version>
         </dependency>
+        <!--
+          Native Huawei Cloud OBS SDK for the `skillhub.storage.provider=obs` adapter.
+
+          The AWS SDK cannot express OBS presigned URLs: OBS uses its own S3-V2 style
+          authentication (`Authorization: OBS AccessKeyId:Signature`, HMAC-SHA1) and a
+          presigned URL of the form `?AccessKeyId=..&Expires=..&Signature=..`, plus
+          `&x-obs-security-token=..` for temporary credentials. SigV4 presigning has no
+          way to sign that security-token query parameter, so OBS must not go through
+          the S3 code path.
+
+          The `-bundle` artifact shades and relocates its third-party libraries
+          (okhttp, okio, jackson under `shade.*`), so it cannot collide with the AWS
+          SDK or with the application's own dependencies. It declares log4j2 only for
+          its optional reflective logging backend (`com.obs.log.LoggerBuilder`) and the
+          SDK classes do not reference log4j at all, so both artifacts are excluded to
+          keep this profile's logging stack on SLF4J/Logback only.
+        -->
+        <dependency>
+            <groupId>com.huaweicloud</groupId>
+            <artifactId>esdk-obs-java-bundle</artifactId>
+            <version>3.26.9</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Metadata-service credential documents are JSON; Jackson is the repository standard. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

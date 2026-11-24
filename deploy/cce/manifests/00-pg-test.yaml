@@ -1,0 +1,126 @@
+# =============================================================================
+# 测试用 PostgreSQL（集群内自建，供 skillmall-server 连）
+# =============================================================================
+# 修正了原清单的 5 个问题：
+#   1. POSTGRES_PASSWORD 未加引号 → 111222 被 YAML 当数字，
+#      报 "cannot unmarshal number into ... EnvVar.value of type string"
+#   2. selector.matchLabels 还是抄来的 app: gateway-corpus-pg，
+#      与 template.labels 的 app: skillmall-pg 不一致（会被 API 拒绝）
+#   3. 缺 Service → skillmall-server 无法通过 DNS 找到库
+#   4. POSTGRES_DB=postgres、没设 POSTGRES_USER → 而应用要连 skillmall 库和账号
+#   5. 没有持久化卷 → Pod 重建数据全丢
+#
+# ⚠️ 镜像版本：**建议 postgres:16-alpine，不要用 18**
+#    Spring Boot 3.2.3 管理的 Flyway 是 9.22.x，它早于 PostgreSQL 17/18，
+#    连 PG 18 会在启动时报 `Unsupported Database: PostgreSQL 18.x` 直接退出。
+#    要用 18 就得把 pom 里的 flyway.version 提到 11.x —— 那是代码改动。
+#    想「不改代码」就用 13~16，这里给 16。
+#
+# 用法：替换 REPLACE-ME → kubectl -n cannbot-beta apply -f 00-pg-test.yaml
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillmall-pg
+  namespace: cannbot-beta
+  labels:
+    app: skillmall-pg
+spec:
+  type: ClusterIP
+  selector:
+    app: skillmall-pg          # 必须与下面 Deployment 的 template.labels 一致
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillmall-pg
+  namespace: cannbot-beta
+  labels:
+    app: skillmall-pg
+spec:
+  replicas: 1
+  # 有状态服务：带 PVC 时不能用 RollingUpdate，否则新旧 Pod 会同时挂同一块盘
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: skillmall-pg        # 必须与 template.labels 一致
+  template:
+    metadata:
+      labels:
+        app: skillmall-pg
+    spec:
+      imagePullSecrets:
+        - name: default-secret
+      containers:
+        - name: pg
+          # 若 SWR 里没有 16，先 docker pull postgres:16-alpine 再推到自己的组织
+          image: "swr.cn-north-4.myhuaweicloud.com/REPLACE-ME-ORG/postgres:16-alpine"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            # ⚠️ 密码必须加引号：纯数字不加引号会被解析成 integer，API 直接拒绝
+            - name: POSTGRES_PASSWORD
+              value: "REPLACE-ME-pg-password"
+            # 应用连的库名与账号（与 skillmall-server 的 JDBC URL / USERNAME 对应）
+            - name: POSTGRES_DB
+              value: "skillmall"
+            - name: POSTGRES_USER
+              value: "skillmall"
+            - name: POSTGRES_INITDB_ARGS
+              value: "--encoding=UTF8 --locale-provider=builtin --builtin-locale=C.UTF-8"
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"   # 子目录，避免与 lost+found 冲突
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: PGTZ
+              value: "Asia/Shanghai"
+          resources:
+            # 250m/512Mi 对 PG 偏紧（还要跑 Flyway 建表），给到 500m/1Gi 起
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits:   { cpu: "1000m", memory: "2Gi" }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "skillmall", "-d", "skillmall"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "skillmall", "-d", "skillmall"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "skillmall", "-d", "skillmall"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        # 没有 StorageClass 时可先注释掉这段（数据随 Pod 丢失，仅够冒烟验证）
+        - name: data
+          persistentVolumeClaim:
+            claimName: skillmall-pg-data
+---
+# PVC：需要先确认命名空间里有可用的 StorageClass（csi-disk）
+# 查：kubectl -n cannbot-beta get storageclass
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: skillmall-pg-data
+  namespace: cannbot-beta
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  # storageClassName: csi-disk     # 不写则用默认 StorageClass

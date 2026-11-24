@@ -1,0 +1,141 @@
+# =============================================================================
+# 第 1 步：只部署 server（最小可运行集）—— 控制台友好版
+# =============================================================================
+# 设计要点：ConfigMap / Secret 的**键名就是环境变量名**，
+# 因此 Deployment 用 envFrom 一次性导入，控制台里不需要逐个映射变量名。
+#
+# 包含：ConfigMap(skillmall-config) + Service(skillmall-server) + Deployment(skillmall-server)
+# 不含：web、scanner、Ingress（后续步骤再加）
+#
+# 第 1 步的让步：skill-scanner-enabled=false（不依赖 scanner）、无 initContainer、1 副本。
+#
+# 用法：替换所有 REPLACE-ME → kubectl -n skillmall apply -f 01-server-only.yaml
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skillmall-config
+  namespace: skillmall
+data:
+  # ---- 运行形态 ----
+  SPRING_PROFILES_ACTIVE: "docker"
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError"
+  SKILLHUB_SUITE_REVIEW_WRITES_ENABLED: "true"
+
+  # ---- RDS for PostgreSQL ----
+  # host 单独一份给 initContainer/排障用，url 给 Spring
+  DATASOURCE_HOST: "REPLACE-ME-rds.myhuaweicloud.com"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://REPLACE-ME-rds.myhuaweicloud.com:5432/skillhub?sslmode=require"
+  SPRING_DATASOURCE_USERNAME: "skillhub"
+
+  # ---- DCS for Redis ----
+  SPRING_DATA_REDIS_HOST: "REPLACE-ME-dcs.myhuaweicloud.com"
+  SPRING_DATA_REDIS_PORT: "6379"
+
+  # ---- 存储：华为云 OBS ----
+  STORAGE_BASE_PATH: "/var/lib/skillhub/storage"
+  SKILLHUB_STORAGE_PROVIDER: "obs"
+  SKILLHUB_STORAGE_OBS_BUCKET: "REPLACE-ME-bucket"
+  SKILLHUB_STORAGE_OBS_ENDPOINT: "https://obs.REPLACE-ME.myhuaweicloud.com"
+  SKILLHUB_STORAGE_OBS_PUBLIC_ENDPOINT: ""
+  SKILLHUB_STORAGE_OBS_PRESIGN_EXPIRY: "PT10M"
+  SKILLHUB_STORAGE_OBS_CREDENTIAL_MODE: "auto"
+  SKILLHUB_STORAGE_OBS_METADATA_URL: "http://169.254.169.254/openstack/latest/securitykey"
+  SKILLHUB_STORAGE_OBS_METADATA_TIMEOUT: "PT5S"
+  SKILLHUB_STORAGE_OBS_CREDENTIAL_TTL: "PT50M"
+
+  # ---- 扫描器：第 1 步先关，起来后再改成 true ----
+  SKILLHUB_SECURITY_SCANNER_ENABLED: "false"
+  SKILLHUB_SECURITY_SCANNER_URL: "http://skillmall-scanner:8000"
+  SKILLHUB_SECURITY_SCANNER_MODE: "upload"
+
+  # ---- 对外地址 / 会话 ----
+  SKILLHUB_PUBLIC_BASE_URL: "https://REPLACE-ME.example.com"
+  DEVICE_AUTH_VERIFICATION_URI: "https://REPLACE-ME.example.com/device"
+  SESSION_COOKIE_SECURE: "true"
+
+  # ---- 认证 ----
+  SKILLHUB_AUTH_DIRECT_ENABLED: "true"
+  SKILLHUB_AUTH_INITIAL_PASSWORD_LOGIN_ENABLED: "true"
+  SKILLHUB_AUTH_INITIAL_SELF_REGISTRATION_ENABLED: "true"
+
+  # ---- 前端子路径（根路径部署留空） ----
+  WEB_BASE_PATH: ""
+  WEB_API_BASE_URL: ""
+
+  # ---- 内置官方 Skills ----
+  SKILLHUB_BUILTIN_SKILLS_ENABLED: "true"
+
+  # ---- 初始管理员（密码在 Secret 里）----
+  BOOTSTRAP_ADMIN_ENABLED: "true"
+  BOOTSTRAP_ADMIN_USER_ID: "docker-admin"
+  BOOTSTRAP_ADMIN_USERNAME: "admin"
+  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Platform Admin"
+  BOOTSTRAP_ADMIN_EMAIL: "admin@REPLACE-ME.example.com"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillmall-server
+  namespace: skillmall
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillmall-server
+  namespace: skillmall
+  labels:
+    app.kubernetes.io/name: skillmall
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: skillmall
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: skillmall
+        app.kubernetes.io/component: server
+    spec:
+      imagePullSecrets:
+        - name: default-secret
+      containers:
+        - name: server
+          image: "swr.REPLACE-ME.myhuaweicloud.com/REPLACE-ME-ORG/skillmall-server:REPLACE-ME-TAG"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # 键名即变量名，一次性导入全部配置与非敏感项
+          envFrom:
+            - configMapRef:
+                name: skillmall-config
+            - secretRef:
+                name: skillmall-app-secrets
+          resources:
+            requests: { cpu: "1000m", memory: "2Gi" }
+            limits:   { cpu: "2000m", memory: "4Gi" }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30     # 首次启动要跑 Flyway 迁移，给足 5 分钟
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 15
