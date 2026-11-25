@@ -181,6 +181,108 @@ describe('auth commands', () => {
   })
 
   // -------------------------------------------------------------------------
+  // login with a GitCode personal access token
+  //
+  // A GitCode deployment accepts a GitCode PAT as `Authorization: Bearer <PAT>`.
+  // It must travel through the same whoami validation and the same credentials
+  // store as --token: one credential store, one validation path.
+  // -------------------------------------------------------------------------
+
+  test('login --gitcode-token validates the PAT with whoami, then stores it', async () => {
+    const env = await createTempHome()
+    // The fake registry only accepts this exact bearer value, so a successful
+    // whoami proves the PAT itself was sent.
+    registry = await startFakeRegistry({ token: 'pat_gitcode', user: { handle: 'gc-user', displayName: 'GitCode User' } })
+
+    const result = await runCli(['login', '--registry', registry.url, '--gitcode-token', 'pat_gitcode'], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('Logged in')
+    expect(result.stdout).toContain('gc-user')
+    expect(`${result.stdout}\n${result.stderr}`).not.toContain('pat_gitcode')
+    expect(await Bun.file(`${env.home}/.skillhub/credentials.json`).json())
+      .toMatchObject({ tokens: { [registry.url]: 'pat_gitcode' } })
+    expect(await Bun.file(`${env.home}/.skillhub/config.json`).json()).toMatchObject({ registry: registry.url })
+  })
+
+  test('GITCODE_TOKEN supplies the PAT when --gitcode-token is absent', async () => {
+    const env = await createTempHome()
+    registry = await startFakeRegistry({ token: 'pat_env', user: { handle: 'env-user', displayName: 'Env User' } })
+
+    const result = await runCli(['login', '--registry', registry.url], {
+      HOME: env.home,
+      USERPROFILE: env.home,
+      GITCODE_TOKEN: 'pat_env'
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('env-user')
+    expect(`${result.stdout}\n${result.stderr}`).not.toContain('pat_env')
+    expect(await Bun.file(`${env.home}/.skillhub/credentials.json`).json())
+      .toMatchObject({ tokens: { [registry.url]: 'pat_env' } })
+  })
+
+  test('--gitcode-token wins over GITCODE_TOKEN and over --token', async () => {
+    const env = await createTempHome()
+    registry = await startFakeRegistry({ token: 'pat_flag', user: { handle: 'flag-user', displayName: 'Flag User' } })
+
+    const result = await runCli(
+      ['login', '--registry', registry.url, '--gitcode-token', 'pat_flag', '--token', 'sk_wrong'],
+      { HOME: env.home, USERPROFILE: env.home, GITCODE_TOKEN: 'pat_wrong' }
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('flag-user')
+    expect(await Bun.file(`${env.home}/.skillhub/credentials.json`).json())
+      .toMatchObject({ tokens: { [registry.url]: 'pat_flag' } })
+  })
+
+  test('an empty --gitcode-token is a usage error instead of a device-flow login', async () => {
+    const env = await createTempHome()
+
+    const result = await runCli(['login', '--gitcode-token', ''], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+
+    expect(result.exitCode).toBe(5) // EXIT.usage
+    expect(result.stderr).toContain('GitCode token is empty')
+    expect(result.stderr).toContain('--gitcode-token')
+  })
+
+  test('--gitcode-token without a value is a usage error', async () => {
+    const env = await createTempHome()
+
+    const result = await runCli(['login', '--gitcode-token'], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+
+    expect(result.exitCode).toBe(5) // EXIT.usage
+    expect(result.stderr).toMatch(/value is missing/)
+  })
+
+  // A GitCode deployment disables the device flow server-side, so the public
+  // device endpoints answer 404. The error must name the credential that works.
+  test('device flow answered with 404 points the user at --gitcode-token', async () => {
+    const env = await createTempHome()
+    registry = await startFakeRegistry({ token: 'pat_gitcode' })
+
+    const result = await runCli(['login', '--registry', registry.url, '--no-open'], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+
+    expect(result.exitCode).toBe(2) // EXIT.auth
+    expect(result.stderr).toContain('does not offer OAuth Device Flow login')
+    expect(result.stderr).toContain('skillhub login --gitcode-token <PAT>')
+    expect(await Bun.file(`${env.home}/.skillhub/credentials.json`).exists()).toBe(false)
+  })
+
+  // -------------------------------------------------------------------------
   // logout
   // -------------------------------------------------------------------------
 

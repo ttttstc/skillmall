@@ -31,9 +31,19 @@ export function LoginPage() {
   const [loginMode, setLoginMode] = useState<'personal' | 'organization'>('personal')
   const [fieldErrors, setFieldErrors] = useState<{ username?: string, password?: string }>({})
   const returnTo = resolveAuthReturnTo(search.returnTo)
-  const { data: authMethods, isLoading: authMethodsLoading } = useAuthMethods(returnTo)
+  const { data: authMethods, isLoading: authMethodsLoading, isError: authMethodsError } = useAuthMethods(returnTo)
   const { data: localCapabilities, isError: localCapabilitiesError } = useLocalAuthCapabilities()
+  // The method catalog is what the deployment actually accepts: a catalog that loaded without a
+  // password method means this deployment does not offer one (for example a GitCode-only market),
+  // so no password form may be rendered. While the catalog is loading or failed the local
+  // capability endpoint decides, so a partial outage neither hides a working local login nor makes
+  // the form flicker away.
+  const catalogLoaded = !authMethodsLoading && !authMethodsError && authMethods !== undefined
+  const catalogAdvertisesPassword = authMethods?.some(
+    (method) => method.methodType === 'PASSWORD' || method.methodType === 'DIRECT_PASSWORD',
+  ) === true
   const passwordEnabled = localCapabilities?.passwordLoginEnabled === true
+    && (!catalogLoaded || catalogAdvertisesPassword)
   const effectiveLoginMode = passwordEnabled ? loginMode : 'organization'
   const disabledMessage = search.reason === 'accountDisabled' ? t('error.auth.local.accountDisabled') : null
   const bootstrapMethod = authMethods?.find((method) => method.methodType === 'SESSION_BOOTSTRAP')

@@ -421,6 +421,21 @@ public class RouteSecurityPolicyRegistry {
     }
 
     public boolean shouldIgnoreCsrf(String method, String path, String authorizationHeader, boolean hasSessionCookie) {
+        return shouldIgnoreCsrf(method, path, authorizationHeader, hasSessionCookie, false);
+    }
+
+    /**
+     * Resolves the CSRF exemption with an explicit cookie-authenticated marker.
+     *
+     * <p>A cookie-authenticated API caller cannot obtain an XSRF token, so it declares its intent
+     * with a custom header. Browsers cannot set a custom header on a cross-site request without a
+     * CORS preflight, so honouring it does not weaken CSRF protection.
+     */
+    public boolean shouldIgnoreCsrf(String method, String path, String authorizationHeader,
+                                    boolean hasSessionCookie, boolean cookieAuthHeader) {
+        if (!hasSessionCookie && cookieAuthHeader) {
+            return true;
+        }
         if (!hasSessionCookie && authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             return true;
         }

@@ -3,15 +3,15 @@ import { fileURLToPath } from 'node:url'
 
 /**
  * Spawn the CLI with a clean environment so host-shell exports like
- * SKILLHUB_REGISTRY or SKILLHUB_TOKEN don't leak into the test process and
- * silently override stored credentials/config. Tests can still inject any
- * SKILLHUB_* variable explicitly via the `env` argument.
+ * SKILLHUB_REGISTRY, SKILLHUB_TOKEN or GITCODE_TOKEN don't leak into the test
+ * process and silently override stored credentials/config. Tests can still
+ * inject any of these variables explicitly via the `env` argument.
  */
 function sanitizeProcessEnv(): Record<string, string> {
   const cleaned: Record<string, string> = {}
   for (const [key, value] of Object.entries(process.env)) {
     if (typeof value !== 'string') continue
-    if (key.startsWith('SKILLHUB_')) continue
+    if (key.startsWith('SKILLHUB_') || key === 'GITCODE_TOKEN') continue
     cleaned[key] = value
   }
   return cleaned

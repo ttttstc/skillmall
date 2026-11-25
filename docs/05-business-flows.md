@@ -79,6 +79,8 @@
 | 审核详情与审核包 | 独立审核权限入口；审核绑定下载不计入公开下载量，不能套用普通详情或普通下载的权限结论 |
 | 治理与提审 | 提审、撤回审核、归档、隐藏、yank 与删除是不同动作；平台角色是否穿透需按实际入口判断，不能从一个入口推广到所有读取路径 |
 
+> 下载收紧（GitCode 身份迭代）：上表「常规下载」中「`UPLOADED` / `PENDING_REVIEW` 仅允许 owner 或 namespace ADMIN/OWNER 下载」在 `PRIVATE` / `NAMESPACE_ONLY` 容器下已收紧为仅 owner —— 非 owner（含 namespace `ADMIN` / `OWNER`）与匿名调用返回 `404`，不返回 `403`。见 [GitCode 身份认证与登录](./31-gitcode-identity-authentication.md)。
+
 `YANKED` 可保留在管理版本列表中，但不允许常规下载。yank 命中当前指针时，重算其余已发布版本；不存在时置空。
 
 ### 对象存储写入策略

@@ -54,7 +54,7 @@ public interface AccessPolicy {
 }
 
 public record OAuthClaims(
-    String provider,          // github, google, wechat
+    String provider,          // github, google, wechat, gitcode
     String subject,           // provider 唯一 ID
     String email,             // nullable（微信等可能无邮箱）
     boolean emailVerified,    // 是否已验证
@@ -364,6 +364,54 @@ OAUTH2_FEISHU_REDIRECT_URI=
 时发布配置校验失败，应用也会拒绝启动。不会在 v3 失败后自动使用 v2，因为 authorization code 只能使用一次，
 自动重试可能造成重复请求并掩盖配置错误。旧的 `OAUTH2_FEISHU_AUTHORIZE_URI` 和
 `OAUTH2_FEISHU_BASE_URI` 仍作为 base-URI 兼容回退，但新部署应使用完整 endpoint 变量。
+
+## 3.7 本部署的具体配置：GitCode 单一身份源
+
+本部署只承认 GitCode 一个身份源，设计细节、接口事实与回滚方式见
+[GitCode 身份认证与登录](./31-gitcode-identity-authentication.md)。要点：
+
+- **登录方式**：只开 GitCode OAuth2 授权码登录（registration id `gitcode`）。
+  GitCode 是 OAuth2 而不是 OIDC，需要显式声明 provider 端点；授权请求不传 `scope`，
+  token 交换使用表单并采用 `client_secret_post`。回调地址形如
+  `{baseUrl}/login/oauth2/code/gitcode`：
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          gitcode:
+            client-id: ${OAUTH2_GITCODE_CLIENT_ID}
+            client-secret: ${OAUTH2_GITCODE_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+        provider:
+          gitcode:
+            authorization-uri: ${OAUTH2_GITCODE_AUTHORIZE_URI:https://gitcode.com/oauth/authorize}
+            token-uri: ${OAUTH2_GITCODE_TOKEN_URI:https://gitcode.com/oauth/token}
+            user-info-uri: ${OAUTH2_GITCODE_USER_INFO_URI:https://api.gitcode.com/api/v5/user}
+            user-name-attribute: login
+```
+
+- **准入**：`skillhub.access-policy.mode=PROVIDER_ALLOWLIST`，`allowed-providers` 只列
+  `gitcode`。其他 provider 即使配置了 registration 也进不来。（注意：第 2.1 节示例里的
+  `astron:` 前缀是历史写法，当前代码读取 `skillhub.access-policy`；
+  `AccessPolicyFactory` 对无法识别的 `mode` 会回退到 `OPEN`，切换后必须核对实际生效值。）
+- **关闭的入口**：`skillhub.auth.legacy-login.enabled=false`，本地密码登录、第三方
+  OAuth Provider、平台 API Token 与 CLI device flow 同时关闭；CLI 与 Agent 改用 GitCode
+  PAT（`Authorization: Bearer <PAT>`），无效 PAT 返回 `401` 且不回退。
+- **管理员入口**：`/api/v1/admin/**` 与 `/actuator/prometheus` 要求 GitCode 身份且命中
+  `skillhub.auth.gitcode.admin-allowlist`，再叠加既有平台角色检查；白名单逐请求评估，
+  移除立即生效。
+
+**与第 3.3 节"默认不做全局自动登录 filter"的关系**：该边界继续成立。本部署不安装任何
+全局自动登录 filter，也没有"匿名请求到达时隐式建会话"的路径。无感登录（浏览器已登录
+gitcode.com 时复用其 cookie）只在 `skillhub.auth.session-bootstrap.enabled=true` 且前端
+**显式调用** `POST /api/v1/auth/session/bootstrap` 时发生；该功能默认关闭，关闭时端点返回
+`403`。被动会话实现同样受本节约束：`skillhub.auth.gitcode.cookie.enabled` 默认为
+`false`，只有部署方在真实网络路径上探测确认"仅凭允许转发的 cookie 即可换到用户"之后才允许
+开启，并且只转发 `cookie.names` 白名单内的名字，绝不转发整条 `Cookie` 头。
 
 ## 4. 核心接口设计
 

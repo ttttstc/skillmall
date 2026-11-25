@@ -1,5 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const tokenManagement = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/api/client', () => ({
+  isAuthTokenManagementEnabled: () => tokenManagement.enabled,
+}))
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
@@ -27,6 +33,10 @@ vi.mock('@/shared/components/dashboard-page-header', () => ({
 import { TokensPage } from './tokens'
 
 describe('TokensPage', () => {
+  afterEach(() => {
+    tokenManagement.enabled = true
+  })
+
   it('exports a named component function', () => {
     expect(typeof TokensPage).toBe('function')
   })
@@ -37,5 +47,15 @@ describe('TokensPage', () => {
     expect(html).toContain('tokens.pageTitle')
     expect(html).toContain('tokens.pageSubtitle')
     expect(html).toContain('token-list')
+  })
+
+  it('replaces the token UI with an explanation when the deployment disables token management', () => {
+    tokenManagement.enabled = false
+    const html = renderToStaticMarkup(<TokensPage />)
+
+    expect(html).toContain('tokens.pageTitle')
+    expect(html).toContain('tokens.disabledTitle')
+    expect(html).toContain('tokens.disabledDescription')
+    expect(html).not.toContain('token-list')
   })
 })

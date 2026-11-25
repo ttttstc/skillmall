@@ -9,6 +9,7 @@ import com.iflytek.skillhub.dto.ApiResponseFactory;
 import com.iflytek.skillhub.dto.MessageResponse;
 import com.iflytek.skillhub.observability.RequestIdAccessor;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * device code and records the operation in the audit log.
  */
 @RestController
+@ConditionalOnProperty(prefix = "skillhub.auth.legacy-login", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("/api/v1/device")
 public class DeviceAuthWebController extends BaseApiController {
 

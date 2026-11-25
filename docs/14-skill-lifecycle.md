@@ -70,6 +70,7 @@ Status: contract reference
 - owner 详情页只有在不存在 `publishedVersion` 时，才允许 `headlineVersion = ownerPreviewVersion`
 - compat latest 和默认公开下载采用最新已发布版本语义；promotion 可选择来源 skill 的任一 `PUBLISHED` 版本，不要求等于 `publishedVersion`。原始指针与各入口解析差异见第 3.1 节
 - 管理者的授权预览下载与公开分发不同：owner 或 namespace ADMIN/OWNER 可下载 `UPLOADED` / `PENDING_REVIEW`，当前 owner 另可受控下载自己的 `DRAFT` / `REJECTED`，仍须通过 Skill 可见性、文件就绪及其他安全检查；不因此放行 `SCANNING` / `SCAN_FAILED` / `YANKED` 或公开分发未发布版本。常规 `downloadLatest` 读取原始指针后也使用相同版本授权判断，因此在上述 PRIVATE 指针语义下，默认下载不一定是已发布版本；该行为不授予公众访问权。
+- 下载收紧（GitCode 身份迭代）：上一条中「owner 或 namespace ADMIN/OWNER 可下载 `UPLOADED` / `PENDING_REVIEW`」在 `PRIVATE` / `NAMESPACE_ONLY` 容器下已收紧为仅 owner —— 非 owner（含 namespace `ADMIN` / `OWNER`）与匿名调用返回 `404`。`VisibilityChecker.canAccess` 未变，审核预览仍保留；见 [GitCode 身份认证与登录](./31-gitcode-identity-authentication.md)。
 - 已发布版本可安装还要求 `downloadReady=true`、`yankedAt=null`；下载要求容器为 `ACTIVE`，元数据可读不等于可下载
 
 ### 3.3 First Published At

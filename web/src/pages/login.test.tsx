@@ -3,13 +3,19 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import ko from '@/i18n/locales/ko.json'
-import { afterEach } from 'vitest'
+import { afterEach, beforeEach } from 'vitest'
 import { describe, expect, it, vi } from 'vitest'
 
 const authMethodsFixture = vi.hoisted(() => ({
   localize: false,
   reason: undefined as string | undefined,
-  methods: [] as Array<{ id: string, methodType: string }>,
+  methods: [] as Array<{
+    id: string
+    methodType: string
+    provider: string
+    displayName: string
+    actionUrl: string
+  }>,
   bootstrapEnabled: false,
   directEnabled: false,
   isError: false,
@@ -21,6 +27,15 @@ const authMethodsFixture = vi.hoisted(() => ({
 }))
 
 const koreanI18n = createInstance()
+
+// Every test starts from the default deployment shape: a password method in the catalog.
+const passwordMethod: (typeof authMethodsFixture)['methods'][number] = {
+  id: 'local-password',
+  methodType: 'PASSWORD',
+  provider: 'local',
+  displayName: 'Local Account',
+  actionUrl: '/api/v1/auth/local/login',
+}
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
@@ -57,7 +72,17 @@ vi.mock('@/features/auth/auth-shell', () => ({
 }))
 
 vi.mock('@/features/auth/login-button', () => ({
-  AuthMethodButtonList: () => null,
+  AuthMethodButtonList: ({
+    methods,
+  }: {
+    methods?: Array<{ id: string, methodType: string, displayName: string }>
+  }) => (
+    <div>
+      {(methods ?? [])
+        .filter((method) => method.methodType === 'OAUTH_REDIRECT')
+        .map((method) => <button key={method.id} type="button">{method.displayName}</button>)}
+    </div>
+  ),
   LoginButton: () => null,
 }))
 
@@ -100,11 +125,15 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { LoginPage } from './login'
 
 describe('LoginPage', () => {
+  beforeEach(() => {
+    authMethodsFixture.methods = [passwordMethod]
+  })
+
   afterEach(() => {
     cleanup()
     authMethodsFixture.localize = false
     authMethodsFixture.reason = undefined
-    authMethodsFixture.methods = []
+    authMethodsFixture.methods = [passwordMethod]
     authMethodsFixture.bootstrapEnabled = false
     authMethodsFixture.directEnabled = false
     authMethodsFixture.isError = false
@@ -170,6 +199,49 @@ describe('LoginPage', () => {
     expect(html).toContain('systemConfig.passwordDisabled')
   })
 
+  it('renders the GitCode method advertised by the auth-method catalog', () => {
+    authMethodsFixture.methods = [{
+      id: 'oauth-gitcode',
+      methodType: 'OAUTH_REDIRECT',
+      provider: 'gitcode',
+      displayName: 'GitCode',
+      actionUrl: '/oauth2/authorization/gitcode',
+    }]
+    render(<LoginPage />)
+
+    expect(screen.getByRole('button', { name: 'GitCode' })).toBeTruthy()
+  })
+
+  it('does not require a password form when the catalog advertises no password method', () => {
+    authMethodsFixture.methods = [{
+      id: 'oauth-gitcode',
+      methodType: 'OAUTH_REDIRECT',
+      provider: 'gitcode',
+      displayName: 'GitCode',
+      actionUrl: '/oauth2/authorization/gitcode',
+    }]
+    render(<LoginPage />)
+
+    expect(screen.queryByLabelText('login.username')).toBeNull()
+    expect(screen.queryByLabelText('login.password')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'login.submit' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'GitCode' })).toBeTruthy()
+  })
+
+  it('keeps the password form when the catalog advertises a password method', () => {
+    authMethodsFixture.methods = [{
+      id: 'local-password',
+      methodType: 'PASSWORD',
+      provider: 'local',
+      displayName: 'Local Account',
+      actionUrl: '/api/v1/auth/local/login',
+    }]
+    render(<LoginPage />)
+
+    expect(screen.getByLabelText('login.password')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'login.submit' })).toBeTruthy()
+  })
+
   it('does not expose password routing details when direct login is configured', () => {
     authMethodsFixture.directEnabled = true
     const html = renderToStaticMarkup(<LoginPage />)
@@ -233,7 +305,13 @@ describe('LoginPage', () => {
   })
 
   it('hides an unusable session bootstrap entry when the web runtime is not configured', () => {
-    authMethodsFixture.methods = [{ id: 'proxy', methodType: 'SESSION_BOOTSTRAP' }]
+    authMethodsFixture.methods = [{
+      id: 'proxy',
+      methodType: 'SESSION_BOOTSTRAP',
+      provider: 'proxy',
+      displayName: 'Proxy',
+      actionUrl: '/api/v1/auth/session/bootstrap',
+    }]
     render(<LoginPage />)
 
     expect(screen.queryByRole('button', { name: 'login.tabEnterprise' })).toBeNull()

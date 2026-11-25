@@ -22,6 +22,7 @@ import com.iflytek.skillhub.security.AuthFailureThrottleService;
 import com.iflytek.skillhub.service.AuthMeResponseAssembler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  * HTTP endpoints for local account registration, login, and password changes.
  */
 @RestController
+@ConditionalOnProperty(prefix = "skillhub.auth.legacy-login", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("/api/v1/auth/local")
 public class LocalAuthController extends BaseApiController {
 

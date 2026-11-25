@@ -75,6 +75,9 @@ spec:
               value: "true"
             - name: SKILLHUB_WEB_AUTH_DIRECT_PROVIDER
               value: "local"
+            # GitCode 切换后改成 "false"：隐藏 API 令牌入口，CLI 改用 GitCode 个人访问令牌
+            - name: SKILLHUB_WEB_AUTH_TOKEN_MANAGEMENT_ENABLED
+              value: "true"
 
             # ---------- 子路径部署 ----------
             # 短期方案：全部走 web，API_BASE_URL 用相对值，且必须等于 BASE_PATH 去掉尾斜杠

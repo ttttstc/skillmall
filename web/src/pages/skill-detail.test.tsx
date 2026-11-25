@@ -19,6 +19,18 @@ const adminApiMocks = vi.hoisted(() => ({
   yankVersion: vi.fn(),
 }))
 
+const apiErrorMocks = vi.hoisted(() => {
+  class MockApiError extends Error {
+    status?: number
+    serverMessageKey?: string
+    constructor(message: string, status?: number) {
+      super(message)
+      this.status = status
+    }
+  }
+  return { MockApiError }
+})
+
 const navigateMock = vi.fn()
 const hasRoleMock = vi.fn<(role: string) => boolean>((role: string) => role === 'USER')
 const useSkillDetailMock = vi.fn()
@@ -79,7 +91,13 @@ vi.mock('react-i18next', async () => {
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: null, isLoading: false, error: null }),
   useMutation: () => ({ mutate: vi.fn(), isPending: false }),
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  useQueryClient: () => ({
+    invalidateQueries: vi.fn(),
+    cancelQueries: vi.fn(),
+    setQueriesData: vi.fn(),
+    removeQueries: vi.fn(),
+    setQueryData: vi.fn(),
+  }),
 }))
 
 vi.mock('@/features/auth/use-auth', () => ({
@@ -108,9 +126,7 @@ vi.mock('@/api/client', () => ({
     unmarkSkillOfficial: adminApiMocks.unmarkSkillOfficial,
     yankVersion: adminApiMocks.yankVersion,
   },
-  ApiError: class ApiError extends Error {
-    serverMessageKey?: string
-  },
+  ApiError: apiErrorMocks.MockApiError,
   buildApiUrl: (value: string) => value,
   WEB_API_PREFIX: '/api/web',
 }))
@@ -361,6 +377,26 @@ describe('SkillDetailPage', () => {
       view.rerender(<SkillDetailPage />)
       expect(view.container.querySelector('[data-analytics-id="skill.detail.render"]')).toBeNull()
     }
+  })
+
+  it('renders not-found for a hidden skill answered with 404 instead of claiming an access denial', () => {
+    // The server hides private and namespace-only skills from anonymous and non-owner callers by
+    // answering 404, so the page must not turn that into "no permission".
+    authState = { user: null, hasRole: hasRoleMock }
+    useSkillDetailMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      error: new apiErrorMocks.MockApiError('HTTP 404', 404),
+      refetch: vi.fn(),
+    })
+
+    render(<SkillDetailPage />)
+
+    expect(screen.getByText('skillDetail.notFound')).toBeTruthy()
+    expect(screen.getByText('skillDetail.notFoundDesc')).toBeTruthy()
+    expect(screen.queryByText('skillDetail.accessDenied')).toBeNull()
+    expect(screen.queryByText('skillDetail.loginRequired')).toBeNull()
   })
 
   it('retains archive download guards on the marked intent button', () => {

@@ -54,6 +54,10 @@ vi.mock('@/shared/lib/governance-access', () => ({
   canViewGovernanceCenter: () => false,
 }))
 
+vi.mock('@/api/client', () => ({
+  isAuthTokenManagementEnabled: () => true,
+}))
+
 vi.mock('@/shared/lib/dismiss-open-overlays', () => ({
   dismissOpenOverlays: vi.fn(),
 }))

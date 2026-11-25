@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 
+const tokenManagement = vi.hoisted(() => ({ enabled: true }))
+
 // DashboardPage is a component-only page that wires auth context, skill previews,
 // and token list. No exported pure functions or constants beyond the component.
+
+vi.mock('@/api/client', () => ({
+  isAuthTokenManagementEnabled: () => tokenManagement.enabled,
+}))
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: unknown }) => children,
@@ -69,6 +75,19 @@ describe('DashboardPage', () => {
     expect(html).toContain('overview.mySkills')
     expect(html).toContain('sidebar.mySuites')
     expect(html).toContain('overview.mySuites')
+    expect(html).toContain('sidebar.tokens')
+    expect(html).toContain('overview.tokens')
     expect(html).not.toContain('overview.publish')
+  })
+
+  it('hides the API token navigation and overview card when token management is disabled', () => {
+    tokenManagement.enabled = false
+    const html = renderToStaticMarkup(<DashboardPage />)
+
+    expect(html).not.toContain('sidebar.tokens')
+    expect(html).not.toContain('overview.tokens')
+    expect(html).toContain('sidebar.skillsAndData')
+    expect(html).toContain('overview.mySkills')
+    tokenManagement.enabled = true
   })
 })

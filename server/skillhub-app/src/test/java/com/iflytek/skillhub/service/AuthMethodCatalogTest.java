@@ -10,6 +10,7 @@ import com.iflytek.skillhub.auth.direct.DirectAuthRequest;
 import com.iflytek.skillhub.auth.rbac.PlatformPrincipal;
 import com.iflytek.skillhub.auth.settings.LocalAuthSettings;
 import com.iflytek.skillhub.auth.settings.LocalAuthSettingsService;
+import com.iflytek.skillhub.auth.config.LegacyLoginProperties;
 import com.iflytek.skillhub.config.AuthSessionBootstrapProperties;
 import com.iflytek.skillhub.config.DirectAuthProperties;
 import java.util.List;
@@ -35,7 +36,8 @@ class AuthMethodCatalogTest {
             new AuthSessionBootstrapProperties(),
             List.of(),
             List.of(),
-            enabledSettings()
+            enabledSettings(),
+            new LegacyLoginProperties()
         );
 
         assertThat(catalog.listOAuthProviders(null))
@@ -94,7 +96,8 @@ class AuthMethodCatalogTest {
             bootstrapProperties,
             List.of(directProvider),
             List.of(bootstrapProvider),
-            enabledSettings()
+            enabledSettings(),
+            new LegacyLoginProperties()
         );
 
         assertThat(catalog.listMethods(null))
@@ -144,7 +147,8 @@ class AuthMethodCatalogTest {
             bootstrapProperties,
             List.of(directProvider),
             List.of(bootstrapProvider),
-            enabledSettings()
+            enabledSettings(),
+            new LegacyLoginProperties()
         );
 
         assertThat(catalog.listMethods(null))

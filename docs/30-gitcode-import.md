@@ -15,10 +15,16 @@ In scope: importing a skill from a public GitCode repository, choosing which ski
 import when the repository holds several, previewing the exact file set, and publishing it as one
 version with provenance.
 
-Out of scope (by design, not by omission): GitCode account login, private repositories, scheduled or
-automatic re-synchronisation of an imported version, review workflows and the GitHub sync
-subsystem. Imported versions are never updated in the background; a user imports a new snapshot
-explicitly to publish an update.
+Out of scope (by design, not by omission): private repositories, scheduled or automatic
+re-synchronisation of an imported version, review workflows and the GitHub sync subsystem.
+Imported versions are never updated in the background; a user imports a new snapshot explicitly to
+publish an update.
+
+GitCode account login is no longer out of scope, but it is a separate design rather than part of
+this import path: see [GitCode identity authentication](31-gitcode-identity-authentication.md).
+Repository import is unrelated to it and remains anonymous read-only — it reads public repositories
+without any GitCode credential, and the source URL must not carry one — so the two features can be
+enabled independently.
 
 ## Endpoints
 

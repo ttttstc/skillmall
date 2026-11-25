@@ -41,6 +41,7 @@ import {
   getAppBaseUrl,
   getDirectAuthRuntimeConfig,
   getSessionBootstrapRuntimeConfig,
+  isAuthTokenManagementEnabled,
   namespaceApi,
 } from './client'
 
@@ -277,5 +278,26 @@ describe('getSessionBootstrapRuntimeConfig', () => {
     }
     const config = getSessionBootstrapRuntimeConfig()
     expect(config.enabled).toBe(false)
+  })
+})
+
+describe('isAuthTokenManagementEnabled', () => {
+  it('defaults to enabled when the deployment does not set the flag', () => {
+    expect(isAuthTokenManagementEnabled()).toBe(true)
+  })
+
+  it('defaults to enabled when the flag is blank', () => {
+    window.__SKILLHUB_RUNTIME_CONFIG__ = { authTokenManagementEnabled: '   ' }
+    expect(isAuthTokenManagementEnabled()).toBe(true)
+  })
+
+  it.each(['true', '1', 'yes', 'on', ' TRUE '])('returns true for %s', (flag) => {
+    window.__SKILLHUB_RUNTIME_CONFIG__ = { authTokenManagementEnabled: flag }
+    expect(isAuthTokenManagementEnabled()).toBe(true)
+  })
+
+  it.each(['false', '0', 'off', 'no'])('returns false for %s', (flag) => {
+    window.__SKILLHUB_RUNTIME_CONFIG__ = { authTokenManagementEnabled: flag }
+    expect(isAuthTokenManagementEnabled()).toBe(false)
   })
 })

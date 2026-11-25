@@ -11,9 +11,15 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, values?: Record<string, string>) => (
-        key === 'loginButton.loginWith' && values?.name ? `Login with ${values.name}` : key
-      ),
+      t: (key: string, values?: Record<string, string>) => {
+        if (key === 'loginButton.loginWith' && values?.name) {
+          return `Login with ${values.name}`
+        }
+        if (key === 'loginButton.providerGitcode') {
+          return 'GitCode'
+        }
+        return key
+      },
     }),
   }
 })
@@ -125,6 +131,57 @@ describe('AuthMethodButtonList', () => {
     const iconPath = screen.getByRole('img', { name: provider }).getAttribute('src') ?? ''
     expect(iconPath).toMatch(/^\/[a-z0-9-]+-logo\.svg$/)
     expect(existsSync(resolve(process.cwd(), 'public', iconPath.slice(1)))).toBe(true)
+  })
+
+  it('renders the GitCode login method advertised by the backend', () => {
+    const gitcodeMethod: AuthMethod = {
+      id: 'oauth-gitcode',
+      methodType: 'OAUTH_REDIRECT',
+      provider: 'gitcode',
+      displayName: 'GitCode',
+      actionUrl: '/oauth2/authorization/gitcode',
+    }
+
+    render(<AuthMethodButtonList methods={[gitcodeMethod]} />)
+
+    expect(screen.getByText('Login with GitCode')).toBeTruthy()
+  })
+
+  it('prefers the server-provided display name over the bundled fallback label', () => {
+    render(<AuthMethodButtonList methods={[{
+      id: 'oauth-gitcode',
+      methodType: 'OAUTH_REDIRECT',
+      provider: 'gitcode',
+      displayName: 'GitCode Enterprise',
+      actionUrl: '/oauth2/authorization/gitcode',
+    }]} />)
+
+    expect(screen.getByText('Login with GitCode Enterprise')).toBeTruthy()
+  })
+
+  it.each([false, true])('falls back to the localized GitCode label when the catalog omits a display name (compact=%s)', (compact) => {
+    render(<AuthMethodButtonList methods={[{
+      id: 'oauth-gitcode',
+      methodType: 'OAUTH_REDIRECT',
+      provider: 'gitcode',
+      displayName: '  ',
+      actionUrl: '/oauth2/authorization/gitcode',
+    }]} compact={compact} />)
+
+    expect(compact ? screen.getByText('GitCode') : screen.getByText('Login with GitCode')).toBeTruthy()
+  })
+
+  it('falls back to the provider code instead of a raw translation key', () => {
+    render(<AuthMethodButtonList methods={[{
+      id: 'enterprise',
+      methodType: 'OAUTH_REDIRECT',
+      provider: 'enterprise',
+      displayName: '',
+      actionUrl: '/oauth2/authorization/enterprise',
+    }]} compact />)
+
+    expect(screen.getByText('enterprise')).toBeTruthy()
+    expect(screen.queryByText('loginButton.providerGitcode')).toBeNull()
   })
 
   it('renders the supplied empty fallback when no OAuth methods are available', () => {

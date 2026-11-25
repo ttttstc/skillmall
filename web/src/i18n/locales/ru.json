@@ -1089,7 +1089,9 @@
   },
   "tokens": {
     "pageTitle": "Управление токенами",
-    "pageSubtitle": "Учётные данные доступа для CLI и API"
+    "pageSubtitle": "Учётные данные доступа для CLI и API",
+    "disabledTitle": "Токены API отключены",
+    "disabledDescription": "В этом развёртывании токены API отключены. Используйте личный токен доступа GitCode."
   },
   "theme": {
     "darkMode": "Тёмная тема",
@@ -2207,7 +2209,8 @@
   "loginButton": {
     "loading": "Загрузка...",
     "loadingShort": "Загрузка",
-    "loginWith": "Войти через {{name}}"
+    "loginWith": "Войти через {{name}}",
+    "providerGitcode": "GitCode"
   },
   "authShell": {
     "eyebrow": "SkillMall",

@@ -232,14 +232,22 @@ cli
   })
 
 cli
-  .command('login', 'Log in with OAuth Device Flow or an API token')
+  .command('login', 'Log in with a GitCode personal access token, an API token, or OAuth Device Flow')
   .option('--registry <url>', 'Registry URL')
+  .option('--gitcode-token <token>', 'GitCode personal access token (PAT)')
   .option('--token <token>', 'API token')
   .option('--no-open', 'Do not open the verification URL in a browser')
   .option('--json', 'Output JSON')
-  .action((options: { registry?: string; token?: string; open?: boolean; json?: boolean }) => {
+  .action((options: { registry?: string; token?: string; gitcodeToken?: string; open?: boolean; json?: boolean }) => {
     return runCommand(
-      () => loginCommand({ ...options, noOpen: options.open === false }),
+      () => loginCommand({
+        ...options,
+        // Read the raw value so a numeric-looking PAT is not coerced, and a
+        // flag without a value fails as a usage error instead of silently
+        // falling back to device flow.
+        gitcodeToken: rawStringOption(process.argv.slice(2), '--gitcode-token') ?? options.gitcodeToken,
+        noOpen: options.open === false
+      }),
       Boolean(options.json)
     )
   })
