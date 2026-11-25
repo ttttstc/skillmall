@@ -2,6 +2,7 @@ package com.iflytek.skillhub.service;
 
 import com.iflytek.skillhub.auth.settings.LocalAuthSettingsService;
 import com.iflytek.skillhub.auth.bootstrap.PassiveSessionAuthenticator;
+import com.iflytek.skillhub.auth.config.LegacyLoginProperties;
 import com.iflytek.skillhub.auth.direct.DirectAuthProvider;
 import com.iflytek.skillhub.auth.oauth.OAuthLoginRedirectSupport;
 import com.iflytek.skillhub.config.AuthSessionBootstrapProperties;
@@ -30,19 +31,22 @@ public class AuthMethodCatalog {
     private final List<DirectAuthProvider> directAuthProviders;
     private final List<PassiveSessionAuthenticator> passiveSessionAuthenticators;
     private final LocalAuthSettingsService authSettings;
+    private final LegacyLoginProperties legacyLoginProperties;
 
     public AuthMethodCatalog(OAuth2ClientProperties oAuth2ClientProperties,
                              DirectAuthProperties directAuthProperties,
                              AuthSessionBootstrapProperties sessionBootstrapProperties,
                              List<DirectAuthProvider> directAuthProviders,
                              List<PassiveSessionAuthenticator> passiveSessionAuthenticators,
-                             LocalAuthSettingsService authSettings) {
+                             LocalAuthSettingsService authSettings,
+                             LegacyLoginProperties legacyLoginProperties) {
         this.oAuth2ClientProperties = oAuth2ClientProperties;
         this.directAuthProperties = directAuthProperties;
         this.sessionBootstrapProperties = sessionBootstrapProperties;
         this.directAuthProviders = directAuthProviders;
         this.passiveSessionAuthenticators = passiveSessionAuthenticators;
         this.authSettings = authSettings;
+        this.legacyLoginProperties = legacyLoginProperties;
     }
 
     public List<AuthProviderResponse> listOAuthProviders(String returnTo) {
@@ -74,7 +78,10 @@ public class AuthMethodCatalog {
     public List<AuthMethodResponse> listMethods(String returnTo) {
         String sanitizedReturnTo = OAuthLoginRedirectSupport.sanitizeReturnTo(returnTo);
         List<AuthMethodResponse> methods = new ArrayList<>();
-        boolean passwordEnabled = authSettings.current().passwordLoginEnabled();
+        // A GitCode deployment removes the local credential surfaces entirely, so the login page
+        // must not advertise a password method the server no longer accepts.
+        boolean passwordEnabled = authSettings.current().passwordLoginEnabled()
+                && legacyLoginProperties.isEnabled();
 
         if (passwordEnabled) {
             methods.add(new AuthMethodResponse(
@@ -99,7 +106,7 @@ public class AuthMethodCatalog {
                 buildAuthorizationUrl(entry.getKey(), sanitizedReturnTo)
             )));
 
-        if (directAuthProperties.isEnabled()) {
+        if (directAuthProperties.isEnabled() && legacyLoginProperties.isEnabled()) {
             directAuthProviders.stream()
                 .filter(provider -> !"local".equals(provider.providerCode())
                         || passwordEnabled)

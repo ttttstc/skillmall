@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/use-auth'
+import { isAuthTokenManagementEnabled } from '@/api/client'
 import { canViewGovernanceCenter } from '@/shared/lib/governance-access'
 import { APP_SHELL_PAGE_CLASS_NAME } from '@/app/page-shell-style'
 import { DashboardPageHeader } from '@/shared/components/dashboard-page-header'
@@ -26,6 +27,8 @@ interface SidebarItem {
   admin?: boolean
   superAdmin?: boolean
   passwordCapability?: boolean
+  /** Only rendered when the deployment still issues SkillHub API tokens. */
+  tokenManagement?: boolean
   badge?: string
 }
 
@@ -51,7 +54,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { key: 'namespaces', icon: Globe, label: 'sidebar.namespaces', to: '/dashboard/namespaces', analyticsId: 'namespace.list.open' },
       { key: 'stars', icon: Star, label: 'sidebar.stars', to: '/dashboard/stars', analyticsId: 'navigation.starred.open' },
       { key: 'subscriptions', icon: Heart, label: 'sidebar.subscriptions', to: '/dashboard/subscriptions', analyticsId: 'navigation.subscriptions.open' },
-      { key: 'tokens', icon: Key, label: 'sidebar.tokens', to: '/dashboard/tokens', analyticsId: 'account.tokens.open' },
+      { key: 'tokens', icon: Key, label: 'sidebar.tokens', to: '/dashboard/tokens', analyticsId: 'account.tokens.open', tokenManagement: true },
       { key: 'reviewProgress', icon: Clock, label: 'sidebar.reviewProgress', to: '/dashboard/review-progress', analyticsId: 'review.progress.open' },
     ],
   },
@@ -68,7 +71,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
 // Flatten for backward compatibility with layout.tsx
 const SIDEBAR_NAV_ITEMS = SIDEBAR_GROUPS.flatMap((g) => g.items)
 
-export const SIDEBAR_NAV = SIDEBAR_NAV_ITEMS.map(({ key, icon, label, to, admin, superAdmin, passwordCapability }) => ({
+export const SIDEBAR_NAV = SIDEBAR_NAV_ITEMS.map(({ key, icon, label, to, admin, superAdmin, passwordCapability, tokenManagement }) => ({
   key,
   icon,
   label,
@@ -76,6 +79,7 @@ export const SIDEBAR_NAV = SIDEBAR_NAV_ITEMS.map(({ key, icon, label, to, admin,
   admin,
   superAdmin,
   passwordCapability,
+  tokenManagement,
   exact: false,
 }))
 
@@ -99,6 +103,7 @@ export function DashboardPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const governanceVisible = canViewGovernanceCenter(user?.platformRoles)
+  const tokenManagementEnabled = isAuthTokenManagementEnabled()
 
   const filteredGroups = SIDEBAR_GROUPS
     .map((group) => ({
@@ -107,6 +112,7 @@ export function DashboardPage() {
         (!item.admin || governanceVisible)
         && (!item.superAdmin || user?.platformRoles?.includes('SUPER_ADMIN'))
         && (!item.passwordCapability || user?.canChangePassword === true)
+        && (!item.tokenManagement || tokenManagementEnabled)
       )),
     }))
     .filter((group) => group.items.length > 0)
@@ -122,7 +128,8 @@ export function DashboardPage() {
         {/* Right content - overview cards */}
         <div className="flex-1 min-w-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {OVERVIEW_CARDS.filter((card) => card.key !== 'security' || user?.canChangePassword === true).map((card) => {
+            {OVERVIEW_CARDS.filter((card) => (card.key !== 'security' || user?.canChangePassword === true)
+              && (card.key !== 'tokens' || tokenManagementEnabled)).map((card) => {
               const Icon = card.icon
               return (
                 <Link data-analytics-id={card.analyticsId}

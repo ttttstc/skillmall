@@ -168,6 +168,24 @@ spec:
             - name: SKILLHUB_AUTH_INITIAL_SELF_REGISTRATION_ENABLED
               value: "true"
 
+            # ---------- GitCode 身份 ----------
+            # 切换顺序（详见 docs/31-gitcode-identity-authentication.md）：
+            #   1. 在 GitCode 侧建 OAuth 应用，回调 https://<host>/login/oauth2/code/gitcode
+            #   2. OAUTH2_GITCODE_CLIENT_ID / OAUTH2_GITCODE_CLIENT_SECRET 放进 Secret，不要写进本文件
+            #   3. 先把 SKILLHUB_AUTH_GITCODE_ADMIN_ALLOWLIST 配好（至少一名管理员），否则管理入口无人可用
+            #   4. 再把 SKILLHUB_AUTH_LEGACY_LOGIN_ENABLED 改成 "false"、ACCESS_POLICY 改成 PROVIDER_ALLOWLIST
+            #      并把 SKILLHUB_ACCESS_POLICY_ALLOWED_PROVIDERS 设成 "gitcode"，同时关闭 web 的令牌管理入口
+            - name: SKILLHUB_ACCESS_POLICY_MODE
+              value: "OPEN"
+            - name: SKILLHUB_ACCESS_POLICY_ALLOWED_PROVIDERS
+              value: ""
+            - name: SKILLHUB_AUTH_GITCODE_API_BASE_URL
+              value: "https://gitcode.net/api/v5"
+            - name: SKILLHUB_AUTH_GITCODE_ADMIN_ALLOWLIST
+              value: ""
+            - name: SKILLHUB_AUTH_LEGACY_LOGIN_ENABLED
+              value: "true"
+
             # ---------- 内置技能 ----------
             - name: SKILLHUB_BUILTIN_SKILLS_ENABLED
               value: "true"

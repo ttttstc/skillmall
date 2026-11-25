@@ -95,6 +95,16 @@ spring:
             client-authentication-method: client_secret_post
             redirect-uri: "${OAUTH2_DINGTALK_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}"
             client-name: ${OAUTH2_DINGTALK_DISPLAY_NAME:钉钉}
+          gitcode:
+            client-id: ${OAUTH2_GITCODE_CLIENT_ID:placeholder}
+            client-secret: ${OAUTH2_GITCODE_CLIENT_SECRET:placeholder}
+            # GitCode follows the agent-hub integration: the authorization request carries no scope,
+            # the token request posts the client secret in the form body, and the user endpoint is
+            # the v5 API. Leaving the placeholders in place hides this provider from the login page.
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            redirect-uri: "${OAUTH2_GITCODE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}"
+            client-name: ${OAUTH2_GITCODE_DISPLAY_NAME:GitCode}
         provider:
           github:
             api-base-url: ${OAUTH2_GITHUB_API_BASE_URL:https://api.github.com}
@@ -117,6 +127,11 @@ spring:
             token-uri: ${OAUTH2_DINGTALK_BASE_URI:https://api.dingtalk.com}/v1.0/oauth2/userAccessToken
             user-info-uri: ${OAUTH2_DINGTALK_BASE_URI:https://api.dingtalk.com}/v1.0/contact/users/me
             user-name-attribute: unionId
+          gitcode:
+            authorization-uri: ${OAUTH2_GITCODE_AUTHORIZE_URI:https://gitcode.com/oauth/authorize}
+            token-uri: ${OAUTH2_GITCODE_TOKEN_URI:https://gitcode.com/oauth/token}
+            user-info-uri: ${OAUTH2_GITCODE_USER_INFO_URI:https://api.gitcode.com/api/v5/user}
+            user-name-attribute: login
   servlet:
     multipart:
       max-file-size: 100MB
@@ -190,6 +205,25 @@ skillhub:
       enabled: ${SKILLHUB_AUTH_DIRECT_ENABLED:false}
     session-bootstrap:
       enabled: ${SKILLHUB_AUTH_SESSION_BOOTSTRAP_ENABLED:false}
+    legacy-login:
+      # When disabled, local password login, platform API tokens and the CLI device flow are
+      # removed from the application so only the GitCode channels can authenticate.
+      enabled: ${SKILLHUB_AUTH_LEGACY_LOGIN_ENABLED:true}
+    gitcode:
+      api-base-url: ${SKILLHUB_AUTH_GITCODE_API_BASE_URL:https://gitcode.net/api/v5}
+      user-endpoint: ${SKILLHUB_AUTH_GITCODE_USER_ENDPOINT:}
+      timeout: ${SKILLHUB_AUTH_GITCODE_TIMEOUT:PT3S}
+      # login[:ROLE] entries allowed to reach /api/v1/admin/**; empty denies the whole admin surface.
+      admin-allowlist: ${SKILLHUB_AUTH_GITCODE_ADMIN_ALLOWLIST:}
+      cache:
+        positive-ttl: ${SKILLHUB_AUTH_GITCODE_CACHE_POSITIVE_TTL:PT5M}
+        negative-ttl: ${SKILLHUB_AUTH_GITCODE_CACHE_NEGATIVE_TTL:PT30S}
+      cookie:
+        # GitCode does not document cookie authentication. Enable only after a live probe proves
+        # that the configured endpoint resolves the current user from these cookies.
+        enabled: ${SKILLHUB_AUTH_GITCODE_COOKIE_ENABLED:false}
+        names: ${SKILLHUB_AUTH_GITCODE_COOKIE_NAMES:}
+        user-endpoint: ${SKILLHUB_AUTH_GITCODE_COOKIE_USER_ENDPOINT:}
     password-reset:
       code-expiry: ${SKILLHUB_AUTH_PASSWORD_RESET_CODE_EXPIRY:PT10M}
       email-from-address: ${SKILLHUB_AUTH_PASSWORD_RESET_FROM_ADDRESS:noreply@skillhub.local}
@@ -202,7 +236,10 @@ skillhub:
   public:
     base-url: ${SKILLHUB_PUBLIC_BASE_URL:}
   access-policy:
-    mode: OPEN
+    # PROVIDER_ALLOWLIST with a single gitcode entry is how this deployment restricts access to
+    # GitCode accounts. The default stays OPEN so the open-source behaviour is unchanged.
+    mode: ${SKILLHUB_ACCESS_POLICY_MODE:OPEN}
+    allowed-providers: ${SKILLHUB_ACCESS_POLICY_ALLOWED_PROVIDERS:}
   storage:
     provider: ${SKILLHUB_STORAGE_PROVIDER:local}
     local:

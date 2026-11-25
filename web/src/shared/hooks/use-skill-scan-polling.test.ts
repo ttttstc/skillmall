@@ -126,4 +126,13 @@ describe('skill scan polling lifecycle', () => {
     await act(() => vi.advanceTimersByTimeAsync(15_000))
     expect(fetchJson).toHaveBeenCalledTimes(calls)
   })
+
+  it('lets the detail page own a 404 instead of raising the global error toast', async () => {
+    fetchJson.mockRejectedValue(new Error('HTTP 404'))
+    const hook = renderHook(() => useSkillDetail('team', 'missing'), { wrapper: wrapper() })
+    await vi.waitFor(() => expect(hook.result.current.isError).toBe(true))
+
+    const query = clients[0].getQueryCache().findAll({ queryKey: ['skills', 'team', 'missing'] })[0]
+    expect(query?.meta?.skipGlobalErrorHandler).toBe(true)
+  })
 })

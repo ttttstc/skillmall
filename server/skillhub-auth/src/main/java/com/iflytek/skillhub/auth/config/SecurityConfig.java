@@ -6,7 +6,13 @@ import com.iflytek.skillhub.auth.oauth.DispatchingTokenResponseClient;
 import com.iflytek.skillhub.auth.oauth.OAuth2LoginFailureHandler;
 import com.iflytek.skillhub.auth.oauth.OAuth2LoginSuccessHandler;
 import com.iflytek.skillhub.auth.oauth.SkillHubOAuth2AuthorizationRequestResolver;
+import com.iflytek.skillhub.auth.gitcode.GitCodeAdminAllowlistGuard;
+import com.iflytek.skillhub.auth.gitcode.GitCodeAuthProperties;
+import com.iflytek.skillhub.auth.gitcode.GitCodeIdentityService;
+import com.iflytek.skillhub.auth.gitcode.GitCodeCredentialAuthenticationFilter;
 import com.iflytek.skillhub.auth.mock.MockAuthFilter;
+import com.iflytek.skillhub.auth.repository.IdentityBindingRepository;
+import com.iflytek.skillhub.auth.config.LegacyLoginProperties;
 import com.iflytek.skillhub.auth.policy.RouteSecurityPolicyRegistry;
 import com.iflytek.skillhub.auth.session.ExpiredPublicSessionFilter;
 import com.iflytek.skillhub.auth.session.CorruptSessionRemover;
@@ -15,6 +21,8 @@ import com.iflytek.skillhub.auth.token.ApiTokenScopeFilter;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +39,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -48,6 +57,8 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+    private static final Logger LOG = LoggerFactory.getLogger(SecurityConfig.class);
+
     private static final String CONTENT_SECURITY_POLICY = String.join("; ",
             "default-src 'self'",
             "script-src 'self'",
@@ -74,6 +85,10 @@ public class SecurityConfig {
     private final RouteSecurityPolicyRegistry routeSecurityPolicyRegistry;
     private final CorruptSessionRemover corruptSessionRemover;
     private final String sessionCookieName;
+    private final LegacyLoginProperties legacyLoginProperties;
+    private final GitCodeIdentityService gitCodeIdentityService;
+    private final GitCodeAuthProperties gitCodeAuthProperties;
+    private final IdentityBindingRepository identityBindingRepository;
 
     public SecurityConfig(CustomOAuth2UserService customOAuth2UserService,
                           CustomOidcUserService customOidcUserService,
@@ -88,7 +103,11 @@ public class SecurityConfig {
                           ObjectProvider<MockAuthFilter> mockAuthFilterProvider,
                           RouteSecurityPolicyRegistry routeSecurityPolicyRegistry,
                           ObjectProvider<CorruptSessionRemover> corruptSessionRemoverProvider,
-                          @Value("${server.servlet.session.cookie.name:SESSION}") String sessionCookieName) {
+                          @Value("${server.servlet.session.cookie.name:SESSION}") String sessionCookieName,
+                          LegacyLoginProperties legacyLoginProperties,
+                          GitCodeIdentityService gitCodeIdentityService,
+                          GitCodeAuthProperties gitCodeAuthProperties,
+                          IdentityBindingRepository identityBindingRepository) {
         this.customOAuth2UserService = customOAuth2UserService;
         this.customOidcUserService = customOidcUserService;
         this.tokenResponseClient = tokenResponseClient;
@@ -105,6 +124,10 @@ public class SecurityConfig {
             throw new IllegalStateException("Corrupt session recovery is not configured");
         });
         this.sessionCookieName = sessionCookieName;
+        this.legacyLoginProperties = legacyLoginProperties;
+        this.gitCodeIdentityService = gitCodeIdentityService;
+        this.gitCodeAuthProperties = gitCodeAuthProperties;
+        this.identityBindingRepository = identityBindingRepository;
     }
 
     /**
@@ -121,7 +144,9 @@ public class SecurityConfig {
         RequestMatcher csrfIgnoreMatcher = request -> {
             String path = RouteSecurityPolicyRegistry.requestPath(request);
             String authorization = request.getHeader("Authorization");
-            return routeSecurityPolicyRegistry.shouldIgnoreCsrf(request.getMethod(), path, authorization, hasSessionCookie(request));
+            boolean cookieAuthHeader = "1".equals(request.getHeader(GitCodeCredentialAuthenticationFilter.COOKIE_AUTH_HEADER));
+            return routeSecurityPolicyRegistry.shouldIgnoreCsrf(
+                    request.getMethod(), path, authorization, hasSessionCookie(request), cookieAuthHeader);
         };
 
         http
@@ -179,12 +204,34 @@ public class SecurityConfig {
                 .deleteCookies(sessionCookieName)
             )
             .addFilterBefore(new ExpiredPublicSessionFilter(
-                    routeSecurityPolicyRegistry, corruptSessionRemover, sessionCookieName), CsrfFilter.class)
-            .addFilterBefore(apiTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(apiTokenScopeFilter, ApiTokenAuthenticationFilter.class);
+                    routeSecurityPolicyRegistry, corruptSessionRemover, sessionCookieName), CsrfFilter.class);
+
+        // A GitCode deployment replaces the platform's own credential surfaces with two GitCode
+        // channels: an OAuth2 session for browsers and a personal access token for API callers.
+        // The legacy bearer-token filters are left out of the chain so a SkillHub token can never
+        // authenticate even if one still exists in the database.
+        if (legacyLoginProperties.isEnabled()) {
+            http.addFilterBefore(apiTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                    .addFilterAfter(apiTokenScopeFilter, ApiTokenAuthenticationFilter.class);
+        } else {
+            // The filters are constructed here instead of being declared as beans: a Filter bean
+            // would also be auto-registered by the servlet container and would then run outside
+            // this chain, ignoring the deployment switch.
+            http.addFilterBefore(
+                    new GitCodeCredentialAuthenticationFilter(gitCodeIdentityService, apiAuthenticationEntryPoint, routeSecurityPolicyRegistry),
+                    UsernamePasswordAuthenticationFilter.class);
+            // The allowlist only has meaning when the GitCode channels are the sole identity source.
+            http.addFilterBefore(
+                    new GitCodeAdminAllowlistGuard(gitCodeAuthProperties, identityBindingRepository),
+                    AuthorizationFilter.class);
+        }
 
         MockAuthFilter mockAuthFilter = mockAuthFilterProvider.getIfAvailable();
         if (mockAuthFilter != null) {
+            if (!legacyLoginProperties.isEnabled()) {
+                LOG.warn("Mock authentication is enabled while the legacy login surfaces are disabled; "
+                        + "this bypass must never be enabled in a GitCode deployment");
+            }
             http.addFilterBefore(mockAuthFilter, AnonymousAuthenticationFilter.class);
         }
 

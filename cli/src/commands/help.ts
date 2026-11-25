@@ -14,9 +14,16 @@ export const commands = {
     examples: ['skillhub version', 'skillhub version --json', 'skillhub --version', 'skillhub -v']
   },
   login: {
-    summary: 'Log in with OAuth Device Flow or an API token',
-    usage: 'skillhub login [--token <token>] [--no-open] [--registry <url>] [--json]',
+    summary: 'Log in with a GitCode personal access token, an API token, or OAuth Device Flow',
+    usage: 'skillhub login [--gitcode-token <PAT>] [--token <token>] [--no-open] [--registry <url>] [--json]',
+    notes: [
+      'On a GitCode deployment the credential is a GitCode personal access token (PAT). The server verifies it, maps it to a platform account, and this command stores it for the registry.',
+      'OAuth Device Flow runs only when no token is resolved. It is unavailable when the server disables it; a 404 from the device endpoints is reported together with the --gitcode-token alternative.',
+      'GITCODE_TOKEN supplies the token when --gitcode-token is absent, so agents can log in non-interactively.'
+    ],
     examples: [
+      'skillhub login --gitcode-token <PAT> --registry https://skillhub.example.com',
+      'GITCODE_TOKEN=<PAT> skillhub login',
       'skillhub login --registry https://skillhub.example.com',
       'skillhub login --registry https://skillhub.example.com --no-open',
       'skillhub login --token sk_xxx'
@@ -133,9 +140,11 @@ export async function helpCommand(args: string[]): Promise<string> {
     }, true)
   }
   if (topic && detail) {
+    const notes = 'notes' in detail ? detail.notes : undefined
     return [
       `${topic} - ${detail.summary}`,
       `Usage: ${detail.usage}`,
+      ...(notes && notes.length > 0 ? ['Notes:', ...notes.map(note => `  ${note}`)] : []),
       'Examples:',
       ...detail.examples.map(example => `  ${example}`)
     ].join('\n')

@@ -16,8 +16,13 @@ set -eu
 : "${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_PROVIDER:=}"
 : "${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_AUTO:=false}"
 
+# SkillHub-issued API tokens stay enabled unless the deployment says otherwise, so existing
+# installations keep the token page. An identity deployment that authenticates with GitCode sets
+# this to false and hides token management instead of offering tokens the server rejects.
+: "${SKILLHUB_WEB_AUTH_TOKEN_MANAGEMENT_ENABLED:=true}"
+
 # Generate runtime-config.js
-envsubst '${SKILLHUB_WEB_API_BASE_URL} ${SKILLHUB_PUBLIC_BASE_URL} ${SKILLHUB_WEB_AUTH_DIRECT_ENABLED} ${SKILLHUB_WEB_AUTH_DIRECT_PROVIDER} ${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_ENABLED} ${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_PROVIDER} ${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_AUTO}' \
+envsubst '${SKILLHUB_WEB_API_BASE_URL} ${SKILLHUB_PUBLIC_BASE_URL} ${SKILLHUB_WEB_AUTH_DIRECT_ENABLED} ${SKILLHUB_WEB_AUTH_DIRECT_PROVIDER} ${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_ENABLED} ${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_PROVIDER} ${SKILLHUB_WEB_AUTH_SESSION_BOOTSTRAP_AUTO} ${SKILLHUB_WEB_AUTH_TOKEN_MANAGEMENT_ENABLED}' \
   < /usr/share/nginx/html/runtime-config.js.template \
   > /usr/share/nginx/html/runtime-config.js
 

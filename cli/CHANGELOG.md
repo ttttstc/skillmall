@@ -4,6 +4,16 @@ All notable CLI behavior changes are documented in this file.
 
 ## 0.3.0
 
+### Added
+
+- Add `skillhub login --gitcode-token <PAT>` for GitCode deployments, where a GitCode personal
+  access token is the bearer credential. The PAT uses the existing `whoami` validation and the
+  existing per-registry credential store. `GITCODE_TOKEN` supplies the token when the flag is
+  absent, so agents can log in non-interactively.
+- Report a disabled OAuth Device Flow with the usable credential instead of a generic
+  "resource not found" when the device endpoints answer 404, and document the GitCode PAT and
+  the flow's availability in help, usage and the README.
+
 ### Changed
 
 - Retain strict inventory v2 and derive activation from trusted entry files, without a second

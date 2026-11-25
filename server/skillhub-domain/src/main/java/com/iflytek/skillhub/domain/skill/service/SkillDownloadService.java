@@ -7,6 +7,7 @@ import com.iflytek.skillhub.domain.namespace.NamespaceRole;
 import com.iflytek.skillhub.domain.namespace.NamespaceStatus;
 import com.iflytek.skillhub.domain.shared.exception.DomainBadRequestException;
 import com.iflytek.skillhub.domain.shared.exception.DomainForbiddenException;
+import com.iflytek.skillhub.domain.shared.exception.DomainNotFoundException;
 import com.iflytek.skillhub.domain.skill.*;
 import com.iflytek.skillhub.storage.ObjectStorageService;
 import com.iflytek.skillhub.storage.ObjectMetadata;
@@ -300,20 +301,15 @@ public class SkillDownloadService {
                                    Skill skill,
                                    String currentUserId,
                                    Map<Long, NamespaceRole> userNsRoles) {
-        if (currentUserId == null && !isAnonymousDownloadAllowed(skill)) {
-            throw new DomainForbiddenException("error.skill.access.denied", skill.getSlug());
-        }
-        if (!visibilityChecker.canAccess(skill, currentUserId, userNsRoles)) {
-            throw new DomainForbiddenException("error.skill.access.denied", skill.getSlug());
+        // Downloads are stricter than reads and never disclose whether a restricted skill exists:
+        // a public skill is available to everyone, everything else only to its owner.
+        if (!visibilityChecker.canDownload(skill, currentUserId, userNsRoles)) {
+            throw new DomainNotFoundException("error.skill.notFound", skill.getSlug());
         }
         if (namespace.getStatus() == NamespaceStatus.ARCHIVED
                 && !isNamespaceMember(namespace.getId(), currentUserId, userNsRoles)) {
             throw new DomainForbiddenException("error.namespace.archived", namespace.getSlug());
         }
-    }
-
-    private boolean isAnonymousDownloadAllowed(Skill skill) {
-        return skill.getVisibility() == SkillVisibility.PUBLIC;
     }
 
     private boolean isNamespaceMember(Long namespaceId, String currentUserId, Map<Long, NamespaceRole> userNsRoles) {

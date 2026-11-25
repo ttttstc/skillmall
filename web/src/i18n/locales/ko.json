@@ -1363,7 +1363,9 @@
   },
   "tokens": {
     "pageTitle": "토큰 관리",
-    "pageSubtitle": "CLI와 API의 접근 자격 증명을 관리하세요"
+    "pageSubtitle": "CLI와 API의 접근 자격 증명을 관리하세요",
+    "disabledTitle": "API 토큰이 비활성화되었습니다",
+    "disabledDescription": "이 배포에서는 API 토큰이 비활성화되었습니다. GitCode 개인 액세스 토큰을 사용하세요."
   },
   "theme": {
     "darkMode": "어두운 테마",
@@ -2377,7 +2379,8 @@
   "loginButton": {
     "loading": "불러오는 중...",
     "loadingShort": "불러오는 중",
-    "loginWith": "{{name}}으로 로그인"
+    "loginWith": "{{name}}으로 로그인",
+    "providerGitcode": "GitCode"
   },
   "authShell": {
     "eyebrow": "SkillMall",

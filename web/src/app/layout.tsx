@@ -11,6 +11,7 @@ import { NotificationBell } from '@/features/notification/notification-bell'
 import { dismissOpenOverlays } from '@/shared/lib/dismiss-open-overlays'
 import { syncDocumentLanguage } from '@/shared/lib/document-language'
 import { DashboardSidebar, SIDEBAR_GROUPS } from '@/pages/dashboard'
+import { isAuthTokenManagementEnabled } from '@/api/client'
 import { canViewGovernanceCenter } from '@/shared/lib/governance-access'
 import { getAppHeaderClassName } from './layout-header-style'
 import { AUTH_ENTRY_PATHS, SPLIT_AUTH_PATHS, getAppMainContentLayout, resolveAppMainContentPathname } from './layout-main-content'
@@ -42,6 +43,7 @@ export function Layout() {
   const isDashboardSubRoute = pathname !== '/dashboard' && pathname.startsWith('/dashboard')
   const showSidebar = (isDashboardSubRoute && pathname !== '/dashboard/publish') || pathname.startsWith('/settings/')
   const governanceVisible = canViewGovernanceCenter(user?.platformRoles)
+  const tokenManagementEnabled = isAuthTokenManagementEnabled()
   const filteredDashboardGroups = SIDEBAR_GROUPS
     .map((group) => ({
       ...group,
@@ -49,6 +51,7 @@ export function Layout() {
         (!item.admin || governanceVisible)
         && (!item.superAdmin || user?.platformRoles?.includes('SUPER_ADMIN'))
         && (!item.passwordCapability || user?.canChangePassword === true)
+        && (!item.tokenManagement || tokenManagementEnabled)
       )),
     }))
     .filter((group) => group.items.length > 0)

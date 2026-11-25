@@ -33,6 +33,28 @@ public class VisibilityChecker {
         };
     }
 
+    /**
+     * Evaluates whether a caller may download the packaged skill.
+     *
+     * <p>Download is deliberately narrower than read access: a public skill is downloadable by
+     * anyone, while a private or namespace-scoped skill is downloadable only by its owner.
+     * Namespace administrators keep the review preview path ({@link #canAccess}) but not the
+     * package download. Callers without access must be reported as "not found" so the endpoint
+     * never reveals that a skill exists.
+     */
+    public boolean canDownload(Skill skill, String currentUserId, Map<Long, NamespaceRole> userNamespaceRoles) {
+        if (skill.isHidden()) {
+            return isOwner(skill, currentUserId);
+        }
+        if (skill.getLatestVersionId() == null) {
+            return isOwner(skill, currentUserId);
+        }
+        return switch (skill.getVisibility()) {
+            case PUBLIC -> true;
+            case NAMESPACE_ONLY, PRIVATE -> isOwner(skill, currentUserId);
+        };
+    }
+
     private boolean isOwner(Skill skill, String currentUserId) {
         return currentUserId != null && skill.getOwnerId().equals(currentUserId);
     }

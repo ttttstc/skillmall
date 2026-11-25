@@ -18,7 +18,10 @@ bun add -g @astron-team/skillhub
 ## 🚀 Quick Start
 
 ```bash
-# Log in interactively with OAuth Device Flow
+# Log in with a GitCode personal access token (GitCode deployments)
+skillhub login --gitcode-token <PAT>
+
+# Log in interactively with OAuth Device Flow (registries that still offer it)
 skillhub login
 
 # Search skills
@@ -72,23 +75,42 @@ retain that prefix when following application-relative download URLs.
 
 ## 🔐 Authentication
 
-`skillhub login` uses OAuth Device Flow only when no API token is resolved from arguments, environment variables, or saved credentials for the selected registry. An invalid resolved token does not automatically fall back to Device Flow. Token resolution priority for
-explicit token-based login and all other authenticated commands is:
+The credential is whatever the active registry accepts as a bearer token. A **GitCode deployment**
+accepts a **GitCode personal access token (PAT)**: the server verifies the PAT against GitCode and
+maps the GitCode user to a platform account, so the CLI sends the PAT as
+`Authorization: Bearer <PAT>` to the existing endpoints. Deployments that still issue SkillHub API
+tokens keep working with `--token`.
 
-1. `--token <token>` command-line argument
-2. `SKILLHUB_TOKEN` environment variable
-3. Token stored in `~/.skillhub/credentials.json` (per registry)
+Token resolution priority for `skillhub login` and all other authenticated commands is:
+
+1. `--gitcode-token <PAT>` command-line argument (`login` only)
+2. `--token <token>` command-line argument
+3. `SKILLHUB_TOKEN` environment variable
+4. `GITCODE_TOKEN` environment variable
+5. Token stored in `~/.skillhub/credentials.json` (per registry)
+
+`--gitcode-token` is the GitCode-specific spelling of `--token`: both validate the same bearer
+credential through `whoami` and store it in the same per-registry credentials file. There is no
+second credential store. `GITCODE_TOKEN` supplies the token when `--gitcode-token` is absent, so an
+agent can log in non-interactively. An invalid resolved token does not automatically fall back to
+Device Flow.
 
 ### Login
 
 ```bash
+# GitCode deployment: log in with a GitCode personal access token
+skillhub login --gitcode-token <PAT> --registry https://skillhub.example.com
+
+# Same, without putting the token on the command line (agents / CI)
+GITCODE_TOKEN=<PAT> skillhub login --registry https://skillhub.example.com
+
 # Interactive login: opens the registry's verification page and displays a user code
 skillhub login
 
 # Interactive login on a remote/headless terminal
 skillhub login --no-open --registry https://skillhub.example.com
 
-# Non-interactive login with an API token
+# Non-interactive login with a SkillHub API token (deployments that issue them)
 skillhub login --token sk_xxx --registry https://skillhub.example.com
 ```
 
@@ -103,6 +125,41 @@ credentials are persisted only after `whoami` succeeds.
 Both files are updated non-destructively: SkillHub CLI changes only its own `tokens` and `registry`
 fields and preserves unknown fields written by other compatible tools. This allows tools that share
 the `~/.skillhub` directory to keep independently named state in the same JSON documents.
+
+### GitCode personal access token
+
+In a GitCode deployment the credential is a GitCode PAT, not a SkillHub-issued token. To create one,
+sign in to GitCode, open your account settings and create a personal access token (访问令牌) that can
+read your basic user profile. The registry verifies the PAT with
+`GET https://api.gitcode.com/api/v5/user`, so a token without profile read access is rejected. Copy
+the value while GitCode displays it, because it cannot be retrieved later.
+
+Verify the PAT independently before handing it to the CLI:
+
+```bash
+curl -H "Authorization: Bearer <PAT>" https://api.gitcode.com/api/v5/user
+```
+
+Then store it for the registry:
+
+```bash
+skillhub login --gitcode-token <PAT> --registry https://skillhub.example.com
+
+# Or set it once in the environment and log in without the flag
+export GITCODE_TOKEN=<PAT>
+skillhub login --registry https://skillhub.example.com
+```
+
+The CLI neither creates nor refreshes the PAT. If it expires or is revoked, the registry answers
+`authentication failed`; create a new PAT and run the login command again.
+
+### Device Flow availability
+
+`skillhub login` runs OAuth Device Flow only when no token is resolved. A GitCode deployment disables
+that flow server-side (`skillhub.auth.legacy-login.enabled=false`), so the device endpoints answer
+`404`; the command then fails with a message pointing at
+`skillhub login --gitcode-token <PAT>`. Registries that still enable the flow keep the interactive
+behaviour described above.
 
 ### Check Current Identity
 
@@ -479,6 +536,7 @@ Update mechanism:
 |----------|-------------|----------|
 | `SKILLHUB_REGISTRY` | Default registry URL | Lower than `--registry` parameter |
 | `SKILLHUB_TOKEN` | API token | Lower than `--token` parameter, higher than stored token |
+| `GITCODE_TOKEN` | GitCode personal access token (used by GitCode deployments) | Lower than `--gitcode-token`, `--token` and `SKILLHUB_TOKEN`, higher than stored token |
 
 ## 📂 Local File Structure
 
@@ -495,7 +553,7 @@ Update mechanism:
 |---------|-------------|
 | `skillhub help [command]` | Display help information |
 | `skillhub version [--json]`, `skillhub --version`, `skillhub -v` | Display CLI version |
-| `skillhub login [--no-open] [--token <token>] [--registry <url>] [--json]` | Log in with OAuth Device Flow or an API token |
+| `skillhub login [--gitcode-token <PAT>] [--no-open] [--token <token>] [--registry <url>] [--json]` | Log in with a GitCode personal access token, an API token, or OAuth Device Flow |
 | `skillhub logout [--registry <url>] [--json]` | Remove token for specified registry |
 | `skillhub whoami [--registry <url>] [--token <token>] [--json]` | Validate current token and display user information |
 | `skillhub search <query> [--registry <url>] [--token <token>] [--limit <n>] [--json]` | Search published skills |
@@ -514,6 +572,8 @@ Update mechanism:
 
 - Tokens are stored only in user directory `~/.skillhub/credentials.json`
 - On Linux/macOS, credential file permissions are automatically set to `0600`
+- A GitCode PAT is stored in that same per-registry entry and is never printed by the CLI; treat it
+  like any other secret
 - Tokens are never written to any project-local files
 - Remote delete operations require explicit confirmation or `--hard` parameter
 - `remove` command validates path safety to prevent deletion of non-skill directories
@@ -526,12 +586,19 @@ Update mechanism:
 # Verify token validity
 skillhub whoami
 
-# Re-login interactively
+# GitCode deployment: log in with a GitCode personal access token
+skillhub login --gitcode-token <PAT>
+
+# Re-login interactively (registries that still offer Device Flow)
 skillhub login
 
-# Or use a token for non-interactive automation
+# Or use a SkillHub API token for non-interactive automation
 skillhub login --token sk_xxx
 ```
+
+If `login` reports that the registry does not offer OAuth Device Flow login, the server disabled that
+flow (`skillhub.auth.legacy-login.enabled=false`); use `--gitcode-token <PAT>` or `GITCODE_TOKEN`
+instead.
 
 For structured registry failures, the CLI prints the server's public `msg` and
 `requestId`. HTTP 403 without a public message falls back to `access denied`;

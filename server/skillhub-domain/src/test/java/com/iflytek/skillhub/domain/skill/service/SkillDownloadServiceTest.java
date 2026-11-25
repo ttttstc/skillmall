@@ -135,7 +135,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, userId, userNsRoles)).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, userId, userNsRoles)).thenReturn(true);
         when(skillVersionRepository.findById(10L)).thenReturn(Optional.of(version));
         when(objectStorageService.exists(storageKey)).thenReturn(true);
         when(objectStorageService.getMetadata(storageKey)).thenReturn(metadata);
@@ -199,7 +199,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, null, Map.of())).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, null, Map.of())).thenReturn(true);
         when(skillVersionRepository.findById(10L)).thenReturn(Optional.of(version));
 
         DomainBadRequestException ex = assertThrows(DomainBadRequestException.class, () ->
@@ -232,7 +232,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, null, Map.of())).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, null, Map.of())).thenReturn(true);
         org.mockito.Mockito.lenient().when(skillVersionRepository.findById(10L)).thenReturn(Optional.of(version));
         org.mockito.Mockito.lenient().when(objectStorageService.exists("packages/1/10/bundle.zip")).thenReturn(true);
         org.mockito.Mockito.lenient().when(objectStorageService.getMetadata("packages/1/10/bundle.zip")).thenReturn(metadata);
@@ -258,8 +258,13 @@ class SkillDownloadServiceTest {
         skill.setLatestVersionId(10L);
         when(namespaceRepository.findBySlug("global")).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, "archived-skill")).thenReturn(List.of(skill));
+        // The archived-namespace rejection must be reached even though this caller is allowed to
+        // download a public skill, so the visibility gate is stubbed open on purpose.
+        when(visibilityChecker.canDownload(skill, "viewer", Map.of())).thenReturn(true);
 
-        assertThrows(com.iflytek.skillhub.domain.shared.exception.DomainForbiddenException.class, () ->
+        // The archived lifecycle state is rejected before any package is streamed; the metadata
+        // route may still read this skill.
+        assertThrows(DomainBadRequestException.class, () ->
                 service.downloadLatest("global", "archived-skill", "viewer", Map.of()));
 
         verify(skillDownloadMetricsService, never()).recordPublishedDownload(anyLong(), anyLong(), any());
@@ -293,7 +298,9 @@ class SkillDownloadServiceTest {
 
         assertThrows(DomainBadRequestException.class, () ->
                 service.downloadLatest("global", "hidden", null, Map.of()));
-        assertThrows(com.iflytek.skillhub.domain.shared.exception.DomainForbiddenException.class, () ->
+        // A private skill is not downloadable by anyone else, and the endpoint answers 404 so it
+        // never discloses that the skill exists.
+        assertThrows(com.iflytek.skillhub.domain.shared.exception.DomainNotFoundException.class, () ->
                 service.downloadLatest("global", "private", null, Map.of()));
         assertThrows(DomainBadRequestException.class, () ->
                 service.downloadLatest("global", "unpublished", null, Map.of()));
@@ -327,7 +334,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, userId, userNsRoles)).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, userId, userNsRoles)).thenReturn(true);
         when(skillTagRepository.findBySkillIdAndTagName(1L, tagName)).thenReturn(Optional.of(tag));
         when(skillVersionRepository.findById(10L)).thenReturn(Optional.of(version));
         when(objectStorageService.exists(storageKey)).thenReturn(true);
@@ -370,7 +377,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, userId, userNsRoles)).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, userId, userNsRoles)).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, versionStr)).thenReturn(Optional.of(version));
         when(objectStorageService.exists(storageKey)).thenReturn(true);
         when(objectStorageService.getMetadata(storageKey)).thenReturn(metadata);
@@ -406,7 +413,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, "another-user", userNsRoles)).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, "another-user", userNsRoles)).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, versionStr)).thenReturn(Optional.of(version));
 
         assertThrows(DomainForbiddenException.class, () ->
@@ -435,7 +442,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, userId, userNsRoles)).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, userId, userNsRoles)).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, versionStr)).thenReturn(Optional.of(version));
 
         DomainBadRequestException ex = assertThrows(DomainBadRequestException.class, () ->
@@ -468,7 +475,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, userId, userNsRoles)).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, userId, userNsRoles)).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, versionStr)).thenReturn(Optional.of(version));
 
         DomainBadRequestException ex = assertThrows(DomainBadRequestException.class, () ->
@@ -502,7 +509,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug(namespaceSlug)).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, skillSlug)).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, userId, userNsRoles)).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, userId, userNsRoles)).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, versionStr)).thenReturn(Optional.of(version));
         when(objectStorageService.exists("packages/1/10/bundle.zip")).thenReturn(false);
         when(skillFileRepository.findByVersionId(10L)).thenReturn(List.of(file));
@@ -549,7 +556,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug("global")).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, "demo-skill")).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, null, Map.of())).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, null, Map.of())).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, "1.0.0")).thenReturn(Optional.of(version));
         when(objectStorageService.exists("packages/1/10/bundle.zip")).thenReturn(false);
         when(skillFileRepository.findByVersionId(10L)).thenReturn(List.of(
@@ -584,7 +591,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug("team-ai")).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(2L, "demo-skill")).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, null, Map.of())).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, null, Map.of())).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, "1.0.0")).thenReturn(Optional.of(version));
         when(objectStorageService.exists("packages/1/10/bundle.zip")).thenReturn(false);
         when(skillFileRepository.findByVersionId(10L)).thenReturn(List.of(
@@ -617,7 +624,7 @@ class SkillDownloadServiceTest {
 
         when(namespaceRepository.findBySlug("global")).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, "demo-skill")).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, null, Map.of())).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, null, Map.of())).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(1L, "1.1.0")).thenReturn(Optional.of(version));
 
         assertThrows(DomainForbiddenException.class, () ->
@@ -669,7 +676,7 @@ class SkillDownloadServiceTest {
         version.setStatus(status);
         when(namespaceRepository.findBySlug("team")).thenReturn(Optional.of(namespace));
         when(skillRepository.findByNamespaceIdAndSlug(1L, "owned")).thenReturn(List.of(skill));
-        when(visibilityChecker.canAccess(skill, "owner", Map.of())).thenReturn(true);
+        when(visibilityChecker.canDownload(skill, "owner", Map.of())).thenReturn(true);
         when(skillVersionRepository.findBySkillIdAndVersion(9L, "1.0.0")).thenReturn(Optional.of(version));
         assertThrows(DomainBadRequestException.class,
                 () -> service.downloadVersion("team", "owned", "1.0.0", "owner", Map.of()));

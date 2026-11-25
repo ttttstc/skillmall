@@ -131,6 +131,12 @@ export function useSkillDetail(namespace: string, slug: string, enabled = true) 
     queryFn: () => getSkillDetail(namespace, slug),
     enabled: enabled && !!namespace && !!slug,
     refetchOnMount: 'always',
+    // The detail page owns the failure surface: a 404 means "not found or no access" (the server
+    // hides private skills from anonymous and non-owner callers), so it must render the not-found
+    // state rather than an additional generic error toast on top of it.
+    meta: {
+      skipGlobalErrorHandler: true,
+    },
     refetchInterval: query => query.state.status !== 'error'
       && (query.state.data?.headlineVersion?.status === 'SCANNING'
         || query.state.data?.ownerPreviewVersion?.status === 'SCANNING')

@@ -209,6 +209,48 @@ describe('SkillHubClient', () => {
     ])
   })
 
+  // A GitCode deployment disables the SkillHub device flow, so these endpoints
+  // answer 404. The generic "resource not found" fallback would hide the only
+  // credential that still works there.
+  test('requestDeviceCode() maps a disabled device flow to the PAT guidance', async () => {
+    const fetchImpl = (async () => new Response(null, { status: 404 })) as unknown as typeof fetch
+    const client = new SkillHubClient('https://skillhub.example.com', undefined, fetchImpl)
+
+    await expect(client.requestDeviceCode()).rejects.toMatchObject({
+      name: 'CliError',
+      message: 'this registry does not offer OAuth Device Flow login',
+      exitCode: EXIT.auth,
+      details: {
+        registry: 'https://skillhub.example.com',
+        next: 'run `skillhub login --gitcode-token <PAT>` with a GitCode personal access token'
+      }
+    })
+  })
+
+  test('pollDeviceToken() maps a disabled device flow to the PAT guidance', async () => {
+    const fetchImpl = (async () => Response.json(
+      { code: 404, message: 'not found' },
+      { status: 404 }
+    )) as unknown as typeof fetch
+    const client = new SkillHubClient('https://skillhub.example.com', undefined, fetchImpl)
+
+    await expect(client.pollDeviceToken('device-secret')).rejects.toMatchObject({
+      message: 'this registry does not offer OAuth Device Flow login',
+      exitCode: EXIT.auth,
+      details: { next: 'run `skillhub login --gitcode-token <PAT>` with a GitCode personal access token' }
+    })
+  })
+
+  test('requestDeviceCode() keeps the generic error for other device failures', async () => {
+    const fetchImpl = (async () => new Response(null, { status: 500 })) as unknown as typeof fetch
+    const client = new SkillHubClient('https://skillhub.example.com', undefined, fetchImpl)
+
+    await expect(client.requestDeviceCode()).rejects.toMatchObject({
+      message: 'registry returned 500',
+      exitCode: EXIT.generic
+    })
+  })
+
   // --- search() (P1) ---
 
   test('search() returns items', async () => {

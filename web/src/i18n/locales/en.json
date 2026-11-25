@@ -1089,7 +1089,9 @@
   },
   "tokens": {
     "pageTitle": "Token Management",
-    "pageSubtitle": "Manage access credentials for CLI and API"
+    "pageSubtitle": "Manage access credentials for CLI and API",
+    "disabledTitle": "API tokens are disabled",
+    "disabledDescription": "This deployment has disabled API tokens. Use a GitCode personal access token instead."
   },
   "theme": {
     "darkMode": "Dark theme",
@@ -2095,7 +2097,8 @@
   "loginButton": {
     "loading": "Loading...",
     "loadingShort": "Loading",
-    "loginWith": "Login with {{name}}"
+    "loginWith": "Login with {{name}}",
+    "providerGitcode": "GitCode"
   },
   "authShell": {
     "eyebrow": "SkillMall",

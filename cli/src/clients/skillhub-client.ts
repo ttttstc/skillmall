@@ -149,6 +149,13 @@ interface PublicErrorFields {
 
 type ErrorResponseKind = 'json' | 'download'
 
+// A GitCode deployment disables the SkillHub device flow server-side, so the
+// public device endpoints answer 404 instead of a device code. Tell the user
+// which credential actually works there.
+const DEVICE_FLOW_UNAVAILABLE_MESSAGE = 'this registry does not offer OAuth Device Flow login'
+const DEVICE_FLOW_UNAVAILABLE_NEXT =
+  'run `skillhub login --gitcode-token <PAT>` with a GitCode personal access token'
+
 export class SkillHubClient {
   constructor(
     readonly registry: string,
@@ -161,11 +168,11 @@ export class SkillHubClient {
   }
 
   async requestDeviceCode(): Promise<DeviceCodeResponse> {
-    return this.postPublicJson('/api/v1/auth/device/code')
+    return this.postPublicJson('/api/v1/auth/device/code', undefined, () => this.deviceFlowUnavailableError())
   }
 
   async pollDeviceToken(deviceCode: string): Promise<DeviceTokenResponse> {
-    return this.postPublicJson('/api/v1/auth/device/token', { deviceCode })
+    return this.postPublicJson('/api/v1/auth/device/token', { deviceCode }, () => this.deviceFlowUnavailableError())
   }
 
   async serverMetadata(): Promise<ServerMetadata> {
@@ -378,7 +385,11 @@ export class SkillHubClient {
     return this.handleJsonResponse<T>(response)
   }
 
-  private async postPublicJson<T>(path: string, body?: Record<string, unknown>): Promise<T> {
+  private async postPublicJson<T>(
+    path: string,
+    body?: Record<string, unknown>,
+    onNotFound?: () => CliError
+  ): Promise<T> {
     let response: Response
     try {
       response = await this.fetchImpl(`${this.registry}${path}`, {
@@ -389,7 +400,17 @@ export class SkillHubClient {
     } catch {
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
+    // Callers that expose an alternative credential can claim a 404 instead of
+    // reporting the generic "resource not found" fallback.
+    if (onNotFound && response.status === 404) throw onNotFound()
     return this.handleJsonResponse<T>(response)
+  }
+
+  private deviceFlowUnavailableError(): CliError {
+    return new CliError(DEVICE_FLOW_UNAVAILABLE_MESSAGE, EXIT.auth, {
+      registry: this.registry,
+      next: DEVICE_FLOW_UNAVAILABLE_NEXT
+    })
   }
 
   private async handleJsonResponse<T>(response: Response): Promise<T> {

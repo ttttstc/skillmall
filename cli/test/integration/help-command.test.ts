@@ -10,6 +10,18 @@ describe('help command', () => {
     expect(result.stdout).toContain('--no-open')
     expect(result.stdout).toContain('--token')
   })
+
+  // A GitCode deployment takes a GitCode PAT and can disable the device flow;
+  // the help must not advertise device login as the only way in.
+  test('documents the GitCode personal access token and disabled device flow', async () => {
+    const result = await runCli(['help', 'login'])
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('--gitcode-token <PAT>')
+    expect(result.stdout).toContain('GitCode personal access token')
+    expect(result.stdout).toContain('GITCODE_TOKEN')
+    expect(result.stdout).toContain('unavailable when the server disables it')
+  })
   test('prints detailed help for install', async () => {
     const result = await runCli(['help', 'install'])
     expect(result.exitCode).toBe(0)

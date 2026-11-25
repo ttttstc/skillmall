@@ -17,6 +17,30 @@ const packagedIconProviders = new Set([
 ])
 
 /**
+ * Localized fallback labels for providers whose OAuth registration may omit `client-name`.
+ *
+ * The backend normally sends the client name (GitCode registers `client-name: GitCode`), so this is
+ * only used when the catalog entry carries no display name at all.
+ */
+const providerFallbackLabelKeys: Record<string, string> = {
+  gitcode: 'loginButton.providerGitcode',
+}
+
+/**
+ * Resolves the button label from the server-provided display name, then the localized fallback for
+ * known providers, and finally the provider code so a missing translation never renders a raw key.
+ */
+function resolveProviderLabel(provider: AuthMethod, translate: (key: string) => string): string {
+  const displayName = provider.displayName?.trim()
+  if (displayName) {
+    return displayName
+  }
+  const fallbackKey = providerFallbackLabelKeys[provider.provider?.trim().toLowerCase() ?? '']
+  const fallbackLabel = fallbackKey ? translate(fallbackKey) : ''
+  return fallbackLabel && fallbackLabel !== fallbackKey ? fallbackLabel : provider.provider
+}
+
+/**
  * Returns the appropriate icon for a given OAuth provider.
  */
 function OAuthIcon({ provider, compact = false }: { provider: string, compact?: boolean }) {
@@ -67,23 +91,26 @@ export function AuthMethodButtonList({
 
   return (
     <div className={cn(compact ? 'grid grid-cols-2 gap-2 sm:grid-cols-4' : 'space-y-3')}>
-      {providers.map((provider) => (
-        <Button data-analytics-id="auth.oauth.request"
-          key={provider.id}
-          className={cn(
-            compact ? 'h-11 justify-center px-2 text-sm xl:h-10' : 'w-full h-12 text-base',
-          )}
-          variant="outline"
-          onClick={() => {
-            window.location.href = withBasePath(provider.actionUrl)
-          }}
-        >
-          <OAuthIcon provider={provider.provider} compact={compact} />
-          <span className={compact ? 'truncate' : undefined}>
-            {compact ? provider.displayName : t('loginButton.loginWith', { name: provider.displayName })}
-          </span>
-        </Button>
-      ))}
+      {providers.map((provider) => {
+        const displayName = resolveProviderLabel(provider, (key) => t(key))
+        return (
+          <Button data-analytics-id="auth.oauth.request"
+            key={provider.id}
+            className={cn(
+              compact ? 'h-11 justify-center px-2 text-sm xl:h-10' : 'w-full h-12 text-base',
+            )}
+            variant="outline"
+            onClick={() => {
+              window.location.href = withBasePath(provider.actionUrl)
+            }}
+          >
+            <OAuthIcon provider={provider.provider} compact={compact} />
+            <span className={compact ? 'truncate' : undefined}>
+              {compact ? displayName : t('loginButton.loginWith', { name: displayName })}
+            </span>
+          </Button>
+        )
+      })}
     </div>
   )
 }

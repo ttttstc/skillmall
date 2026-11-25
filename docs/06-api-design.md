@@ -297,6 +297,7 @@ Public API 的可见性规则：
 - 提升到全局可选择属于来源 skill 的任一 `PUBLISHED` 版本，包括历史版本；不要求等于 `publishedVersion.id`
 - `hidden` 是独立治理覆盖层，不属于生命周期状态机
 - 常规版本详情与文件预览在技能可见性校验后，允许 owner / namespace `ADMIN` / `OWNER` 查看非发布版本；这不授予安装或下载权限。显式下载另对 `UPLOADED` / `PENDING_REVIEW` 放行有权管理的用户，其他未发布状态不放行。完整边界见 [生命周期文档](./14-skill-lifecycle.md)。
+- 下载收紧（GitCode 身份迭代）：上一条对 `UPLOADED` / `PENDING_REVIEW` 的显式下载放行，在 `PRIVATE` / `NAMESPACE_ONLY` 容器下已收紧为仅 owner —— 非 owner（含 namespace `ADMIN` / `OWNER`）与匿名调用返回 `404`。详情预览与下载仍是两条判定，见 [GitCode 身份认证与登录](./31-gitcode-identity-authentication.md)。
 
 发布成功响应中的 `data` 至少包含以下字段：
 

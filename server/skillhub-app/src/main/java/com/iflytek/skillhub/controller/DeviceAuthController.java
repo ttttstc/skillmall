@@ -5,6 +5,7 @@ import com.iflytek.skillhub.auth.device.DeviceCodeResponse;
 import com.iflytek.skillhub.auth.device.DeviceTokenResponse;
 import com.iflytek.skillhub.dto.ApiResponse;
 import com.iflytek.skillhub.dto.ApiResponseFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  * API endpoints for the CLI-style device authorization flow.
  */
 @RestController
+@ConditionalOnProperty(prefix = "skillhub.auth.legacy-login", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("/api/v1/auth/device")
 public class DeviceAuthController extends BaseApiController {
 

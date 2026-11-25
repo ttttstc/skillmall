@@ -84,6 +84,7 @@ type RuntimeConfig = {
   authSessionBootstrapEnabled?: string
   authSessionBootstrapProvider?: string
   authSessionBootstrapAuto?: string
+  authTokenManagementEnabled?: string
   analytics?: unknown
 }
 
@@ -664,6 +665,22 @@ export function getSessionBootstrapRuntimeConfig(): SessionBootstrapRuntimeConfi
     provider: provider || undefined,
     auto: parseBooleanFlag(config.authSessionBootstrapAuto),
   }
+}
+
+/**
+ * Whether this deployment still issues SkillHub API tokens (and therefore still exposes token
+ * management in the web UI).
+ *
+ * Deployments that move identity to GitCode disable token issuance on the server; the web app must
+ * hide the surface instead of offering a page whose calls would fail. The flag defaults to enabled
+ * so an installation that never sets it keeps the existing behavior.
+ */
+export function isAuthTokenManagementEnabled(): boolean {
+  const raw = getRuntimeConfig().authTokenManagementEnabled
+  if (raw === undefined || raw.trim() === '') {
+    return true
+  }
+  return parseBooleanFlag(raw)
 }
 
 type ApiEnvelope<T> = {

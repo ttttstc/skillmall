@@ -13,6 +13,7 @@ import com.iflytek.skillhub.dto.TokenCreateResponse;
 import com.iflytek.skillhub.dto.TokenExpirationUpdateRequest;
 import com.iflytek.skillhub.dto.TokenSummaryResponse;
 import jakarta.validation.Valid;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ import java.util.List;
  * Self-service API token management endpoints for authenticated users.
  */
 @RestController
+@ConditionalOnProperty(prefix = "skillhub.auth.legacy-login", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("/api/v1/tokens")
 public class TokenController extends BaseApiController {
 

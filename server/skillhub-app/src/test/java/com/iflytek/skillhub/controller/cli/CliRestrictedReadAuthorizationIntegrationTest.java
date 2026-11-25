@@ -146,14 +146,14 @@ class CliRestrictedReadAuthorizationIntegrationTest {
 
     @Test
     void outsiderCannotDownloadLatestPrivateSkill() throws Exception {
-        assertForbiddenEnvelope(withBearer(
+        assertNotFoundEnvelope(withBearer(
                 get("/api/cli/v1/skills/{namespace}/{slug}/download", namespaceSlug, skillSlug),
                 outsiderToken));
     }
 
     @Test
     void outsiderCannotDownloadVersionedPrivateSkill() throws Exception {
-        assertForbiddenEnvelope(withBearer(
+        assertNotFoundEnvelope(withBearer(
                 get("/api/cli/v1/skills/{namespace}/{slug}/versions/{version}/download",
                         namespaceSlug, skillSlug, version),
                 outsiderToken));
@@ -164,6 +164,21 @@ class CliRestrictedReadAuthorizationIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$", aMapWithSize(5)))
                 .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.msg").isString())
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").isString())
+                .andExpect(jsonPath("$.requestId").isString());
+    }
+
+    /**
+     * A restricted package download answers 404 rather than 403 so an outsider cannot tell whether
+     * the skill exists at all.
+     */
+    private void assertNotFoundEnvelope(MockHttpServletRequestBuilder request) throws Exception {
+        mockMvc.perform(request)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$", aMapWithSize(5)))
+                .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.msg").isString())
                 .andExpect(jsonPath("$.data").value(nullValue()))
                 .andExpect(jsonPath("$.timestamp").isString())

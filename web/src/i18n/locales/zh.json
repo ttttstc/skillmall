@@ -1089,7 +1089,9 @@
   },
   "tokens": {
     "pageTitle": "Token 管理",
-    "pageSubtitle": "管理 CLI 和 API 使用的访问凭证"
+    "pageSubtitle": "管理 CLI 和 API 使用的访问凭证",
+    "disabledTitle": "API 令牌已禁用",
+    "disabledDescription": "该部署已禁用 API 令牌，请使用 GitCode 个人访问令牌。"
   },
   "theme": {
     "darkMode": "深色主题",
@@ -2095,7 +2097,8 @@
   "loginButton": {
     "loading": "加载中...",
     "loadingShort": "加载中",
-    "loginWith": "使用 {{name}} 登录"
+    "loginWith": "使用 {{name}} 登录",
+    "providerGitcode": "GitCode"
   },
   "authShell": {
     "eyebrow": "SkillMall",

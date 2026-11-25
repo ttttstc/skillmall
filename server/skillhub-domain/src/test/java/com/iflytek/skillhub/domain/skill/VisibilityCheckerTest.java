@@ -195,4 +195,47 @@ class VisibilityCheckerTest {
         boolean canAccess = checker.canAccess(privateSkill, OTHER_USER_ID, Map.of(), Set.of());
         assertFalse(canAccess);
     }
+
+    // Download is narrower than read access: public skills stay anonymously downloadable, while
+    // private and namespace-scoped packages are downloadable only by their owner.
+
+    @Test
+    void publicSkillIsDownloadableAnonymously() {
+        assertTrue(checker.canDownload(publicSkill, null, Map.of()));
+        assertTrue(checker.canDownload(publicSkill, OTHER_USER_ID, Map.of()));
+    }
+
+    @Test
+    void privateSkillIsDownloadableOnlyByOwner() {
+        assertTrue(checker.canDownload(privateSkill, OWNER_ID, Map.of()));
+        assertFalse(checker.canDownload(privateSkill, OTHER_USER_ID, Map.of()));
+        assertFalse(checker.canDownload(privateSkill, null, Map.of()));
+    }
+
+    @Test
+    void namespaceOnlySkillIsDownloadableOnlyByOwner() {
+        assertTrue(checker.canDownload(namespaceOnlySkill, OWNER_ID, Map.of()));
+
+        Map<Long, NamespaceRole> member = Map.of(NAMESPACE_ID, NamespaceRole.MEMBER);
+        Map<Long, NamespaceRole> admin = Map.of(NAMESPACE_ID, NamespaceRole.ADMIN);
+        Map<Long, NamespaceRole> owner = Map.of(NAMESPACE_ID, NamespaceRole.OWNER);
+
+        assertFalse(checker.canDownload(namespaceOnlySkill, OTHER_USER_ID, member));
+        assertFalse(checker.canDownload(namespaceOnlySkill, ADMIN_USER_ID, admin));
+        assertFalse(checker.canDownload(namespaceOnlySkill, NAMESPACE_OWNER_ID, owner));
+        assertFalse(checker.canDownload(namespaceOnlySkill, null, Map.of()));
+    }
+
+    @Test
+    void namespaceAdministratorsKeepReadButNotDownloadOfPrivateSkill() {
+        Map<Long, NamespaceRole> admin = Map.of(NAMESPACE_ID, NamespaceRole.ADMIN);
+        assertTrue(checker.canAccess(privateSkill, ADMIN_USER_ID, admin));
+        assertFalse(checker.canDownload(privateSkill, ADMIN_USER_ID, admin));
+    }
+
+    @Test
+    void hiddenSkillIsDownloadableOnlyByOwner() {
+        assertFalse(checker.canDownload(hiddenPublicSkill, null, Map.of()));
+        assertTrue(checker.canDownload(hiddenPublicSkill, OWNER_ID, Map.of()));
+    }
 }
