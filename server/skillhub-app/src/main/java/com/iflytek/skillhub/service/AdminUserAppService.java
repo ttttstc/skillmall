@@ -136,14 +136,18 @@ public class AdminUserAppService {
             return new AdminUserMutationResponse(user.getId(), normalizedRoleCode, user.getStatus().name());
         }
 
+        // A role the user already holds is necessarily a real code (it came from an existing
+        // binding), so the idempotent path returns before touching the role table.
+        boolean alreadyHeld = userRoleBindingRepository.findByUserId(user.getId()).stream()
+                .anyMatch(binding -> normalizedRoleCode.equals(binding.getRole().getCode()));
+        if (alreadyHeld) {
+            return new AdminUserMutationResponse(user.getId(), normalizedRoleCode, user.getStatus().name());
+        }
+
         Role role = roleRepository.findByCode(normalizedRoleCode)
                 .orElseThrow(() -> new DomainBadRequestException("error.admin.user.role.invalid", roleCode));
 
-        boolean alreadyHeld = userRoleBindingRepository.findByUserId(user.getId()).stream()
-                .anyMatch(binding -> normalizedRoleCode.equals(binding.getRole().getCode()));
-        if (!alreadyHeld) {
-            userRoleBindingRepository.save(new UserRoleBinding(user.getId(), role));
-        }
+        userRoleBindingRepository.save(new UserRoleBinding(user.getId(), role));
 
         return new AdminUserMutationResponse(user.getId(), normalizedRoleCode, user.getStatus().name());
     }
