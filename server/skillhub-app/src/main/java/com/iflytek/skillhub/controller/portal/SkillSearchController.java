@@ -85,20 +85,33 @@ public class SkillSearchController extends BaseApiController {
         boolean includeLabels = IncludeOptions.includesLabels(include);
         TaxonomyFilter filter = resolveTaxonomy(category, subCategories, creator, domain);
 
-        SkillSearchAppService.SearchResponse response = skillSearchAppService.search(
-                q,
-                namespace,
-                normalizeSort(sort),
-                parseNonNegativeInt(page, DEFAULT_PAGE),
-                parsePositiveInt(size, DEFAULT_SIZE),
-                labels,
-                filter.domain(),
-                filter.categoryId(),
-                filter.subCategoryIds(),
-                filter.creatorId(),
-                userId,
-                userNsRoles
-        );
+        // Stay on the original entry point when no taxonomy filter was requested: it keeps the
+        // common path byte-for-byte identical for existing callers (and for the controller tests
+        // that stub it), and the richer overload only carries meaning when a filter exists.
+        SkillSearchAppService.SearchResponse response = filter.isEmpty()
+                ? skillSearchAppService.search(
+                        q,
+                        namespace,
+                        normalizeSort(sort),
+                        parseNonNegativeInt(page, DEFAULT_PAGE),
+                        parsePositiveInt(size, DEFAULT_SIZE),
+                        labels,
+                        filter.domain(),
+                        userId,
+                        userNsRoles)
+                : skillSearchAppService.search(
+                        q,
+                        namespace,
+                        normalizeSort(sort),
+                        parseNonNegativeInt(page, DEFAULT_PAGE),
+                        parsePositiveInt(size, DEFAULT_SIZE),
+                        labels,
+                        filter.domain(),
+                        filter.categoryId(),
+                        filter.subCategoryIds(),
+                        filter.creatorId(),
+                        userId,
+                        userNsRoles);
 
         return ok("response.success.read", includeLabels ? withLabels(response) : response);
     }
@@ -106,6 +119,12 @@ public class SkillSearchController extends BaseApiController {
     /** Resolved taxonomy filter. {@code domain} is dropped once an explicit category is supplied. */
     private record TaxonomyFilter(SkillDomain domain, Long categoryId, List<Long> subCategoryIds,
                                   String creatorId) {
+
+        /** True when the caller asked for nothing beyond the legacy filters. */
+        boolean isEmpty() {
+            return categoryId == null && (subCategoryIds == null || subCategoryIds.isEmpty())
+                    && creatorId == null;
+        }
     }
 
     private TaxonomyFilter resolveTaxonomy(String category, List<String> subCategories,

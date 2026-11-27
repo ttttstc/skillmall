@@ -42,14 +42,29 @@ public record SkillCategoryRef(Long id, String slug, String displayName) {
 
         /** Pre-loads the ids the page is about to reference, so resolution below is map-only. */
         public Pages preload(List<Long> categoryIds) {
+            if (categoryIds == null || categoryIds.isEmpty()) {
+                return this;
+            }
             List<Long> missing = new ArrayList<>();
             for (Long id : categoryIds) {
                 if (id != null && !loaded.containsKey(id)) {
                     missing.add(id);
                 }
             }
-            if (!missing.isEmpty()) {
-                loaded.putAll(directory.findByIds(missing));
+            if (missing.isEmpty()) {
+                return this;
+            }
+            // Tolerate a collaborator that answers null (a stub in a controller test, or a future
+            // implementation returning nothing): a missing category must degrade to "no chip", never
+            // to a 500 on the whole listing.
+            Map<Long, Category> resolved = directory.findByIds(missing);
+            if (resolved != null) {
+                for (Map.Entry<Long, Category> entry : resolved.entrySet()) {
+                    Category category = entry.getValue();
+                    if (category != null && category.getId() != null) {
+                        loaded.put(category.getId(), category);
+                    }
+                }
             }
             return this;
         }
@@ -60,7 +75,8 @@ public record SkillCategoryRef(Long id, String slug, String displayName) {
             }
             Category category = loaded.get(categoryId);
             if (category == null) {
-                category = directory.findById(categoryId).orElse(null);
+                var found = directory.findById(categoryId);
+                category = found == null ? null : found.orElse(null);
                 if (category != null) {
                     loaded.put(categoryId, category);
                 }

@@ -1083,8 +1083,14 @@ public class SkillQueryService {
         if (promotionRequestRepository.findBySourceSkillIdAndStatus(skill.getId(), ReviewTaskStatus.PENDING).isPresent()) {
             return false;
         }
-        return canManageRestrictedSkill(skill, currentUserId, userNsRoles, platformRoles)
-                && !ownerAccess.isReadOnly(skill, currentUserId, platformRoles);
+        // Promotion is an owner-initiated request: it hands the team skill over to the platform.
+        // A namespace administrator or a platform super administrator decides that through the
+        // review queue instead, so the affordance stays owner-only. It also keeps this payload
+        // aligned with the owner workspace lists, which filter on ownership too.
+        if (currentUserId == null || !skill.getOwnerId().equals(currentUserId)) {
+            return false;
+        }
+        return !ownerAccess.isReadOnly(skill, currentUserId, platformRoles);
     }
 
     private boolean isOwner(Skill skill, String currentUserId) {

@@ -104,7 +104,6 @@ class JpaMySkillQueryRepositoryTest {
 
         given(namespaceRepository.findByIdIn(List.of(101L))).willReturn(List.of(namespace));
         given(skillVersionRepository.findBySkillIdAndStatus(3L, SkillVersionStatus.PUBLISHED)).willReturn(List.of(publishedVersion));
-        given(promotionRequestRepository.findBySourceSkillIdAndStatus(3L, ReviewTaskStatus.PENDING)).willReturn(Optional.empty());
 
         var responses = repository.getSkillSummaries(List.of(skill), "viewer-1");
 
@@ -112,6 +111,10 @@ class JpaMySkillQueryRepositoryTest {
         assertThat(responses.get(0).publishedVersion()).isNotNull();
         assertThat(responses.get(0).ownerPreviewVersion()).isNull();
         assertThat(responses.get(0).headlineVersion().status()).isEqualTo("PUBLISHED");
+        // Regression guard for the "same public skill, two different answers" defect: a viewer who
+        // is not the owner must never be offered the promotion affordance here, because the detail
+        // endpoint refuses it for exactly the same caller.
+        assertThat(responses.get(0).canSubmitPromotion()).isFalse();
     }
 
     @Test

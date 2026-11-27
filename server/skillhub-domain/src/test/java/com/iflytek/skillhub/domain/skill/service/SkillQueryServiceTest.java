@@ -1219,7 +1219,7 @@ class SkillQueryServiceTest {
     }
 
     @Test
-    void testGetSkillDetail_ShouldNotGrantLifecyclePermissionToSuperAdminInPortal() throws Exception {
+    void testGetSkillDetail_ShouldGrantLifecyclePermissionToSuperAdminInPortal() throws Exception {
         String namespaceSlug = "test-ns";
         String skillSlug = "test-skill";
         String userId = "super-1";
@@ -1243,7 +1243,11 @@ class SkillQueryServiceTest {
         SkillQueryService.SkillDetailDTO result = service.getSkillDetail(
                 namespaceSlug, skillSlug, userId, userNsRoles, Set.of("SUPER_ADMIN"));
 
-        assertFalse(result.canManageLifecycle());
+        // Contract change: a platform super administrator is authorised on every surface, and the
+        // projection has to say so. The previous expectation ("no lifecycle permission in the
+        // portal") produced the worst pairing — the detail page claimed "no permission" while the
+        // write endpoints accepted the same caller.
+        assertTrue(result.canManageLifecycle());
         assertFalse(result.canSubmitPromotion());
         assertEquals("PUBLISHED", result.resolutionMode());
     }
