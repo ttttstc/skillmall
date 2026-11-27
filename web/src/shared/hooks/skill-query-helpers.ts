@@ -19,8 +19,24 @@ export function buildSkillSearchUrl(params: SearchParams) {
     queryParams.append('label', params.label)
   }
 
-  if (params.domain) {
+  // `category` supersedes the legacy `domain` wire value, so only one of them is ever sent: a
+  // request carrying both would make the server's precedence rule the only thing keeping the two
+  // filters in sync, and a mismatch here would look like a server bug.
+  if (params.category) {
+    queryParams.append('category', params.category)
+  } else if (params.domain) {
     queryParams.append('domain', params.domain)
+  }
+
+  // Repeated params: the server OR-s them and rejects a set that spans two first-level categories.
+  for (const slug of params.sub ?? []) {
+    if (slug) {
+      queryParams.append('sub', slug)
+    }
+  }
+
+  if (params.creator) {
+    queryParams.append('creator', params.creator)
   }
 
   if (params.sort) {

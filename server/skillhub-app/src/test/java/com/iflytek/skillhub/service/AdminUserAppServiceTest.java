@@ -184,6 +184,71 @@ class AdminUserAppServiceTest {
         assertThrows(DomainNotFoundException.class, () -> service.updateUserStatus("missing", "DISABLED"));
     }
 
+    @Test
+    void grantUserRole_keepsExistingSuperAdminInsteadOfReplacingIt() {
+        UserAccount target = user("user-2", "bob", "bob@example.com", UserStatus.ACTIVE);
+        when(userAccountRepository.findById("user-2")).thenReturn(Optional.of(target));
+        when(userRoleBindingRepository.findByUserId("user-2"))
+                .thenReturn(List.of(new UserRoleBinding("user-2", role("SUPER_ADMIN"))));
+        when(roleRepository.findByCode("TOPIC_ADMIN")).thenReturn(Optional.of(role("TOPIC_ADMIN")));
+
+        service.grantUserRole("user-2", "TOPIC_ADMIN", Set.of("SUPER_ADMIN"));
+
+        // The whole point of the additive path: the replace-only endpoint would have wiped the
+        // existing SUPER_ADMIN binding first.
+        verify(userRoleBindingRepository, never()).deleteByUserId(any());
+        verify(userRoleBindingRepository).save(any(UserRoleBinding.class));
+    }
+
+    @Test
+    void grantUserRole_skipsSaveWhenRoleAlreadyHeld() {
+        UserAccount target = user("user-2", "bob", "bob@example.com", UserStatus.ACTIVE);
+        when(userAccountRepository.findById("user-2")).thenReturn(Optional.of(target));
+        when(userRoleBindingRepository.findByUserId("user-2"))
+                .thenReturn(List.of(new UserRoleBinding("user-2", role("SUPER_ADMIN"))));
+
+        service.grantUserRole("user-2", "SUPER_ADMIN", Set.of("SUPER_ADMIN"));
+
+        verify(userRoleBindingRepository, never()).save(any(UserRoleBinding.class));
+    }
+
+    @Test
+    void grantUserRole_deniesSuperAdminGrantForNonSuperAdminActor() {
+        UserAccount target = user("user-2", "bob", "bob@example.com", UserStatus.ACTIVE);
+        when(userAccountRepository.findById("user-2")).thenReturn(Optional.of(target));
+        when(userRoleBindingRepository.findByUserId("user-2")).thenReturn(List.of());
+
+        assertThrows(DomainForbiddenException.class,
+                () -> service.grantUserRole("user-2", "SUPER_ADMIN", Set.of("USER_ADMIN")));
+        verify(userRoleBindingRepository, never()).save(any(UserRoleBinding.class));
+    }
+
+    @Test
+    void revokeUserRole_removesOnlyTheRequestedRole() {
+        UserAccount target = user("user-2", "bob", "bob@example.com", UserStatus.ACTIVE);
+        UserRoleBinding superAdmin = new UserRoleBinding("user-2", role("SUPER_ADMIN"));
+        when(userAccountRepository.findById("user-2")).thenReturn(Optional.of(target));
+        when(userRoleBindingRepository.findByUserId("user-2"))
+                .thenReturn(List.of(superAdmin, new UserRoleBinding("user-2", role("TOPIC_ADMIN"))));
+
+        service.revokeUserRole("user-2", "TOPIC_ADMIN", Set.of("SUPER_ADMIN"));
+
+        verify(userRoleBindingRepository, times(1)).delete(any(UserRoleBinding.class));
+        verify(userRoleBindingRepository, never()).deleteByUserId(any());
+    }
+
+    @Test
+    void revokeUserRole_requiresSuperAdminWhenTargetHoldsIt() {
+        UserAccount target = user("user-2", "bob", "bob@example.com", UserStatus.ACTIVE);
+        when(userAccountRepository.findById("user-2")).thenReturn(Optional.of(target));
+        when(userRoleBindingRepository.findByUserId("user-2"))
+                .thenReturn(List.of(new UserRoleBinding("user-2", role("SUPER_ADMIN"))));
+
+        assertThrows(DomainForbiddenException.class,
+                () -> service.revokeUserRole("user-2", "TOPIC_ADMIN", Set.of("USER_ADMIN")));
+        verify(userRoleBindingRepository, never()).delete(any(UserRoleBinding.class));
+    }
+
     private UserAccount user(String id, String displayName, String email, UserStatus status) {
         UserAccount user = new UserAccount(id, displayName, email, null);
         user.setStatus(status);

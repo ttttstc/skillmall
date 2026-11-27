@@ -6,6 +6,7 @@ import { useStarredIdSet } from '@/features/social/use-star'
 import { Card } from '@/shared/ui/card'
 import { NamespaceBadge } from '@/shared/components/namespace-badge'
 import { SkillAvatar } from './skill-avatar'
+import { SkillCategoryChip } from './skill-category-chip'
 import { getHeadlineVersion } from '@/shared/lib/skill-lifecycle'
 import { formatCompactCount } from '@/shared/lib/number-format'
 import { formatRelativeTime } from '@/shared/lib/format-relative-time'
@@ -72,11 +73,12 @@ export function SkillListRow({ skill, onClick, highlightStarred = true, analytic
               name={`@${skill.namespace}`}
               title={`@${skill.namespace}`}
             />
-            {skill.domain ? (
-              <span className="shrink-0 rounded-full border border-border bg-secondary/60 px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                {t(`home.domain.${skill.domain}`)}
-              </span>
-            ) : null}
+            <SkillCategoryChip
+              variant="pill"
+              category={skill.category}
+              subCategory={skill.subCategory}
+              domain={skill.domain}
+            />
           </div>
           {skill.summary && (
             <p className="mt-1 truncate text-xs leading-5 text-muted-foreground" title={skill.summary}>

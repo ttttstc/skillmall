@@ -8,6 +8,14 @@ vi.mock('@tanstack/react-router', () => ({
   useSearch: () => useSearchMock(),
 }))
 
+// See search.test.tsx: the taxonomy sidebar uses TanStack Query, and these tests render to static
+// markup without a provider.
+vi.mock('@/shared/hooks/use-category-queries', () => ({
+  CATEGORY_TREE_QUERY_KEY: ['categories', 'tree'],
+  useCategories: () => ({ data: undefined, isLoading: false, isError: false, refetch: () => {} }),
+  useSkillAuthors: () => ({ data: undefined, isLoading: false, isError: false, refetch: () => {} }),
+}))
+
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
   return {

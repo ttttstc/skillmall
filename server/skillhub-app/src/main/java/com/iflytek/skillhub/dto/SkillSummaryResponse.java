@@ -38,12 +38,20 @@ public record SkillSummaryResponse(
         ManagementState managementState,
         boolean hasVisibleSuites,
         /**
-         * First-level marketplace category. Listing pages show it as a chip, so carrying it on the
-         * summary saves them a second lookup per card. Left out of the payload when the caller's
-         * projection does not carry one, which keeps responses unchanged for those callers.
+         * Legacy first-level category wire value. Kept for API compatibility only; the UI renders
+         * {@link #category} instead. Omitted when the projection carries no legacy value.
          */
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        String domain
+        String domain,
+        /**
+         * First-level category reference. Cards and list rows show {@code subCategory ?? category},
+         * so carrying both here saves a second lookup per item.
+         */
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        SkillCategoryRef category,
+        /** Second-level category reference, omitted while the skill has none. */
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        SkillCategoryRef subCategory
 ) {
 
     public SkillSummaryResponse(
@@ -57,7 +65,7 @@ public record SkillSummaryResponse(
         this(id, slug, displayName, summary, visibility, status, downloadCount, starCount, ratingAvg,
                 ratingCount, namespace, updatedAt, ownerId, ownerDisplayName, canSubmitPromotion,
                 headlineVersion, publishedVersion, ownerPreviewVersion, resolutionMode, complianceSnapshot,
-                labels, avatarUrl, managementState, false, null);
+                labels, avatarUrl, managementState, false, null, null, null);
     }
 
     public SkillSummaryResponse withVisibleSuites(boolean hasVisibleSuites) {
@@ -65,16 +73,25 @@ public record SkillSummaryResponse(
                 starCount, ratingAvg, ratingCount, namespace, updatedAt, ownerId, ownerDisplayName,
                 canSubmitPromotion, headlineVersion, publishedVersion, ownerPreviewVersion,
                 resolutionMode, complianceSnapshot, labels, avatarUrl, managementState, hasVisibleSuites,
-                domain);
+                domain, category, subCategory);
     }
 
-    /** Attaches the marketplace category; callers that do not set it keep the field out of the payload. */
+    /** Attaches the legacy marketplace category wire value. */
     public SkillSummaryResponse withDomain(String domain) {
         return new SkillSummaryResponse(id, slug, displayName, summary, visibility, status, downloadCount,
                 starCount, ratingAvg, ratingCount, namespace, updatedAt, ownerId, ownerDisplayName,
                 canSubmitPromotion, headlineVersion, publishedVersion, ownerPreviewVersion,
                 resolutionMode, complianceSnapshot, labels, avatarUrl, managementState, hasVisibleSuites,
-                domain);
+                domain, category, subCategory);
+    }
+
+    /** Attaches the resolved two-level category references; card chips read {@code subCategory ?? category}. */
+    public SkillSummaryResponse withCategories(SkillCategoryRef category, SkillCategoryRef subCategory) {
+        return new SkillSummaryResponse(id, slug, displayName, summary, visibility, status, downloadCount,
+                starCount, ratingAvg, ratingCount, namespace, updatedAt, ownerId, ownerDisplayName,
+                canSubmitPromotion, headlineVersion, publishedVersion, ownerPreviewVersion,
+                resolutionMode, complianceSnapshot, labels, avatarUrl, managementState, hasVisibleSuites,
+                domain, category, subCategory);
     }
 
     /** Owner workspace projection, never populated by public discovery or social lists. */
@@ -113,14 +130,15 @@ public record SkillSummaryResponse(
         this(id, slug, displayName, summary, visibility, status, downloadCount, starCount, ratingAvg,
                 ratingCount, namespace, updatedAt, ownerId, ownerDisplayName, canSubmitPromotion,
                 headlineVersion, publishedVersion, ownerPreviewVersion, resolutionMode, complianceSnapshot,
-                labels, avatarUrl, null, false, null);
+                labels, avatarUrl, null, false, null, null, null);
     }
 
     public SkillSummaryResponse withManagementState(ManagementState state) {
         return new SkillSummaryResponse(id, slug, displayName, summary, visibility, status, downloadCount,
                 starCount, ratingAvg, ratingCount, namespace, updatedAt, ownerId, ownerDisplayName,
                 canSubmitPromotion && (state == null || !state.ownerReadOnly()), headlineVersion, publishedVersion, ownerPreviewVersion,
-                resolutionMode, complianceSnapshot, labels, avatarUrl, state, hasVisibleSuites, domain);
+                resolutionMode, complianceSnapshot, labels, avatarUrl, state, hasVisibleSuites, domain,
+                category, subCategory);
     }
 
     public SkillSummaryResponse(
@@ -194,6 +212,7 @@ public record SkillSummaryResponse(
         return new SkillSummaryResponse(id, slug, displayName, summary, visibility, status, downloadCount,
                 starCount, ratingAvg, ratingCount, namespace, updatedAt, ownerId, ownerDisplayName,
                 canSubmitPromotion, headlineVersion,
-                publishedVersion, ownerPreviewVersion, resolutionMode, complianceSnapshot, labels, avatarUrl, managementState, hasVisibleSuites, domain);
+                publishedVersion, ownerPreviewVersion, resolutionMode, complianceSnapshot, labels, avatarUrl, managementState, hasVisibleSuites, domain,
+                category, subCategory);
     }
 }

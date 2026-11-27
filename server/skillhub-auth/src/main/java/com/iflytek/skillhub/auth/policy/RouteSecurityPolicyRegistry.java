@@ -73,7 +73,13 @@ public class RouteSecurityPolicyRegistry {
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/v1/skills/*/*/tags/*/files"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/v1/skills/*/*/tags/*/file"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/v1/labels"),
+            // Taxonomy reads are anonymous: the category tree renders next to the search box, so a
+            // session requirement would leave the filter unusable for visitors.
+            RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/v1/categories"),
+            RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/v1/skill-authors"),
             RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skills"),
+            RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/categories"),
+            RouteAuthorizationPolicy.permitAll(HttpMethod.GET, "/api/web/skill-authors"),
             // Category read/write is owner/manager scoped: the service re-checks ownership, the
             // route only requires a signed-in caller. The filter itself is a query parameter on
             // the already-public discovery routes, so filtering stays anonymous-readable.
@@ -206,6 +212,10 @@ public class RouteSecurityPolicyRegistry {
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/skills/**"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/v1/labels"),
             ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/labels"),
+            ApiTokenPolicy.allow(HttpMethod.GET, "/api/v1/categories"),
+            ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/categories"),
+            ApiTokenPolicy.allow(HttpMethod.GET, "/api/v1/skill-authors"),
+            ApiTokenPolicy.allow(HttpMethod.GET, "/api/web/skill-authors"),
             ApiTokenPolicy.allow(HttpMethod.PUT, "/api/v1/skills/*/star"),
             ApiTokenPolicy.allow(HttpMethod.DELETE, "/api/v1/skills/*/star"),
             ApiTokenPolicy.allow(HttpMethod.PUT, "/api/v1/skills/*/rating"),

@@ -158,6 +158,22 @@ public class PostgresFullTextQueryService implements SearchQueryService {
             sql.append("AND s.domain = :domain ");
         }
 
+        // Taxonomy filters ride inside the same public-distribution predicate as the domain filter
+        // above: they can only narrow it, never open a second visibility path, so a category or
+        // creator filter can never surface a hidden, archived or private skill.
+        if (query.categoryId() != null) {
+            sql.append("AND s.category_id = :categoryId ");
+        }
+
+        if (query.subCategoryIds() != null && !query.subCategoryIds().isEmpty()) {
+            sql.append("AND s.sub_category_id IN :subCategoryIds ");
+        }
+
+        // Creator, not owner: ownership transfers must not rewrite who published the skill.
+        if (query.creatorId() != null) {
+            sql.append("AND COALESCE(s.created_by, s.owner_id) = :creatorId ");
+        }
+
         if (query.labelSlugs() != null && !query.labelSlugs().isEmpty()) {
             sql.append("AND d.skill_id IN (");
             sql.append("SELECT sl.skill_id FROM skill_label sl ");
@@ -234,6 +250,18 @@ public class PostgresFullTextQueryService implements SearchQueryService {
             nativeQuery.setParameter("domain", query.domain().name());
         }
 
+        if (query.categoryId() != null) {
+            nativeQuery.setParameter("categoryId", query.categoryId());
+        }
+
+        if (query.subCategoryIds() != null && !query.subCategoryIds().isEmpty()) {
+            nativeQuery.setParameter("subCategoryIds", query.subCategoryIds());
+        }
+
+        if (query.creatorId() != null) {
+            nativeQuery.setParameter("creatorId", query.creatorId());
+        }
+
         if (hasKeyword) {
             if (hasTsQuery) {
                 nativeQuery.setParameter("tsQuery", tsQuery);
@@ -285,6 +313,18 @@ public class PostgresFullTextQueryService implements SearchQueryService {
 
         if (query.domain() != null) {
             countQuery.setParameter("domain", query.domain().name());
+        }
+
+        if (query.categoryId() != null) {
+            countQuery.setParameter("categoryId", query.categoryId());
+        }
+
+        if (query.subCategoryIds() != null && !query.subCategoryIds().isEmpty()) {
+            countQuery.setParameter("subCategoryIds", query.subCategoryIds());
+        }
+
+        if (query.creatorId() != null) {
+            countQuery.setParameter("creatorId", query.creatorId());
         }
 
         if (hasKeyword) {

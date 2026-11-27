@@ -37,7 +37,11 @@ public record SkillDetailResponse(
         boolean ownerReadOnly,
         GithubSkillSourceResponse githubSource,
         @io.swagger.v3.oas.annotations.media.Schema(nullable = true, format = "uri", description = "Absolute public skill page URL, or null when no trusted public website is configured")
-        String webUrl
+        String webUrl,
+        /** First-level category reference. Cards show {@code subCategory ?? category}. */
+        SkillCategoryRef category,
+        /** Second-level category reference, omitted while the skill has none. */
+        SkillCategoryRef subCategory
 ) {
     public SkillDetailResponse(
         Long id,
@@ -71,7 +75,7 @@ public record SkillDetailResponse(
         boolean ownerReadOnly,
         GithubSkillSourceResponse githubSource
     ) {
-        this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, null, false, namespace, labels, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, entryForSuites, memberOfSuites, avatarUrl, ownerReadOnly, githubSource, null);
+        this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, null, false, namespace, labels, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, entryForSuites, memberOfSuites, avatarUrl, ownerReadOnly, githubSource, null, null, null);
     }
 
     public SkillDetailResponse(Long id,

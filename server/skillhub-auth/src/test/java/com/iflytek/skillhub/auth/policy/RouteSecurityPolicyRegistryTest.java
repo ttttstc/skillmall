@@ -520,4 +520,48 @@ class RouteSecurityPolicyRegistryTest {
     private static String samplePath(String pattern) {
         return pattern.replace("/**", "/sample/leaf").replace("*", "sample");
     }
+
+    /**
+     * Guard for the "Bearer does not work in Swagger" defect.
+     *
+     * <p>The token policy list is an allow-list: anything it does not name answers 403 even with a
+     * valid token. That is the right default, but it silently made most documented endpoints
+     * unreachable. This test states the contract instead of relying on memory — every cataloged
+     * {@code GET /api/v1/**} route must either be reachable with a token or be declared
+     * session-only, and a new route that is neither fails here rather than in production.
+     */
+    @Test
+    void everyCatalogedReadRouteIsTokenReachableOrDeclaredSessionOnly() {
+        List<String> uncovered = new ArrayList<>();
+        for (RouteSecurityPolicyRegistry.RouteAuthorizationPolicy policy : registry.authorizationPolicies()) {
+            if (policy.method() != HttpMethod.GET) {
+                continue;
+            }
+            if (!policy.pattern().startsWith("/api/v1/")) {
+                continue;
+            }
+            String routeKey = RouteSecurityPolicyRegistry.routeKey(policy.method(), policy.pattern());
+            if (registry.sessionOnlyRoutes().contains(routeKey)) {
+                continue;
+            }
+            if (!registry.authorizeApiToken("GET", samplePath(policy.pattern()), ALL_SCOPES).allowed()) {
+                uncovered.add(policy.pattern());
+            }
+        }
+        assertTrue(uncovered.isEmpty(),
+                "GET routes reachable with neither an API token nor a session-only declaration: " + uncovered);
+    }
+
+    @Test
+    void taxonomyReadRoutesAreAnonymousAndTokenReachable() {
+        for (String prefix : List.of("/api/v1", "/api/web")) {
+            for (String route : List.of("/categories", "/skill-authors")) {
+                String path = prefix + route;
+                assertEquals(RouteSecurityPolicyRegistry.AccessLevel.PERMIT_ALL, registry.accessLevel("GET", path),
+                        path + " must stay readable without a session");
+                assertTrue(registry.authorizeApiToken("GET", path, Set.of("skill:read")).allowed(),
+                        path + " must be reachable with a read-scoped API token");
+            }
+        }
+    }
 }

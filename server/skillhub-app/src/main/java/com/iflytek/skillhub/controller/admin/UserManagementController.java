@@ -56,6 +56,32 @@ public class UserManagementController extends BaseApiController {
                 adminUserAppService.updateUserRole(userId, request.role(), principal.platformRoles()));
     }
 
+    /**
+     * Additive grant. Prefer this over {@code PUT /{userId}/role} when handing out an additional
+     * capability: the PUT endpoint replaces the whole role set and would strip an existing
+     * SUPER_ADMIN.
+     */
+    @PostMapping("/{userId}/roles")
+    @PreAuthorize("hasAnyRole('USER_ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<AdminUserMutationResponse> grantRole(
+            @PathVariable String userId,
+            @AuthenticationPrincipal PlatformPrincipal principal,
+            @Valid @RequestBody AdminUserRoleUpdateRequest request) {
+        return ok("response.success.updated",
+                adminUserAppService.grantUserRole(userId, request.role(), principal.platformRoles()));
+    }
+
+    /** Revokes exactly one role; the user falls back to the default USER semantics. */
+    @DeleteMapping("/{userId}/roles/{roleCode}")
+    @PreAuthorize("hasAnyRole('USER_ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<AdminUserMutationResponse> revokeRole(
+            @PathVariable String userId,
+            @PathVariable String roleCode,
+            @AuthenticationPrincipal PlatformPrincipal principal) {
+        return ok("response.success.updated",
+                adminUserAppService.revokeUserRole(userId, roleCode, principal.platformRoles()));
+    }
+
     @PutMapping("/{userId}/status")
     @PreAuthorize("hasAnyRole('USER_ADMIN', 'SUPER_ADMIN')")
     public ApiResponse<AdminUserMutationResponse> updateUserStatus(

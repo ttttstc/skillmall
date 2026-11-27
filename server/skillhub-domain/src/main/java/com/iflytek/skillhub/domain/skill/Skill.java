@@ -51,6 +51,21 @@ public class Skill {
     @Column(name = "domain", length = 32)
     private SkillDomain domain = SkillDomain.DEFAULT;
 
+    /**
+     * First-level category row. This is the authoritative category reference now; {@link #domain}
+     * is the retired wire value kept only for API compatibility and must not be read by business
+     * code.
+     */
+    @Column(name = "category_id")
+    private Long categoryId;
+
+    /**
+     * Optional second-level category. The database enforces that its parent is {@link #categoryId},
+     * so the pair always has to be written together.
+     */
+    @Column(name = "sub_category_id")
+    private Long subCategoryId;
+
     @Column(name = "latest_version_id")
     private Long latestVersionId;
 
@@ -204,6 +219,14 @@ public class Skill {
         return domain == null ? SkillDomain.DEFAULT : domain;
     }
 
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public Long getSubCategoryId() {
+        return subCategoryId;
+    }
+
     public Long getLatestVersionId() {
         return latestVersionId;
     }
@@ -323,6 +346,21 @@ public class Skill {
     /** Null is normalized to the documented default rather than stored as "uncategorised". */
     public void setDomain(SkillDomain domain) {
         this.domain = domain == null ? SkillDomain.DEFAULT : domain;
+    }
+
+    /**
+     * Sets the second-level category only. Callers that move a skill between first-level categories
+     * must clear {@link #subCategoryId} first (or set both through {@link #assignCategories}),
+     * because the database rejects a sub-category whose parent is a different category.
+     */
+    public void setSubCategoryId(Long subCategoryId) {
+        this.subCategoryId = subCategoryId;
+    }
+
+    /** Writes the pair together so the parent/child invariant cannot be violated in between. */
+    public void assignCategories(Long categoryId, Long subCategoryId) {
+        this.categoryId = categoryId;
+        this.subCategoryId = categoryId == null ? null : subCategoryId;
     }
 
     public void setLatestVersionId(Long latestVersionId) {

@@ -5,6 +5,7 @@ import { useStarredIdSet } from '@/features/social/use-star'
 import { Card } from '@/shared/ui/card'
 import { NamespaceBadge } from '@/shared/components/namespace-badge'
 import { SkillAvatar } from './skill-avatar'
+import { SkillCategoryChip } from './skill-category-chip'
 import { getHeadlineVersion } from '@/shared/lib/skill-lifecycle'
 import { formatCompactCount } from '@/shared/lib/number-format'
 import { formatRelativeTime } from '@/shared/lib/format-relative-time'
@@ -74,11 +75,11 @@ export function SkillCard({ skill, onClick, highlightStarred = true, analyticsId
                 name={`@${skill.namespace}`}
                 title={`@${skill.namespace}`}
               />
-              {skill.domain ? (
-                <span className="inline-flex max-w-full shrink-0 items-center rounded-md border border-border/70 bg-secondary/60 px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
-                  {t(`home.domain.${skill.domain}`)}
-                </span>
-              ) : null}
+              <SkillCategoryChip
+                category={skill.category}
+                subCategory={skill.subCategory}
+                domain={skill.domain}
+              />
               {skill.hasVisibleSuites === true ? (
                 <span
                   className="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-border bg-secondary/60 px-2 py-0.5 text-xs font-medium text-secondary-foreground"

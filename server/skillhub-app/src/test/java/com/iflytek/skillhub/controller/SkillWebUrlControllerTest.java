@@ -35,7 +35,7 @@ class SkillWebUrlControllerTest {
         var factory = new ApiResponseFactory(new StaticMessageSource(), Clock.systemUTC(), mock(RequestIdAccessor.class));
         for (String base : new String[] {"https://public.example/prefix/", ""}) {
             var controller = new SkillController(query, null, mock(SkillLabelAppService.class), null,
-                    suites, null, null, factory, new SkillWebUrls(base));
+                    suites, null, null, factory, new SkillWebUrls(base), null);
             var mvc = MockMvcBuilders.standaloneSetup(controller)
                     .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver()).build();
             for (String path : List.of("/api/v1/skills/team/demo", "/api/web/skills/team/demo")) {
