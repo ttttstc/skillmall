@@ -72,6 +72,12 @@ public class SkillController extends BaseApiController {
 
     private final SkillWebUrls skillWebUrls;
 
+    /**
+     * Optional collaborator: when absent (the narrow constructor used by tests) the detail payload
+     * simply carries no category references.
+     */
+    private final com.iflytek.skillhub.domain.category.CategoryDirectoryService categoryDirectory;
+
     public SkillController(
             SkillQueryService skillQueryService,
             SkillDownloadService skillDownloadService,
@@ -83,7 +89,7 @@ public class SkillController extends BaseApiController {
             ApiResponseFactory responseFactory) {
         this(skillQueryService, skillDownloadService, skillLabelAppService, complianceSnapshotProjectionService,
                 skillSuiteAppService, metrics, githubSkillSourceQueryRepository, responseFactory,
-                new SkillWebUrls(""));
+                new SkillWebUrls(""), null);
     }
 
     @Autowired
@@ -96,9 +102,11 @@ public class SkillController extends BaseApiController {
             SkillHubMetrics metrics,
             GithubSkillSourceQueryRepository githubSkillSourceQueryRepository,
             ApiResponseFactory responseFactory,
-            SkillWebUrls skillWebUrls) {
+            SkillWebUrls skillWebUrls,
+            com.iflytek.skillhub.domain.category.CategoryDirectoryService categoryDirectory) {
         super(responseFactory);
         this.skillWebUrls = skillWebUrls;
+        this.categoryDirectory = categoryDirectory;
         this.skillQueryService = skillQueryService;
         this.skillDownloadService = skillDownloadService;
         this.skillLabelAppService = skillLabelAppService;
@@ -169,7 +177,15 @@ public class SkillController extends BaseApiController {
                 detail.publishedVersion() == null ? null
                         : githubSkillSourceQueryRepository.findPublishedVersion(detail.publishedVersion().id())
                                 .orElse(null),
-                skillWebUrls.detail(namespace, detail.slug())
+                skillWebUrls.detail(namespace, detail.slug()),
+                detail.categoryId() == null || categoryDirectory == null ? null
+                        : com.iflytek.skillhub.dto.SkillCategoryRef.of(
+                                categoryDirectory.findById(detail.categoryId()).orElse(null),
+                                org.springframework.context.i18n.LocaleContextHolder.getLocale().getLanguage()),
+                detail.subCategoryId() == null || categoryDirectory == null ? null
+                        : com.iflytek.skillhub.dto.SkillCategoryRef.of(
+                                categoryDirectory.findById(detail.subCategoryId()).orElse(null),
+                                org.springframework.context.i18n.LocaleContextHolder.getLocale().getLanguage())
         );
 
         return ok("response.success.read", response);

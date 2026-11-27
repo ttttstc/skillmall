@@ -8,7 +8,7 @@ import { RouteError } from '@/shared/components/route-error'
 import { createRedirectAuthenticated, createRequireAuth, isSafeAuthReturnTo } from '@/shared/lib/auth-route'
 import { clearDynamicImportReloadGuard, recoverFromDynamicImportError } from '@/shared/lib/dynamic-import-recovery'
 import { normalizeSearchQuery } from '@/shared/lib/search-query'
-import { SKILL_DOMAINS, type SkillDomain } from '@/shared/lib/skill-domains'
+import { SKILL_DOMAINS, isSkillCategorySlug, type SkillDomain } from '@/shared/lib/skill-domains'
 import { captureInvitationFragment } from '@/shared/lib/namespace-invitation'
 
 /**
@@ -304,11 +304,29 @@ const privacyRoute = createRoute({
   component: PrivacyPolicyPage,
 })
 
+/**
+ * Normalises a repeated query parameter (`?sub=a&sub=b`) into a de-duplicated string list.
+ *
+ * Second-level category slugs are deliberately NOT checked against a local constant: they are
+ * created at runtime by category administrators, so the client cannot know the valid set. Passing
+ * an unknown slug through lets the server answer 400, which is honest, instead of silently
+ * dropping the filter and showing an unfiltered list that looks like a working empty result.
+ */
+function readRepeatedValue(value: unknown): string[] | undefined {
+  const raw = Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
+  const cleaned = raw
+    .filter((item): item is string => typeof item === 'string')
+    .map(item => item.trim())
+    .filter(item => item.length > 0)
+
+  return cleaned.length > 0 ? Array.from(new Set(cleaned)) : undefined
+}
+
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'search',
   component: SearchPage,
-  validateSearch: (search: Record<string, unknown>): { q: string; namespace?: string; label?: string; domain?: SkillDomain; sort: string; page: number; starredOnly: boolean; view?: 'grid' | 'list' } => {
+  validateSearch: (search: Record<string, unknown>): { q: string; namespace?: string; label?: string; domain?: SkillDomain; category?: string; sub?: string[]; creator?: string; sort: string; page: number; starredOnly: boolean; view?: 'grid' | 'list' } => {
     return {
       q: normalizeSearchQuery(typeof search.q === 'string' ? search.q : ''),
       namespace: typeof search.namespace === 'string' && search.namespace ? search.namespace.replace(/^@/, '') : undefined,
@@ -316,6 +334,11 @@ const searchRoute = createRoute({
       // An unknown category is dropped to "all" in the URL rather than sent to the API, where it
       // would be a 400 caused by a hand-edited link rather than by the page.
       domain: allowedSearchValue(search.domain, SKILL_DOMAINS),
+      // Level 1 is a fixed seeded set, so it can be validated locally like `domain`.
+      category: isSkillCategorySlug(search.category) ? search.category : undefined,
+      // Level 2 is runtime data: pass it through and let the server reject what it does not know.
+      sub: readRepeatedValue(search.sub),
+      creator: typeof search.creator === 'string' && search.creator.trim() ? search.creator.trim() : undefined,
       sort: (search.sort as string) || 'newest',
       page: Number(search.page) || 0,
       starredOnly: search.starredOnly === true || search.starredOnly === 'true',

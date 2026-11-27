@@ -2,21 +2,24 @@ import { startTransition, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Loader2, LayoutGrid, List, ArrowLeft } from 'lucide-react'
-import type { SkillSummary } from '@/api/types'
+import type { SkillAuthor, SkillSummary } from '@/api/types'
 import { useAuth } from '@/features/auth/use-auth'
 import { SearchBar } from '@/features/search/search-bar'
 import { SkillCard } from '@/features/skill/skill-card'
 import { SkillListRow } from '@/features/skill/skill-list-row'
-import { DomainFilter } from '@/features/skill/domain-filter'
+import { CategoryTree } from '@/features/skill/category-tree'
+import { SubCategoryFilter } from '@/features/skill/sub-category-filter'
+import { CreatorFilter } from '@/features/skill/creator-filter'
 import { SkeletonList } from '@/shared/components/skeleton-loader'
 import { EmptyState } from '@/shared/components/empty-state'
 import { LoadError } from '@/shared/components/load-error'
 import { useSearchSkills } from '@/shared/hooks/use-skill-queries'
+import { useCategories } from '@/shared/hooks/use-category-queries'
 import { useVisibleLabels } from '@/shared/hooks/use-label-queries'
 import { useMyStars } from '@/shared/hooks/use-user-queries'
 import { toRouterPath } from '@/shared/lib/base-path'
 import { formatNamespaceSearchInput, normalizeSearchQuery, parseNamespaceSearchInput } from '@/shared/lib/search-query'
-import type { SkillDomain } from '@/shared/lib/skill-domains'
+import { domainToCategorySlug, type SkillDomain } from '@/shared/lib/skill-domains'
 import { Button } from '@/shared/ui/button'
 import { APP_SHELL_PAGE_CLASS_NAME } from '@/app/page-shell-style'
 
@@ -100,6 +103,12 @@ export function SearchPage() {
   // The category lives in the URL like every other filter here, so a filtered list can be shared
   // and revisited. Absent means "all categories", not "no category".
   const domain = searchParams.domain as SkillDomain | undefined
+  // `category` supersedes the legacy `domain`. An old shared link that only carries the enum keeps
+  // working because it is mapped onto the seeded first-level slug here, once, instead of being
+  // special-cased in every request builder.
+  const category = searchParams.category ?? domainToCategorySlug(domain)
+  const sub = searchParams.sub ?? []
+  const creator = searchParams.creator
   const sort = searchParams.sort || 'newest'
   const page = searchParams.page ?? 0
   const starredOnly = searchParams.starredOnly ?? false
@@ -117,7 +126,7 @@ export function SearchPage() {
   const previousPageRef = useRef(page)
   const loadingMoreRef = useRef(false)
   const [loadedPages, setLoadedPages] = useState<{ key: string; page: number; items: SkillSummary[] } | null>(null)
-  const resultsKey = JSON.stringify([q, namespace, selectedLabel, domain, sort, starredOnly])
+  const resultsKey = JSON.stringify([q, namespace, selectedLabel, category, sub, creator, sort, starredOnly])
 
   useEffect(() => {
     setQueryInput(formatNamespaceSearchInput(namespace, q))
@@ -142,12 +151,21 @@ export function SearchPage() {
     q,
     namespace: namespace || undefined,
     label: selectedLabel || undefined,
-    domain,
+    // Only one of the two is sent: the contract says `category` wins, and sending both would make
+    // a stale `domain` look like a server-side precedence bug.
+    domain: category ? undefined : domain,
+    category,
+    sub: sub.length > 0 ? sub : undefined,
+    creator,
     sort,
     page,
     size: PAGE_SIZE,
     starredOnly,
   }, !starredOnly)
+  const { data: categoryTree, isLoading: isLoadingCategories } = useCategories()
+  // Second-level options always come from the currently selected first-level category, so the
+  // picker can never offer a combination the API would reject.
+  const activeSubOptions = categoryTree?.categories.find(node => node.slug === category)?.subCategories ?? []
   const { data: labels } = useVisibleLabels()
   const {
     data: starredSkills,
@@ -157,34 +175,73 @@ export function SearchPage() {
     refetch: refetchStarred,
   } = useMyStars(starredOnly && isAuthenticated)
   const viewSearch = view === 'list' ? ('list' as const) : undefined
+
+  /**
+   * Single merge point for the URL state.
+   *
+   * Every filter change used to build its own search object, and those copies had already drifted
+   * apart. Funnelling them through here means a newly added filter cannot be dropped by one
+   * handler that forgot to copy it.
+   */
+  const go = (
+    overrides: Partial<{
+      q: string
+      namespace: string
+      label: string
+      domain: SkillDomain | undefined
+      category: string | undefined
+      sub: string[]
+      creator: string | undefined
+      sort: string
+      page: number
+      starredOnly: boolean
+      view: 'list' | undefined
+    }> = {},
+    options: { replace?: boolean } = {},
+  ) => {
+    navigate({
+      to: '/search',
+      replace: options.replace,
+      search: {
+        q,
+        namespace,
+        label: selectedLabel,
+        domain,
+        category,
+        sub: sub.length > 0 ? sub : undefined,
+        creator,
+        sort,
+        page,
+        starredOnly,
+        view: viewSearch,
+        ...overrides,
+      },
+    })
+  }
+
   const handleSearch = (query: string) => {
     const parsedInput = parseNamespaceSearchInput(query)
     setQueryInput(query)
     startTransition(() => {
-      navigate({ to: '/search', search: { q: parsedInput.query, namespace: parsedInput.namespace, label: selectedLabel, domain, sort, page: 0, starredOnly, view: viewSearch }, replace: true })
+      go({ q: parsedInput.query, namespace: parsedInput.namespace, page: 0 }, { replace: true })
     })
   }
 
-  const handleSortChange = (newSort: string) => {
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort: newSort, page: 0, starredOnly, view: viewSearch } })
-  }
+  const handleSortChange = (newSort: string) => go({ sort: newSort, page: 0 })
 
   const handleViewChange = (nextView: 'grid' | 'list') => {
     if (nextView === view) {
       return
     }
     blurActiveElement()
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort, page, starredOnly, view: nextView === 'list' ? 'list' as const : undefined } })
+    go({ view: nextView === 'list' ? 'list' : undefined })
   }
 
   const handleLabelToggle = (label: string) => {
-    const nextLabel = selectedLabel === label ? '' : label
-    navigate({ to: '/search', search: { q, namespace, label: nextLabel, domain, sort, page: 0, starredOnly, view: viewSearch } })
+    go({ label: selectedLabel === label ? '' : label, page: 0 })
   }
 
-  const handleNamespaceClear = () => {
-    navigate({ to: '/search', search: { q, namespace: '', label: selectedLabel, domain, sort, page: 0, starredOnly, view: viewSearch } })
-  }
+  const handleNamespaceClear = () => go({ namespace: '', page: 0 })
 
   const handleStarredToggle = () => {
     if (!isAuthenticated) {
@@ -197,12 +254,27 @@ export function SearchPage() {
       return
     }
 
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort, page: 0, starredOnly: !starredOnly, view: viewSearch } })
+    go({ starredOnly: !starredOnly, page: 0 })
   }
 
-  const handleDomainChange = (next: SkillDomain | undefined) => {
-    // Changing the category resets paging: page 3 of the old category has no meaning here.
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain: next, sort, page: 0, starredOnly, view: viewSearch } })
+  /**
+   * Selecting a first-level category clears the second-level selection: a second-level slug only
+   * means something inside its own parent, so carrying the old ones over would send the server a
+   * cross-category combination it rejects with 400.
+   */
+  const handleCategoryChange = (nextSlug: string | undefined) => {
+    go({ category: nextSlug, sub: [], page: 0 })
+  }
+
+  const handleToggleSub = (slug: string) => {
+    const nextSub = sub.includes(slug) ? sub.filter(item => item !== slug) : [...sub, slug]
+    go({ sub: nextSub, page: 0 })
+  }
+
+  const handleClearSubs = () => go({ sub: [], page: 0 })
+
+  const handleCreatorSelect = (author: SkillAuthor | null) => {
+    go({ creator: author?.userId, page: 0 })
   }
 
   const handleSkillClick = (namespace: string, slug: string) => {
@@ -236,7 +308,7 @@ export function SearchPage() {
     if (isFetching || page + 1 >= totalPages) return
     setLoadedPages({ key: resultsKey, page, items: displayItems })
     loadingMoreRef.current = true
-    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, sort, page: page + 1, starredOnly, view: viewSearch } })
+    navigate({ to: '/search', search: { q, namespace, label: selectedLabel, domain, category, sub: sub.length > 0 ? sub : undefined, creator, sort, page: page + 1, starredOnly, view: viewSearch } })
   }
   const isPageLoading = starredOnly ? isLoadingStarred : isLoading
   const isUpdatingResults = starredOnly
@@ -310,9 +382,17 @@ export function SearchPage() {
               {t('search.namespaceFilter', { namespace })}
             </Button>
           ) : null}
-          <div className="w-full border-t border-border/60 px-3 pt-4 lg:mt-3">
-            <p className="text-sm font-medium text-foreground">{t('home.domainTitle')}</p>
-            <DomainFilter value={domain} onChange={handleDomainChange} align="start" className="mt-2" />
+          <div className="w-full border-t border-border/60 px-1 pt-4 lg:mt-3">
+            <p className="px-2 text-sm font-medium text-foreground">{t('search.categoryTreeLabel')}</p>
+            <CategoryTree
+              categories={categoryTree?.categories ?? []}
+              selectedCategory={category}
+              selectedSubs={sub}
+              onSelectCategory={handleCategoryChange}
+              onToggleSub={handleToggleSub}
+              isLoading={isLoadingCategories}
+              className="mt-2"
+            />
           </div>
         </aside>
 
@@ -354,6 +434,14 @@ export function SearchPage() {
           </div>
 
           <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <SubCategoryFilter
+            options={activeSubOptions}
+            selected={sub}
+            onToggle={handleToggleSub}
+            onClear={handleClearSubs}
+            enabled={Boolean(category)}
+          />
+          <CreatorFilter value={creator} onSelect={handleCreatorSelect} />
           <div className="w-64 max-w-full">
             <SearchBar analyticsId="search.query.submit"
               value={queryInput}
@@ -448,7 +536,7 @@ export function SearchPage() {
           description={
             starredOnly
               ? (q ? t('search.noStarredResultsFor', { q }) : t('search.noStarredSkills'))
-              : domain ? t('home.domainEmpty') : (q ? t('search.noResultsFor', { q }) : undefined)
+              : (category || domain) ? t('home.domainEmpty') : (q ? t('search.noResultsFor', { q }) : undefined)
           }
         />
       )}

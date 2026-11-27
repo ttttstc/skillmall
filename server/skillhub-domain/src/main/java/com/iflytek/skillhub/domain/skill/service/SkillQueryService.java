@@ -131,7 +131,10 @@ public class SkillQueryService {
             Long activeAvatarId,
             SkillVisibility activeAvatarAudience
 ,
-            boolean ownerReadOnly
+            boolean ownerReadOnly,
+            /* Category row ids. The web layer resolves these into display references. */
+            Long categoryId,
+            Long subCategoryId
     ) {
         public SkillDetailDTO(Long id,
             String slug,
@@ -161,7 +164,7 @@ public class SkillQueryService {
             String resolutionMode,
             Long activeAvatarId,
             SkillVisibility activeAvatarAudience) {
-            this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, null, false, namespaceId, createdAt, updatedAt, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, activeAvatarId, activeAvatarAudience, false);
+            this(id, slug, displayName, ownerId, ownerDisplayName, summary, visibility, status, downloadCount, starCount, subscriptionCount, ratingAvg, ratingCount, hidden, null, false, namespaceId, createdAt, updatedAt, canManageLifecycle, canSubmitPromotion, canInteract, canReport, headlineVersion, publishedVersion, ownerPreviewVersion, ownerPreviewReviewComment, resolutionMode, activeAvatarId, activeAvatarAudience, false, null, null);
         }
     }
 
@@ -294,7 +297,7 @@ public class SkillQueryService {
                 skill.getNamespaceId(),
                 skill.getCreatedAt(),
                 skill.getUpdatedAt(),
-                canManageRestrictedSkill(skill, currentUserId, userNsRoles)
+                canManageRestrictedSkill(skill, currentUserId, userNsRoles, platformRoles)
                         && !ownerAccess.isReadOnly(skill, currentUserId, platformRoles),
                 canSubmitPromotion(namespace, skill, publishedVersion, currentUserId, userNsRoles, platformRoles),
                 skill.getStatus() == SkillStatus.ACTIVE
@@ -307,7 +310,9 @@ public class SkillQueryService {
                 projection.resolutionMode().name(),
                 skill.getActiveAvatarId(),
                 skill.getActiveAvatarAudience(),
-                ownerAccess.isReadOnly(skill, currentUserId, platformRoles)
+                ownerAccess.isReadOnly(skill, currentUserId, platformRoles),
+                skill.getCategoryId(),
+                skill.getSubCategoryId()
         );
     }
 
@@ -569,7 +574,11 @@ public class SkillQueryService {
                 .thenComparing(SkillVersion::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(SkillVersion::getId, Comparator.reverseOrder());
         List<SkillVersion> visibleVersions;
-        if (canManageRestrictedSkill(skill, currentUserId, userNsRoles) && !downloadableOnly) {
+        // Version-level listing keeps the owner/namespace rule only: platformRoles is not part of
+        // this method's contract, and widening it here would change who may enumerate unpublished
+        // versions. Recorded as a deliberate, conservative gap rather than a silent one.
+        if (canManageRestrictedSkill(skill, currentUserId, userNsRoles, java.util.Set.of())
+                && !downloadableOnly) {
             visibleVersions = skillVersionRepository.findBySkillId(skill.getId()).stream()
                     .filter(version -> version.getStatus() == SkillVersionStatus.PUBLISHED
                             || version.getStatus() == SkillVersionStatus.PENDING_REVIEW
@@ -1020,10 +1029,10 @@ public class SkillQueryService {
         if (namespace.getStatus() == NamespaceStatus.ARCHIVED && !isNamespaceMember(skill.getNamespaceId(), currentUserId, userNsRoles)) {
             throw new DomainForbiddenException("error.namespace.archived", namespace.getSlug());
         }
-        if (skill.getStatus() != SkillStatus.ACTIVE && !canManageRestrictedSkill(skill, currentUserId, userNsRoles)) {
+        if (skill.getStatus() != SkillStatus.ACTIVE && !canManageRestrictedSkill(skill, currentUserId, userNsRoles, platformRoles)) {
             throw new DomainForbiddenException("error.skill.access.denied", skill.getSlug());
         }
-        if (skill.isHidden() && !canManageRestrictedSkill(skill, currentUserId, userNsRoles)) {
+        if (skill.isHidden() && !canManageRestrictedSkill(skill, currentUserId, userNsRoles, platformRoles)) {
             throw new DomainForbiddenException("error.skill.access.denied", skill.getSlug());
         }
         if (!visibilityChecker.canAccess(skill, currentUserId, userNsRoles, platformRoles)) {
@@ -1031,7 +1040,20 @@ public class SkillQueryService {
         }
     }
 
-    private boolean canManageRestrictedSkill(Skill skill, String currentUserId, Map<Long, NamespaceRole> userNsRoles) {
+    /**
+     * Who may read or manage a hidden/archived/unpublished skill, and who is offered the management
+     * affordances in a payload.
+     *
+     * <p>{@code SUPER_ADMIN} short-circuits here on purpose. The projection is derived from this
+     * method, so leaving it out produced the worst possible pair: the detail page said "no
+     * permission" while the write endpoints allowed the action. One rule, both answers.
+     */
+    private boolean canManageRestrictedSkill(Skill skill, String currentUserId,
+                                             Map<Long, NamespaceRole> userNsRoles,
+                                             Set<String> platformRoles) {
+        if (platformRoles != null && platformRoles.contains("SUPER_ADMIN")) {
+            return true;
+        }
         if (currentUserId == null) {
             return false;
         }
@@ -1061,7 +1083,7 @@ public class SkillQueryService {
         if (promotionRequestRepository.findBySourceSkillIdAndStatus(skill.getId(), ReviewTaskStatus.PENDING).isPresent()) {
             return false;
         }
-        return canManageRestrictedSkill(skill, currentUserId, userNsRoles)
+        return canManageRestrictedSkill(skill, currentUserId, userNsRoles, platformRoles)
                 && !ownerAccess.isReadOnly(skill, currentUserId, platformRoles);
     }
 
@@ -1134,7 +1156,9 @@ public class SkillQueryService {
         if (version.getStatus() == SkillVersionStatus.PUBLISHED) {
             return;
         }
-        if (canManageRestrictedSkill(skill, currentUserId, userNsRoles)) {
+        // Same deliberate gap as the version listing above: this method's contract carries no
+        // platform roles, so previewing an unpublished version stays owner/namespace-scoped.
+        if (canManageRestrictedSkill(skill, currentUserId, userNsRoles, java.util.Set.of())) {
             return;
         }
         throw new DomainBadRequestException("error.skill.version.notPublished", versionStr);

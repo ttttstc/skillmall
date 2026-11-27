@@ -3,7 +3,11 @@ package com.iflytek.skillhub.controller.portal;
 import com.iflytek.skillhub.controller.BaseApiController;
 import com.iflytek.skillhub.controller.support.DomainQueryParameters;
 import com.iflytek.skillhub.controller.support.IncludeOptions;
+import com.iflytek.skillhub.domain.category.Category;
+import com.iflytek.skillhub.domain.category.CategoryDirectoryService;
 import com.iflytek.skillhub.domain.namespace.NamespaceRole;
+import com.iflytek.skillhub.domain.shared.exception.DomainBadRequestException;
+import com.iflytek.skillhub.domain.skill.SkillDomain;
 import com.iflytek.skillhub.dto.ApiResponse;
 import com.iflytek.skillhub.dto.ApiResponseFactory;
 import com.iflytek.skillhub.dto.SkillLabelDto;
@@ -22,6 +26,10 @@ import java.util.regex.Pattern;
 /**
  * Portal search endpoint that adapts HTTP query parameters to the search
  * application service and visibility scope.
+ *
+ * <p>Taxonomy filters are resolved here, not in the service: an unknown category slug has to fail
+ * as a 400 instead of quietly widening to the whole catalogue, and keeping that rule next to the
+ * parameter parsing means every discovery route inherits it.
  */
 @RestController
 @RequestMapping({"/api/web/skills"})
@@ -33,13 +41,16 @@ public class SkillSearchController extends BaseApiController {
 
     private final SkillSearchAppService skillSearchAppService;
     private final SkillLabelProjectionService skillLabelProjectionService;
+    private final CategoryDirectoryService categoryDirectory;
 
     public SkillSearchController(SkillSearchAppService skillSearchAppService,
                                  SkillLabelProjectionService skillLabelProjectionService,
+                                 CategoryDirectoryService categoryDirectory,
                                  ApiResponseFactory responseFactory) {
         super(responseFactory);
         this.skillSearchAppService = skillSearchAppService;
         this.skillLabelProjectionService = skillLabelProjectionService;
+        this.categoryDirectory = categoryDirectory;
     }
 
     @GetMapping
@@ -48,7 +59,16 @@ public class SkillSearchController extends BaseApiController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String namespace,
             @RequestParam(name = "label", required = false) java.util.List<String> labels,
-            @Parameter(description = "Optional first-level category: DESIGN, DEVELOPMENT, TESTING, "
+            @Parameter(description = "Optional first-level category slug, e.g. design. Takes "
+                    + "precedence over the legacy domain parameter when both are supplied.")
+            @RequestParam(name = "category", required = false) String category,
+            @Parameter(description = "Optional second-level category slugs (repeatable). Several "
+                    + "values are matched as OR and must all belong to the same category.")
+            @RequestParam(name = "sub", required = false) List<String> subCategories,
+            @Parameter(description = "Optional creator user id. Matched against the skill creator, "
+                    + "not the current owner.")
+            @RequestParam(name = "creator", required = false) String creator,
+            @Parameter(description = "Legacy first-level category: DESIGN, DEVELOPMENT, TESTING, "
                     + "ENGINEERING, PROJECT_MANAGEMENT, OTHER")
             @RequestParam(name = "domain", required = false) String domain,
             @Parameter(description = "Optional response expansions. Supported value: labels")
@@ -63,6 +83,8 @@ public class SkillSearchController extends BaseApiController {
             @RequestAttribute(value = "userNsRoles", required = false) Map<Long, NamespaceRole> userNsRoles) {
 
         boolean includeLabels = IncludeOptions.includesLabels(include);
+        TaxonomyFilter filter = resolveTaxonomy(category, subCategories, creator, domain);
+
         SkillSearchAppService.SearchResponse response = skillSearchAppService.search(
                 q,
                 namespace,
@@ -70,12 +92,42 @@ public class SkillSearchController extends BaseApiController {
                 parseNonNegativeInt(page, DEFAULT_PAGE),
                 parsePositiveInt(size, DEFAULT_SIZE),
                 labels,
-                DomainQueryParameters.parse(domain),
+                filter.domain(),
+                filter.categoryId(),
+                filter.subCategoryIds(),
+                filter.creatorId(),
                 userId,
                 userNsRoles
         );
 
         return ok("response.success.read", includeLabels ? withLabels(response) : response);
+    }
+
+    /** Resolved taxonomy filter. {@code domain} is dropped once an explicit category is supplied. */
+    private record TaxonomyFilter(SkillDomain domain, Long categoryId, List<Long> subCategoryIds,
+                                  String creatorId) {
+    }
+
+    private TaxonomyFilter resolveTaxonomy(String category, List<String> subCategories,
+                                           String creator, String rawDomain) {
+        SkillDomain domain = DomainQueryParameters.parse(rawDomain);
+        String creatorId = (creator == null || creator.isBlank()) ? null : creator.trim();
+
+        if (category == null || category.isBlank()) {
+            if (subCategories != null && !subCategories.isEmpty()) {
+                // A second-level slug is only unique inside its parent, so refusing here is
+                // unambiguous; silently guessing a parent would return another category's skills.
+                throw new DomainBadRequestException("error.skill.category.subWithoutCategory",
+                        String.join(",", subCategories));
+            }
+            return new TaxonomyFilter(domain, null, List.of(), creatorId);
+        }
+
+        Category primary = categoryDirectory.requirePrimary(category.trim());
+        List<Long> subIds = categoryDirectory.resolveSecondaryIds(primary, subCategories);
+        // An explicit category wins over the legacy wire value, so the two never AND together into
+        // an empty result the caller cannot explain.
+        return new TaxonomyFilter(null, primary.getId(), subIds, creatorId);
     }
 
     private SkillSearchAppService.SearchResponse withLabels(SkillSearchAppService.SearchResponse response) {

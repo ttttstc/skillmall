@@ -19,6 +19,7 @@ import { InstallGuide } from '@/features/skill/install-guide'
 import { ShareButton } from '@/features/skill/share-button'
 import { InstallForAgentButton } from '@/features/skill/install-for-agent-button'
 import { SkillLabelPanel } from '@/features/skill/skill-label-panel'
+import { SkillCategoryPath } from '@/features/skill/skill-category-chip'
 import { GithubSkillSourceCard } from '@/features/skill/github-skill-source'
 import { ComplianceSnapshotPanel } from '@/features/skill/compliance-snapshot-panel'
 import {
@@ -943,6 +944,9 @@ export function SkillDetailPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <NamespaceBadge type="GLOBAL" name={namespace} />
+            {/* Both levels are shown when tagged: the first level alone hides the editorial
+                placement that category administrators curate. */}
+            <SkillCategoryPath category={skill.category} subCategory={skill.subCategory} />
             {skill.status && (
               <span className={cn(
                 'badge-soft',
@@ -1338,6 +1342,13 @@ export function SkillDetailPage() {
             <div className="font-semibold text-foreground">
               {skill.ratingCount > 0 && skill.ratingAvg !== undefined ? `${skill.ratingAvg.toFixed(1)} / 5` : t('skillDetail.ratingNone')}
             </div>
+          </div>
+
+          <div className="h-px bg-border/40" />
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="shrink-0 text-sm text-muted-foreground">{t('skillDetail.categoryLabel')}</div>
+            <SkillCategoryPath category={skill.category} subCategory={skill.subCategory} />
           </div>
 
           <div className="h-px bg-border/40" />

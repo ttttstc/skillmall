@@ -109,6 +109,72 @@ public class AdminUserAppService {
         return new AdminUserMutationResponse(user.getId(), normalizedRoleCode, user.getStatus().name());
     }
 
+    /**
+     * Additive grant: adds one role without touching the user's other roles.
+     *
+     * <p>The replace-only {@link #updateUserRole} is kept for compatibility, but it deletes every
+     * binding first — so granting a second role through it silently strips an existing SUPER_ADMIN.
+     * Anything that hands out an additional capability (a topic administrator, for example) has to
+     * use this path instead.
+     */
+    @Transactional
+    public AdminUserMutationResponse grantUserRole(String userId, String roleCode,
+                                                   Set<String> actorPlatformRoles) {
+        UserAccount user = loadUser(userId);
+        rejectSystemAccountMutation(user);
+        String normalizedRoleCode = normalizeRoleCode(roleCode);
+        boolean targetHasSuperAdminRole = hasSuperAdminRole(user.getId());
+
+        if ((SUPER_ADMIN_ROLE.equals(normalizedRoleCode) || targetHasSuperAdminRole)
+                && (actorPlatformRoles == null || !actorPlatformRoles.contains(SUPER_ADMIN_ROLE))) {
+            throw new DomainForbiddenException("error.admin.user.role.superAdmin.assignDenied");
+        }
+
+        // USER is synthesised when no binding exists; storing it would be a no-op at best and would
+        // confuse the "empty role set means USER" rule at worst.
+        if (USER_ROLE.equals(normalizedRoleCode)) {
+            return new AdminUserMutationResponse(user.getId(), normalizedRoleCode, user.getStatus().name());
+        }
+
+        Role role = roleRepository.findByCode(normalizedRoleCode)
+                .orElseThrow(() -> new DomainBadRequestException("error.admin.user.role.invalid", roleCode));
+
+        boolean alreadyHeld = userRoleBindingRepository.findByUserId(user.getId()).stream()
+                .anyMatch(binding -> normalizedRoleCode.equals(binding.getRole().getCode()));
+        if (!alreadyHeld) {
+            userRoleBindingRepository.save(new UserRoleBinding(user.getId(), role));
+        }
+
+        return new AdminUserMutationResponse(user.getId(), normalizedRoleCode, user.getStatus().name());
+    }
+
+    /** Removes exactly one role; the user falls back to the synthesised {@code USER} when none remain. */
+    @Transactional
+    public AdminUserMutationResponse revokeUserRole(String userId, String roleCode,
+                                                    Set<String> actorPlatformRoles) {
+        UserAccount user = loadUser(userId);
+        rejectSystemAccountMutation(user);
+        String normalizedRoleCode = normalizeRoleCode(roleCode);
+        boolean targetHasSuperAdminRole = hasSuperAdminRole(user.getId());
+
+        if ((SUPER_ADMIN_ROLE.equals(normalizedRoleCode) || targetHasSuperAdminRole)
+                && (actorPlatformRoles == null || !actorPlatformRoles.contains(SUPER_ADMIN_ROLE))) {
+            throw new DomainForbiddenException("error.admin.user.role.superAdmin.assignDenied");
+        }
+
+        userRoleBindingRepository.findByUserId(user.getId()).stream()
+                .filter(binding -> normalizedRoleCode.equals(binding.getRole().getCode()))
+                .toList()
+                .forEach(userRoleBindingRepository::delete);
+
+        return new AdminUserMutationResponse(user.getId(), normalizedRoleCode, user.getStatus().name());
+    }
+
+    private boolean hasSuperAdminRole(String userId) {
+        return userRoleBindingRepository.findByUserId(userId).stream()
+                .anyMatch(binding -> SUPER_ADMIN_ROLE.equals(binding.getRole().getCode()));
+    }
+
     @Transactional
     public AdminUserMutationResponse updateUserStatus(String userId, String status) {
         UserAccount user = loadUser(userId);

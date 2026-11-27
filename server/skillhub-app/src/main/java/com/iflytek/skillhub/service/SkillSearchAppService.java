@@ -44,6 +44,12 @@ public class SkillSearchAppService {
     private final RbacService rbacService;
     private final UserAccountRepository userAccountRepository;
     private final SkillSuiteMembershipProjectionService suiteMembershipProjection;
+    /**
+     * Optional collaborator, same contract as {@link #suiteMembershipProjection}: when absent the
+     * summary simply carries no category references. That keeps the many lightweight constructor
+     * shapes used by tests working without them having to know about the taxonomy.
+     */
+    private final com.iflytek.skillhub.domain.category.CategoryDirectoryService categoryDirectory;
 
     public SkillSearchAppService(
             SearchQueryService searchQueryService,
@@ -75,7 +81,7 @@ public class SkillSearchAppService {
             UserAccountRepository userAccountRepository) {
         this(searchQueryService, skillRepository, namespaceRepository, namespaceService,
                 skillLifecycleProjectionService, complianceSnapshotProjectionService, rbacService,
-                userAccountRepository, null);
+                userAccountRepository, null, null);
     }
 
     @Autowired
@@ -88,8 +94,10 @@ public class SkillSearchAppService {
             ComplianceSnapshotProjectionService complianceSnapshotProjectionService,
             RbacService rbacService,
             UserAccountRepository userAccountRepository,
-            SkillSuiteMembershipProjectionService suiteMembershipProjection) {
+            SkillSuiteMembershipProjectionService suiteMembershipProjection,
+            com.iflytek.skillhub.domain.category.CategoryDirectoryService categoryDirectory) {
         this.suiteMembershipProjection = suiteMembershipProjection;
+        this.categoryDirectory = categoryDirectory;
         this.searchQueryService = searchQueryService;
         this.skillRepository = skillRepository;
         this.namespaceRepository = namespaceRepository;
@@ -154,6 +162,32 @@ public class SkillSearchAppService {
                 labelSlugs, scope, false, domain);
     }
 
+    /**
+     * Search with the taxonomy filters. Callers pass already-resolved ids: slug resolution (and the
+     * "unknown slug is a 400, not an empty page" rule) belongs to the request-parsing layer, so this
+     * service keeps its existing id-based contract.
+     */
+    public SearchResponse search(
+            String keyword,
+            String namespaceSlug,
+            String sortBy,
+            int page,
+            int size,
+            List<String> labelSlugs,
+            SkillDomain domain,
+            Long categoryId,
+            List<Long> subCategoryIds,
+            String creatorId,
+            String userId,
+            Map<Long, NamespaceRole> userNsRoles) {
+
+        Long namespaceId = resolveNamespaceId(namespaceSlug, userId, userNsRoles);
+        SearchVisibilityScope scope = buildVisibilityScope(userId, userNsRoles);
+
+        return searchVisibleSkills(keyword, namespaceId, sortBy != null ? sortBy : "newest", page, size,
+                labelSlugs, scope, false, domain, categoryId, subCategoryIds, creatorId);
+    }
+
     public SearchResponse searchInstallableLatest(
             String keyword,
             String namespaceSlug,
@@ -215,6 +249,28 @@ public class SkillSearchAppService {
             SearchVisibilityScope scope,
             boolean requireInstallableLatest,
             SkillDomain domain) {
+        return searchVisibleSkills(keyword, namespaceId, sortBy, page, size, labelSlugs, scope,
+                requireInstallableLatest, domain, null, List.of(), null);
+    }
+
+    /**
+     * Same public-distribution path as above, plus the taxonomy filters. They are handed to the
+     * search implementation so they end up inside the visibility predicate instead of being applied
+     * afterwards — a post-filter would break the page/total agreement.
+     */
+    private SearchResponse searchVisibleSkills(
+            String keyword,
+            Long namespaceId,
+            String sortBy,
+            int page,
+            int size,
+            List<String> labelSlugs,
+            SearchVisibilityScope scope,
+            boolean requireInstallableLatest,
+            SkillDomain domain,
+            Long categoryId,
+            List<Long> subCategoryIds,
+            String creatorId) {
         SearchResult result = searchQueryService.search(new SearchQuery(
                 keyword,
                 namespaceId,
@@ -224,7 +280,10 @@ public class SkillSearchAppService {
                 size,
                 normalizeLabelSlugs(labelSlugs),
                 requireInstallableLatest,
-                domain
+                domain,
+                categoryId,
+                subCategoryIds,
+                creatorId
         ));
         List<SkillSummaryResponse> pageItems = mapVisibleSkillSummaries(result.skillIds(), scope.userId());
         if (suiteMembershipProjection != null) {
@@ -280,6 +339,7 @@ public class SkillSearchAppService {
         Map<Long, SkillLifecycleProjectionService.Projection> projectionsBySkillId =
                 skillLifecycleProjectionService.projectPublishedSummaries(matchedSkills);
 
+        com.iflytek.skillhub.dto.SkillCategoryRef.Pages categoryPages = buildCategoryPages(matchedSkills);
         return skillIds.stream()
                 .map(skillsById::get)
                 .filter(java.util.Objects::nonNull)
@@ -288,9 +348,33 @@ public class SkillSearchAppService {
                         namespaceSlugsById,
                         ownersById,
                         projectionsBySkillId.get(skill.getId()),
-                        userId
+                        userId,
+                        categoryPages
                 ))
                 .toList();
+    }
+
+    /**
+     * Pre-loads every category referenced by this page in one query. Without the batch, a page of
+     * twenty cards would issue forty lookups; the directory holds a handful of rows, so one
+     * {@code IN} query covers it.
+     */
+    private com.iflytek.skillhub.dto.SkillCategoryRef.Pages buildCategoryPages(List<Skill> skills) {
+        if (categoryDirectory == null) {
+            return null;
+        }
+        List<Long> ids = new java.util.ArrayList<>();
+        for (Skill skill : skills) {
+            if (skill.getCategoryId() != null) {
+                ids.add(skill.getCategoryId());
+            }
+            if (skill.getSubCategoryId() != null) {
+                ids.add(skill.getSubCategoryId());
+            }
+        }
+        return new com.iflytek.skillhub.dto.SkillCategoryRef.Pages(
+                categoryDirectory, org.springframework.context.i18n.LocaleContextHolder.getLocale().getLanguage())
+                .preload(ids);
     }
 
     private SkillSummaryResponse toSummaryResponse(
@@ -298,7 +382,8 @@ public class SkillSearchAppService {
             Map<Long, String> namespaceSlugsById,
             Map<String, UserAccount> ownersById,
             SkillLifecycleProjectionService.Projection projection,
-            String userId) {
+            String userId,
+            com.iflytek.skillhub.dto.SkillCategoryRef.Pages categoryPages) {
         String namespaceSlug = namespaceSlugsById.get(skill.getNamespaceId());
         UserAccount owner = ownersById.get(skill.getOwnerId());
         SkillLifecycleProjectionService.VersionProjection headlineVersion = projection.headlineVersion();
@@ -331,7 +416,10 @@ public class SkillSearchAppService {
                 null,
                 skill.getVisibility() == com.iflytek.skillhub.domain.skill.SkillVisibility.PRIVATE
                         && !skill.getOwnerId().equals(userId) ? null : SkillAvatarUrls.current(skill, namespaceSlug)
-        ).withDomain(skill.getDomain().name());
+        ).withDomain(skill.getDomain().name())
+                .withCategories(
+                        categoryPages == null ? null : categoryPages.resolve(skill.getCategoryId()),
+                        categoryPages == null ? null : categoryPages.resolve(skill.getSubCategoryId()));
     }
 
     private com.iflytek.skillhub.dto.SkillLifecycleVersionResponse toLifecycleVersion(

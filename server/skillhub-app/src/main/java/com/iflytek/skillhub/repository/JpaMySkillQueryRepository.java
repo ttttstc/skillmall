@@ -245,7 +245,7 @@ public class JpaMySkillQueryRepository implements MySkillQueryRepository {
                 namespacesById,
                 ownersById,
                 projection,
-                canSubmitPromotion(skill, projection.publishedVersion(), namespace)
+                canSubmitPromotion(skill, projection.publishedVersion(), namespace, currentUserId)
         );
     }
 
@@ -289,11 +289,19 @@ public class JpaMySkillQueryRepository implements MySkillQueryRepository {
 
     private boolean canSubmitPromotion(Skill skill,
                                        SkillLifecycleProjectionService.VersionProjection publishedVersion,
-                                       Namespace namespace) {
+                                       Namespace namespace,
+                                       String currentUserId) {
         if (namespace == null) {
             return false;
         }
         if (namespace.getType() != NamespaceType.TEAM) {
+            return false;
+        }
+        // Only the maintainer may submit a promotion. This check used to be missing here while the
+        // detail page had one, so a public skill owned by somebody else advertised "can submit
+        // promotion" in 我的收藏/我的订阅 and refused on its own detail page — the same skill, two
+        // different answers.
+        if (currentUserId == null || !skill.getOwnerId().equals(currentUserId)) {
             return false;
         }
         if (namespace.getStatus() != NamespaceStatus.ACTIVE || skill.getStatus() != SkillStatus.ACTIVE) {

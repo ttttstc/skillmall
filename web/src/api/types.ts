@@ -252,6 +252,48 @@ export interface BatchMemberResponse {
 }
 
 // Skill types
+
+/**
+ * A category reference as resolved by the server for the request locale.
+ *
+ * `displayName` is already localised (fallback: request language → zh → en → slug), so consumers
+ * render it verbatim and must NOT route it through `t()`: categories are runtime data and cannot
+ * live in the i18n bundles.
+ */
+export interface SkillCategoryRef {
+  id: number
+  slug: string
+  displayName: string
+}
+
+/**
+ * One node of the two-level category tree returned by `GET /api/web/categories`.
+ *
+ * Level-1 nodes carry `subCategories`; level-2 nodes do not (the product only supports two levels).
+ * `count` only ever includes publicly distributable skills.
+ */
+export interface SkillCategoryNode extends SkillCategoryRef {
+  sortOrder: number
+  count: number
+  subCategories?: SkillCategoryNode[]
+}
+
+export interface CategoryTreeResponse {
+  categories: SkillCategoryNode[]
+}
+
+/** A distinct creator of publicly distributable skills, used by the creator filter. */
+export interface SkillAuthor {
+  userId: string
+  displayName: string
+  avatarUrl?: string | null
+  skillCount: number
+}
+
+export interface SkillAuthorListResponse {
+  items: SkillAuthor[]
+}
+
 export interface SkillSummary {
   hasVisibleSuites?: boolean
   managementState?: components['schemas']['ManagementState'] | null
@@ -261,6 +303,13 @@ export interface SkillSummary {
   summary?: string
   /** First-level marketplace category (DESIGN, DEVELOPMENT …); absent when the projection has none. */
   domain?: string
+  /**
+   * Server-resolved first-level category. Optional because older projections (and the generated
+   * schema, which predates the endpoint) may not carry it yet; the UI falls back to `domain`.
+   */
+  category?: SkillCategoryRef
+  /** Server-resolved second-level category; null when the skill has not been tagged with one. */
+  subCategory?: SkillCategoryRef | null
   visibility?: string
   status?: string
   downloadCount: number
@@ -395,6 +444,10 @@ export type SkillDetail = Omit<
   entryForSuites?: SkillSuiteReference[]
   memberOfSuites?: PagedResponse<SkillSuiteReference>
   githubSource?: GithubSkillSource | null
+  /** Server-resolved first-level category; absent until the backend emits it. */
+  category?: SkillCategoryRef
+  /** Server-resolved second-level category; null when untagged. */
+  subCategory?: SkillCategoryRef | null
 }
 
 export interface SubmitPromotionRequest {
@@ -514,8 +567,17 @@ export interface SearchParams {
   q?: string
   namespace?: string
   label?: string
-  /** First-level category filter; omitted means every category. */
+  /** Legacy first-level filter (DESIGN, DEVELOPMENT …). Superseded by `category` when both are set. */
   domain?: string
+  /** First-level category slug. */
+  category?: string
+  /**
+   * Second-level category slugs. Repeated `sub` params are OR-ed together and must all belong to
+   * the selected `category`; mixing first-level categories is a 400.
+   */
+  sub?: string[]
+  /** Creator user id (the skill's creator, not its current owner). */
+  creator?: string
   sort?: string
   page?: number
   size?: number

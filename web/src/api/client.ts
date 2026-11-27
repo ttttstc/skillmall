@@ -59,6 +59,8 @@ import type {
   AdminLabelInput,
   LabelDefinition,
   LabelItem,
+  CategoryTreeResponse,
+  SkillAuthorListResponse,
   BatchMemberResponse,
   SkillSuite,
   SkillSuiteDraftInput,
@@ -1181,6 +1183,27 @@ export const skillLifecycleApi = {
 
 function normalizeNamespaceSlug(namespace: string): string {
   return namespace.startsWith('@') ? namespace.slice(1) : namespace
+}
+
+/**
+ * Two-level category catalogue and the creator lookups that feed the discovery filters.
+ *
+ * Both are anonymous reads: the catalogue drives the public sidebar and the author list only ever
+ * contains people who already own publicly distributable skills, so nothing new is disclosed.
+ */
+export const categoryApi = {
+  async tree(): Promise<CategoryTreeResponse> {
+    return fetchJson<CategoryTreeResponse>(`${WEB_API_PREFIX}/categories`)
+  },
+
+  async authors(query: string, limit = 20): Promise<SkillAuthorListResponse> {
+    const params = new URLSearchParams()
+    if (query.trim()) {
+      params.append('q', query.trim())
+    }
+    params.append('limit', String(limit))
+    return fetchJson<SkillAuthorListResponse>(`${WEB_API_PREFIX}/skill-authors?${params.toString()}`)
+  },
 }
 
 export const labelApi = {
